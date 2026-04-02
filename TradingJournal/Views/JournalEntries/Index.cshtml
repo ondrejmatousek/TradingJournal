@@ -26,15 +26,11 @@
             <div class="d-flex flex-column gap-3">
                 @foreach (var item in Model)
                 {
-                    var entry = item.EntryTime.ToLocalTime();
-
-                    // pokud máš ExitTime nullable, použij:
-                    // DateTimeOffset? exit = item.ExitTime?.ToLocalTime();
-                    // var durationText = exit.HasValue ? (exit.Value - entry).ToString(@"hh\:mm") : "—";
-                    // a níže Exit zobraz přes (exit?.ToString(...) ?? "—")
-
-                    var exit = item.ExitTime.ToLocalTime();
-                    var durationText = (exit - entry).ToString(@"hh\:mm");
+                    var entry = item.EntryTime?.LocalDateTime;
+                    var exit = item.ExitTime?.LocalDateTime;
+                    var durationText = (entry.HasValue && exit.HasValue)
+                    ? (exit.Value - entry.Value).ToString(@"hh\:mm")
+                    : "—";
 
                     string outcomeClass = item.Outcome switch
                     {
@@ -64,22 +60,21 @@
                             </div>
 
                             <div class="text-muted small">
-                                Created: @item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                Created: @item.CreatedAt.LocalDateTime.ToString("dd.MM.yyyy HH:mm")
                             </div>
                         </div>
 
                         <div class="card-body">
                             <div class="row g-3 align-items-center">
-                                <!-- Levá část: metriky v řádcích, kompaktně -->
                                 <div class="col-lg-7">
                                     <div class="row g-2">
                                         <div class="col-6 col-md-3">
                                             <div class="small text-muted">Entry</div>
-                                            <div class="fw-semibold">@entry.ToString("dd.MM.yyyy HH:mm")</div>
+                                            <div class="fw-semibold">@(entry?.ToString("dd.MM.yyyy HH:mm") ?? "—")</div>
                                         </div>
                                         <div class="col-6 col-md-3">
                                             <div class="small text-muted">Exit</div>
-                                            <div class="fw-semibold">@exit.ToString("dd.MM.yyyy HH:mm")</div>
+                                            <div class="fw-semibold">@(exit?.ToString("dd.MM.yyyy HH:mm") ?? "—")</div>
                                         </div>
                                         <div class="col-6 col-md-2">
                                             <div class="small text-muted">Risk</div>
@@ -106,7 +101,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Pravá část: obrázek náhled -->
                                 <div class="col-lg-5">
                                     @if (item.ImageData != null)
                                     {

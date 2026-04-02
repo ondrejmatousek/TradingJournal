@@ -3,8 +3,9 @@
 
 @{
     ViewData["Title"] = "Journal entry";
-    var entryLocal = Model.EntryTime.ToLocalTime();
-    var exitLocal = Model.ExitTime.ToLocalTime();
+
+    var entryLocal = Model.EntryTime?.LocalDateTime;
+    var exitLocal = Model.ExitTime?.LocalDateTime;
 
     string outcomeClass = Model.Outcome switch
     {
@@ -24,7 +25,7 @@
         <div>
             <h2 class="mb-0">@Model.Asset</h2>
             <div class="text-muted small">
-                Created: @Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                Created: @Model.CreatedAt.LocalDateTime.ToString("dd.MM.yyyy HH:mm")
             </div>
         </div>
 
@@ -52,9 +53,9 @@
             </div>
 
             <div class="text-muted small">
-                Entry: @entryLocal.ToString("dd.MM.yyyy HH:mm")
+                Entry: @(entryLocal?.ToString("dd.MM.yyyy HH:mm") ?? "—")
                 <span class="mx-2">•</span>
-                Exit: @(exitLocal.ToString("dd.MM.yyyy HH:mm") ?? "—")
+                Exit: @(exitLocal?.ToString("dd.MM.yyyy HH:mm") ?? "—")
             </div>
         </div>
 
@@ -120,11 +121,11 @@
 
         <div class="card-footer d-flex justify-content-between flex-wrap gap-2">
             <div class="text-muted small">
-                Entry time (local): @entryLocal.ToString("dd.MM.yyyy HH:mm")
-                @if (exitLocal != null)
+                Entry time (local): @(entryLocal?.ToString("dd.MM.yyyy HH:mm") ?? "—")
+                @if (entryLocal.HasValue && exitLocal.HasValue)
                 {
                     <span class="mx-2">•</span>
-                    <span>Duration: @(exitLocal - entryLocal)</span>
+                    <span>Duration: @(exitLocal.Value - entryLocal.Value)</span>
                 }
             </div>
 

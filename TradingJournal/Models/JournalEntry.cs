@@ -21,9 +21,9 @@ namespace TradingJournal.Models
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
         [Required]
-        public DateTimeOffset EntryTime { get; set; }
+        public DateTimeOffset? EntryTime { get; set; }
 
-        public DateTimeOffset ExitTime { get; set; }
+        public DateTimeOffset? ExitTime { get; set; }
 
         [MaxLength(4000)]
         public string? Note { get; set; }
@@ -35,19 +35,18 @@ namespace TradingJournal.Models
 
         public decimal RiskPercentage { get; set; }
         public decimal EntryPrice { get; set; }
-
         public decimal ExitPrice { get; set; }
 
         public bool FollowedTradingPlan { get; set; }
 
-        // obrázek přímo v DB
-        public byte[]? ImageData { get; set; }          // varbinary(max)
+        public EntryStatus Status { get; set; } = EntryStatus.Executed;
+
+        public byte[]? ImageData { get; set; }
+
         [MaxLength(100)]
-        public string? ImageContentType { get; set; }   // "image/png", "image/jpeg"
+        public string? ImageContentType { get; set; }
+
         [MaxLength(255)]
-        public string? ImageFileName { get; set; }      // původní název (volitelné)
+        public string? ImageFileName { get; set; }
     }
 }
-
-
-

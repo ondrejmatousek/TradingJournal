@@ -242,14 +242,15 @@ namespace TradingJournal.Data.Migrations
                         .HasPrecision(18, 8)
                         .HasColumnType("decimal(18,8)");
 
-                    b.Property<DateTimeOffset>("EntryTime")
+                    b.Property<DateTimeOffset?>("EntryTime")
+                        .IsRequired()
                         .HasColumnType("datetimeoffset");
 
                     b.Property<decimal>("ExitPrice")
                         .HasPrecision(18, 8)
                         .HasColumnType("decimal(18,8)");
 
-                    b.Property<DateTimeOffset>("ExitTime")
+                    b.Property<DateTimeOffset?>("ExitTime")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<string>("FeelingsBeforeEntry")
@@ -282,6 +283,9 @@ namespace TradingJournal.Data.Migrations
                         .HasColumnType("decimal(9,5)");
 
                     b.Property<int>("Side")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
                         .HasColumnType("int");
 
                     b.Property<string>("UserId")
