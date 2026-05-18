@@ -1,0 +1,136 @@
+@model TradingJournal.ViewModels.InvoiceImportViewModel
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Import faktury";
+    ViewData["BodyClass"] = "journal-shell";
+}
+
+<div class="journal-page">
+    <div class="container-lg">
+        <div class="journal-header compact">
+            <div>
+                <div class="eyebrow">Excel import</div>
+                <h1>Import z Excelu</h1>
+                <p>Načtu položky z prvního listu a připravím z nich koncept faktury.</p>
+            </div>
+            <a asp-action="Index" class="btn btn-outline-secondary">Zpět</a>
+        </div>
+
+        <div class="app-card form-card">
+            <div class="card-body">
+                <form asp-action="Import" method="post" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="SupplierCompanyId" class="form-label">Kdo fakturuje</label>
+                            <select asp-for="SupplierCompanyId" asp-items="Model.SupplierOptions" class="form-select">
+                                <option value="">Vyber dodavatele</option>
+                            </select>
+                            <span asp-validation-for="SupplierCompanyId" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CustomerCompanyId" class="form-label">Komu fakturuji</label>
+                            <select asp-for="CustomerCompanyId" asp-items="Model.CustomerOptions" class="form-select">
+                                <option value="">Vyber odběratele</option>
+                            </select>
+                            <span asp-validation-for="CustomerCompanyId" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label asp-for="IssueDate" class="form-label">Datum vystavení</label>
+                            <input asp-for="IssueDate" type="date" class="form-control" />
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="DueDate" class="form-label">Splatnost</label>
+                            <input asp-for="DueDate" type="date" class="form-control" />
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="TaxableSupplyDate" class="form-label">DUZP</label>
+                            <input asp-for="TaxableSupplyDate" type="date" class="form-control" />
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="Currency" class="form-label">Měna</label>
+                            <input asp-for="Currency" class="form-control" maxlength="3" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="HourlyRate" class="form-label">Hodinová sazba</label>
+                            <input asp-for="HourlyRate" class="form-control" inputmode="decimal" placeholder="Např. 1500" />
+                            <span asp-validation-for="HourlyRate" class="text-danger"></span>
+                            <div class="form-text" id="hourlyRateHint">Po výběru odběratele doplním poslední použitou sazbu, pokud ji znám.</div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Excel soubor</label>
+                            <input type="file" name="excelFile" class="form-control" accept=".xlsx" />
+                            <div class="form-text">U výkazu práce sečtu hodiny a vytvořím položku hodinová sazba × počet hodin. Podporuji i tabulku položek: Popis, Množství, Jednotka, Cena, DPH.</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Načíst do faktury</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Zrušit</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        (() => {
+            const supplier = document.getElementById('SupplierCompanyId');
+            const customer = document.getElementById('CustomerCompanyId');
+            const hourlyRate = document.getElementById('HourlyRate');
+            const hourlyRateHint = document.getElementById('hourlyRateHint');
+            const customerHourlyRates = @Html.Raw(JsonSerializer.Serialize(Model.CustomerHourlyRates));
+            if (!supplier || !customer) {
+                return;
+            }
+
+            function syncCustomerOptions() {
+                const supplierValue = supplier.value;
+                [...customer.options].forEach(option => {
+                    if (!option.value) {
+                        return;
+                    }
+
+                    const isSelf = option.value === supplierValue;
+                    option.hidden = isSelf;
+                    option.disabled = isSelf;
+                });
+
+                if (customer.value === supplierValue) {
+                    customer.value = '';
+                }
+            }
+
+            function syncHourlyRate() {
+                if (!hourlyRate) {
+                    return;
+                }
+
+                const rememberedRate = customerHourlyRates[customer.value];
+                if (rememberedRate) {
+                    hourlyRate.value = rememberedRate.toString().replace('.', ',');
+                    if (hourlyRateHint) {
+                        hourlyRateHint.textContent = `Doplněna poslední sazba pro tohoto odběratele: ${hourlyRate.value}`;
+                    }
+                } else if (hourlyRateHint) {
+                    hourlyRateHint.textContent = 'Pro tohoto odběratele zatím nemám uloženou žádnou sazbu.';
+                }
+            }
+
+            supplier.addEventListener('change', syncCustomerOptions);
+            customer.addEventListener('change', syncHourlyRate);
+            syncCustomerOptions();
+            syncHourlyRate();
+        })();
+    </script>
+}

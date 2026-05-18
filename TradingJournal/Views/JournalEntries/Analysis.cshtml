@@ -1,0 +1,174 @@
+@model TradingJournal.ViewModels.JournalAnalysisViewModel
+@using TradingJournal.Models
+
+@{
+    ViewData["Title"] = "Analysis";
+    ViewData["BodyClass"] = "journal-shell";
+
+    decimal maxAbsMonthly = Math.Max(1, Model.MonthlyPerformance.Select(x => Math.Abs(x.Value)).DefaultIfEmpty(1).Max());
+    decimal maxAbsDaily = Math.Max(1, Model.DailyPerformance.Select(x => Math.Abs(x.Value)).DefaultIfEmpty(1).Max());
+    decimal maxAbsEquity = Math.Max(1, Model.EquityCurve.Select(x => Math.Abs(x.Value)).DefaultIfEmpty(1).Max());
+}
+
+<div class="journal-page">
+    <div class="journal-wrap">
+        <div class="journal-header">
+            <div>
+                <div class="eyebrow">Performance lab</div>
+                <h1>Analysis</h1>
+                <p>Win rate, process quality, price-move curve, and trading breakdowns.</p>
+            </div>
+
+            <div class="page-actions">
+                <a asp-action="Index" class="btn btn-outline-secondary">Journal</a>
+                <a asp-action="Create" class="btn btn-primary">New entry</a>
+            </div>
+        </div>
+
+        <div class="analysis-hero app-card">
+            <div>
+                <span class="text-muted small">Total trades</span>
+                <strong>@Model.Stats.TotalTrades</strong>
+                <small>@Model.Stats.OpenTrades open / @Model.Stats.ClosedTrades reviewed</small>
+            </div>
+            <div>
+                <span class="text-muted small">Win rate</span>
+                <strong>@Model.Stats.WinRate.ToString("0.#")%</strong>
+                <small>@Model.Stats.Wins W / @Model.Stats.Losses L / @Model.Stats.Breakeven BE</small>
+            </div>
+            <div>
+                <span class="text-muted small">Plan adherence</span>
+                <strong>@Model.Stats.PlanAdherence.ToString("0.#")%</strong>
+                <small>Execution discipline</small>
+            </div>
+            <div>
+                <span class="text-muted small">Net price move</span>
+                <strong class="@(Model.Stats.NetPriceMove >= 0 ? "text-teal" : "text-danger")">@Model.Stats.NetPriceMove.ToString("0.#####")</strong>
+                <small>Proxy until position sizing exists</small>
+            </div>
+        </div>
+
+        <div class="analysis-grid mt-4">
+            <section class="app-card analysis-card wide">
+                <div class="panel-title">
+                    <span>Equity curve</span>
+                    <strong>Price-move proxy</strong>
+                </div>
+
+                @if (Model.EquityCurve.Any())
+                {
+                    <div class="line-chart">
+                        <svg viewBox="0 0 600 260" preserveAspectRatio="none" role="img" aria-label="Equity curve">
+                            @{
+                                var points = Model.EquityCurve.Select((point, index) =>
+                                {
+                                    var x = Model.EquityCurve.Count == 1 ? 300 : index * 600m / (Model.EquityCurve.Count - 1);
+                                    var y = 130m - (point.Value / maxAbsEquity * 110m);
+                                    return $"{x.ToString(System.Globalization.CultureInfo.InvariantCulture)},{y.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+                                });
+                            }
+                            <line x1="0" y1="130" x2="600" y2="130" class="chart-zero" />
+                            <polyline points="@string.Join(" ", points)" class="chart-line" />
+                        </svg>
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-chart">Close trades with entry and exit prices to build the curve.</div>
+                }
+            </section>
+
+            <section class="app-card analysis-card">
+                <div class="panel-title">
+                    <span>Monthly performance</span>
+                    <strong>@Model.MonthlyPerformance.Count months</strong>
+                </div>
+                <div class="bar-chart horizontal">
+                    @foreach (var bar in Model.MonthlyPerformance)
+                    {
+                        var width = Math.Abs(bar.Value) / maxAbsMonthly * 100;
+                        <div class="bar-row">
+                            <span>@bar.Label</span>
+                            <div class="bar-track">
+                                <i class="@(bar.Value >= 0 ? "positive" : "negative")" style="width:@width.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)%"></i>
+                            </div>
+                            <strong>@bar.Value.ToString("0.####")</strong>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <section class="app-card analysis-card">
+                <div class="panel-title">
+                    <span>Daily performance</span>
+                    <strong>Last 10 days</strong>
+                </div>
+                <div class="bar-chart vertical">
+                    @foreach (var bar in Model.DailyPerformance)
+                    {
+                        var height = Math.Abs(bar.Value) / maxAbsDaily * 100;
+                        <div class="day-bar">
+                            <div class="day-column">
+                                <i class="@(bar.Value >= 0 ? "positive" : "negative")" style="height:@height.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)%"></i>
+                            </div>
+                            <span>@bar.Label</span>
+                        </div>
+                    }
+                </div>
+            </section>
+        </div>
+
+        <div class="analysis-grid compact mt-4">
+            <section class="app-card analysis-card">
+                <div class="panel-title">
+                    <span>By asset</span>
+                    <strong>Win rate</strong>
+                </div>
+                <div class="analysis-table">
+                    @foreach (var asset in Model.AssetBreakdown)
+                    {
+                        <a asp-action="Index" asp-route-asset="@asset.Asset" class="analysis-row">
+                            <span>@asset.Asset</span>
+                            <strong>@asset.WinRate.ToString("0.#")%</strong>
+                            <em>@asset.Trades trades</em>
+                        </a>
+                    }
+                </div>
+            </section>
+
+            <section class="app-card analysis-card">
+                <div class="panel-title">
+                    <span>Long vs Short</span>
+                    <strong>Bias check</strong>
+                </div>
+                <div class="analysis-table">
+                    @foreach (var side in Model.SideBreakdown)
+                    {
+                        <a asp-action="Index" asp-route-side="@side.Side" class="analysis-row">
+                            <span>@side.Side</span>
+                            <strong>@side.WinRate.ToString("0.#")%</strong>
+                            <em>@side.NetPriceMove.ToString("0.####") move</em>
+                        </a>
+                    }
+                </div>
+            </section>
+
+            <section class="app-card analysis-card">
+                <div class="panel-title">
+                    <span>Recent trades</span>
+                    <strong>@Model.RecentTrades.Count</strong>
+                </div>
+                <div class="analysis-table">
+                    @foreach (var trade in Model.RecentTrades)
+                    {
+                        <a asp-action="Details" asp-route-id="@trade.Id" class="analysis-row">
+                            <span>@trade.Asset</span>
+                            <strong>@trade.Outcome</strong>
+                            <em>@trade.Date</em>
+                        </a>
+                    }
+                </div>
+            </section>
+        </div>
+    </div>
+</div>

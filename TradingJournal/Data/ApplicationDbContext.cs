@@ -7,6 +7,11 @@ namespace TradingJournal.Data
     public class ApplicationDbContext : IdentityDbContext
     {
         public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
+        public DbSet<JournalEntryImage> JournalEntryImages => Set<JournalEntryImage>();
+        public DbSet<InvoiceCompany> InvoiceCompanies => Set<InvoiceCompany>();
+        public DbSet<Invoice> Invoices => Set<Invoice>();
+        public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
@@ -35,6 +40,60 @@ namespace TradingJournal.Data
             builder.Entity<JournalEntry>()
                 .Property(e => e.ImageData)
                 .HasColumnType("varbinary(max)");
+
+            builder.Entity<JournalEntryImage>()
+                .HasOne(i => i.JournalEntry)
+                .WithMany(e => e.Images)
+                .HasForeignKey(i => i.JournalEntryId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<JournalEntryImage>()
+                .Property(i => i.ImageData)
+                .HasColumnType("varbinary(max)");
+
+            builder.Entity<InvoiceCompany>()
+                .HasIndex(c => new { c.UserId, c.Name });
+
+            builder.Entity<InvoiceCompany>()
+                .Property(c => c.LastHourlyRate)
+                .HasPrecision(18, 2);
+
+            builder.Entity<Invoice>()
+                .HasIndex(i => new { i.UserId, i.IssueDate });
+
+            builder.Entity<Invoice>()
+                .HasIndex(i => new { i.UserId, i.InvoiceNumber })
+                .IsUnique();
+
+            builder.Entity<Invoice>()
+                .HasOne(i => i.SupplierCompany)
+                .WithMany()
+                .HasForeignKey(i => i.SupplierCompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Invoice>()
+                .HasOne(i => i.CustomerCompany)
+                .WithMany()
+                .HasForeignKey(i => i.CustomerCompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<InvoiceItem>()
+                .HasOne(i => i.Invoice)
+                .WithMany(i => i.Items)
+                .HasForeignKey(i => i.InvoiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<InvoiceItem>()
+                .Property(i => i.Quantity)
+                .HasPrecision(18, 4);
+
+            builder.Entity<InvoiceItem>()
+                .Property(i => i.UnitPrice)
+                .HasPrecision(18, 2);
+
+            builder.Entity<InvoiceItem>()
+                .Property(i => i.VatRate)
+                .HasPrecision(5, 2);
         }
     }
 }

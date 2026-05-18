@@ -3,17 +3,23 @@
 
 @{
     ViewData["Title"] = "New journal entry";
+    ViewData["BodyClass"] = "journal-shell";
 }
 
+<div class="journal-page">
 <div class="container-lg">
     <div class="row justify-content-center">
         <div class="col-xl-9 col-lg-10">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <h2 class="mb-0">New journal entry</h2>
+            <div class="journal-header compact">
+                <div>
+                    <div class="eyebrow">Trade capture</div>
+                    <h1>New journal entry</h1>
+                    <p>Record the setup, execution, emotion, and screenshot while it is fresh.</p>
+                </div>
                 <a asp-action="Index" class="btn btn-outline-secondary">Back</a>
             </div>
 
-            <div class="card shadow-sm">
+            <div class="app-card form-card">
                 <div class="card-body">
                     <form asp-action="Create" enctype="multipart/form-data">
                         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
@@ -32,6 +38,13 @@
                             </div>
 
                             <div class="col-md-6">
+                                <label asp-for="Status" class="form-label">Trade status</label>
+                                <select asp-for="Status" asp-items="Html.GetEnumSelectList<EntryStatus>()" class="form-select" id="tradeStatus"></select>
+                                <div class="form-text">Use Open for a trade that is still running.</div>
+                                <span asp-validation-for="Status" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6">
                                 <label asp-for="EntryTime" class="form-label">Entry time</label>
                                 <input asp-for="EntryTime"
                                        type="datetime-local"
@@ -43,7 +56,7 @@
                                 <span asp-validation-for="EntryTime" class="text-danger"></span>
                             </div>
 
-                            <div class="col-md-6">
+                            <div class="col-md-6 trade-closed-field">
                                 <label asp-for="ExitTime" class="form-label">Exit time</label>
                                 <input asp-for="ExitTime"
                                        type="datetime-local"
@@ -67,13 +80,13 @@
                                 <span asp-validation-for="EntryPrice" class="text-danger"></span>
                             </div>
 
-                            <div class="col-md-4">
+                            <div class="col-md-4 trade-closed-field">
                                 <label asp-for="ExitPrice" class="form-label">Exit price</label>
                                 <input asp-for="ExitPrice" class="form-control" inputmode="decimal" placeholder="e.g. 2040.00" />
                                 <span asp-validation-for="ExitPrice" class="text-danger"></span>
                             </div>
 
-                            <div class="col-md-6">
+                            <div class="col-md-6 trade-closed-field">
                                 <label asp-for="Outcome" class="form-label"></label>
                                 <select asp-for="Outcome" asp-items="Html.GetEnumSelectList<TradeOutcome>()" class="form-select"></select>
                                 <span asp-validation-for="Outcome" class="text-danger"></span>
@@ -90,20 +103,22 @@
 
                             <div class="col-12">
                                 <label asp-for="Note" class="form-label">Note</label>
-                                <textarea asp-for="Note" class="form-control wysiwyg" rows="10"></textarea>
+                                <textarea asp-for="Note" class="form-control journal-textarea" rows="8"
+                                          placeholder="Why did you enter? What was the plan? What happened during execution?"></textarea>
                                 <span asp-validation-for="Note" class="text-danger"></span>
                             </div>
 
                             <div class="col-12">
                                 <label asp-for="FeelingsBeforeEntry" class="form-label">Feelings before entry</label>
-                                <textarea asp-for="FeelingsBeforeEntry" class="form-control wysiwyg" rows="6"></textarea>
+                                <textarea asp-for="FeelingsBeforeEntry" class="form-control journal-textarea" rows="5"
+                                          placeholder="Confidence, hesitation, urgency, fear, patience..."></textarea>
                                 <span asp-validation-for="FeelingsBeforeEntry" class="text-danger"></span>
                             </div>
 
                             <div class="col-12">
-                                <label class="form-label">Screenshot</label>
-                                <input type="file" name="imageFile" class="form-control" accept="image/*" />
-                                <div class="form-text">Optional. PNG/JPG recommended.</div>
+                                <label class="form-label">Screenshots</label>
+                                <input type="file" name="imageFiles" class="form-control" accept="image/*" multiple />
+                                <div class="form-text">Optional. You can upload up to 8 PNG/JPG images.</div>
                             </div>
                         </div>
 
@@ -117,27 +132,30 @@
         </div>
     </div>
 </div>
+</div>
 
 @section Scripts {
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
 
-    <script src="https://cdn.tiny.cloud/1/1sbhgdu0fa3a6yihwurdgvqe6go3urepo6t3b5h0o1st0lc8/tinymce/8/tinymce.min.js"
-            referrerpolicy="origin" crossorigin="anonymous"></script>
-
     <script>
-        tinymce.init({
-            selector: 'textarea.wysiwyg',
-            height: 300,
-            menubar: true,
-            plugins: [
-                'anchor', 'autolink', 'charmap', 'codesample', 'emoticons',
-                'link', 'lists', 'searchreplace', 'table', 'visualblocks', 'wordcount'
-            ],
-            toolbar: 'undo redo | blocks | bold italic underline strikethrough | bullist numlist | link table | emoticons charmap | removeformat',
-            branding: false,
-            promotion: false
-        });
+        (() => {
+            const status = document.getElementById('tradeStatus');
+            const closedFields = document.querySelectorAll('.trade-closed-field');
+
+            function syncTradeStatus() {
+                const isOpen = status?.value === '@((int)EntryStatus.Open)' || status?.selectedOptions?.[0]?.text === 'Open';
+                closedFields.forEach(field => {
+                    field.classList.toggle('d-none', isOpen);
+                    field.querySelectorAll('input, select').forEach(input => {
+                        input.disabled = isOpen;
+                    });
+                });
+            }
+
+            status?.addEventListener('change', syncTradeStatus);
+            syncTradeStatus();
+        })();
     </script>
 }

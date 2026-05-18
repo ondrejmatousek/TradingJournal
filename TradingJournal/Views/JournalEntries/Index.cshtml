@@ -1,36 +1,154 @@
-﻿@model IEnumerable<TradingJournal.Models.JournalEntry>
+@model TradingJournal.ViewModels.JournalIndexViewModel
 @using TradingJournal.Models
 
 @{
     ViewData["Title"] = "Journal";
+    ViewData["BodyClass"] = "journal-shell";
+
+    var hasActiveFilters = Model.Filters.Asset.HasValue
+        || Model.Filters.Outcome.HasValue
+        || Model.Filters.Side.HasValue
+        || Model.Filters.PlanOnly;
 }
 
-<div class="container-fluid">
-    <div class="mx-auto" style="max-width: 1200px;">
-        <div class="d-flex align-items-center justify-content-between mb-3">
+<div class="journal-page">
+    <div class="journal-wrap">
+        <div class="journal-header">
             <div>
-                <h2 class="mb-0">Journal</h2>
-                <div class="text-muted small">Your trades</div>
+                <div class="eyebrow">Trading desk</div>
+                <h1>Journal</h1>
+                <p>Your trades, filtered insights, and process quality.</p>
             </div>
-            <a asp-action="Create" class="btn btn-primary">+ New entry</a>
+            <a asp-action="Create" class="btn btn-primary">New entry</a>
         </div>
 
-        @if (!Model.Any())
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-xl-2">
+                <div class="stat-card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Trades</div>
+                        <div class="fs-3 fw-semibold">@Model.Stats.TotalTrades</div>
+                        <div class="text-muted small">
+                            @Model.Stats.Wins W / @Model.Stats.Losses L / @Model.Stats.Breakeven BE
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-xl-2">
+                <div class="stat-card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Win rate</div>
+                        <div class="fs-3 fw-semibold">@Model.Stats.WinRate.ToString("0.#")%</div>
+                        <div class="text-muted small">@Model.Stats.Unknown unknown</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-xl-2">
+                <div class="stat-card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Plan adherence</div>
+                        <div class="fs-3 fw-semibold">@Model.Stats.PlanAdherence.ToString("0.#")%</div>
+                        <div class="text-muted small">Process quality</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6 col-xl-2">
+                <div class="stat-card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Average risk</div>
+                        <div class="fs-3 fw-semibold">@Model.Stats.AverageRisk.ToString("0.##")%</div>
+                        <div class="text-muted small">Per filtered trade</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-xl-4">
+                <div class="stat-card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Best asset</div>
+                        @if (Model.Stats.BestAsset.HasValue)
+                        {
+                            <div class="fs-3 fw-semibold">@Model.Stats.BestAsset</div>
+                            <div class="text-muted small">
+                                @Model.Stats.BestAssetWinRate?.ToString("0.#")% win rate on wins/losses
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="fs-3 fw-semibold">-</div>
+                            <div class="text-muted small">Add wins/losses to compare assets</div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form method="get" class="app-card filter-panel mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Asset</label>
+                        <select name="asset" asp-items="Model.AssetOptions" class="form-select">
+                            <option value="">All assets</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Outcome</label>
+                        <select name="outcome" asp-items="Model.OutcomeOptions" class="form-select">
+                            <option value="">All outcomes</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Side</label>
+                        <select name="side" asp-items="Model.SideOptions" class="form-select">
+                            <option value="">Long & Short</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="planOnly" value="true" id="planOnly"
+                                   @(Model.Filters.PlanOnly ? "checked" : "") />
+                            <label class="form-check-label" for="planOnly">Only plan-followed trades</label>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" type="submit">Apply</button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        @if (!Model.Entries.Any())
         {
             <div class="alert alert-info">
-                No entries yet. Click <strong>New entry</strong> to create your first trade.
+                @if (hasActiveFilters)
+                {
+                    <span>No entries match the selected filters.</span>
+                }
+                else
+                {
+                    <span>No entries yet. Click <strong>New entry</strong> to create your first trade.</span>
+                }
             </div>
         }
         else
         {
-            <div class="d-flex flex-column gap-3">
-                @foreach (var item in Model)
+            <div class="journal-list">
+                @foreach (var item in Model.Entries)
                 {
                     var entry = item.EntryTime?.LocalDateTime;
                     var exit = item.ExitTime?.LocalDateTime;
                     var durationText = (entry.HasValue && exit.HasValue)
                     ? (exit.Value - entry.Value).ToString(@"hh\:mm")
-                    : "—";
+                    : "-";
 
                     string outcomeClass = item.Outcome switch
                     {
@@ -40,8 +158,10 @@
                         _ => "bg-light text-dark border"
                     };
 
-                    <div class="card shadow-sm">
-                        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    var previewImage = item.Images.OrderBy(i => i.CreatedAt).FirstOrDefault();
+
+                    <div class="trade-card clickable-card" data-href="@Url.Action("Details", "JournalEntries", new { id = item.Id })" tabindex="0" role="link" aria-label="Open @item.Asset trade detail">
+                        <div class="trade-card-header">
                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                 <span class="fw-semibold">@item.Asset</span>
 
@@ -53,13 +173,18 @@
                                     @item.Outcome
                                 </span>
 
+                                @if (item.Status == EntryStatus.Open)
+                                {
+                                    <span class="badge badge-open">Open</span>
+                                }
+
                                 @if (item.FollowedTradingPlan)
                                 {
                                     <span class="badge bg-info text-dark">Plan followed</span>
                                 }
                             </div>
 
-                            <div class="text-muted small">
+                            <div class="muted small">
                                 Created: @item.CreatedAt.LocalDateTime.ToString("dd.MM.yyyy HH:mm")
                             </div>
                         </div>
@@ -68,53 +193,57 @@
                             <div class="row g-3 align-items-center">
                                 <div class="col-lg-7">
                                     <div class="row g-2">
-                                        <div class="col-6 col-md-3">
+                                        <div class="col-6 col-md-3 metric-cell">
                                             <div class="small text-muted">Entry</div>
-                                            <div class="fw-semibold">@(entry?.ToString("dd.MM.yyyy HH:mm") ?? "—")</div>
+                                            <div class="fw-semibold">@(entry?.ToString("dd.MM.yyyy HH:mm") ?? "-")</div>
                                         </div>
-                                        <div class="col-6 col-md-3">
+                                        <div class="col-6 col-md-3 metric-cell">
                                             <div class="small text-muted">Exit</div>
-                                            <div class="fw-semibold">@(exit?.ToString("dd.MM.yyyy HH:mm") ?? "—")</div>
+                                            <div class="fw-semibold">@(exit?.ToString("dd.MM.yyyy HH:mm") ?? "-")</div>
                                         </div>
-                                        <div class="col-6 col-md-2">
+                                        <div class="col-6 col-md-2 metric-cell">
                                             <div class="small text-muted">Risk</div>
                                             <div class="fw-semibold">@item.RiskPercentage.ToString("0.##") %</div>
                                         </div>
-                                        <div class="col-6 col-md-2">
+                                        <div class="col-6 col-md-2 metric-cell">
                                             <div class="small text-muted">Entry px</div>
                                             <div class="fw-semibold">@item.EntryPrice.ToString("0.########")</div>
                                         </div>
-                                        <div class="col-6 col-md-2">
+                                        <div class="col-6 col-md-2 metric-cell">
                                             <div class="small text-muted">Exit px</div>
-                                            <div class="fw-semibold">@item.ExitPrice.ToString("0.########")</div>
+                                            <div class="fw-semibold">@(item.ExitPrice?.ToString("0.########") ?? "-")</div>
                                         </div>
-                                        <div class="col-6 col-md-2">
+                                        <div class="col-6 col-md-2 metric-cell">
                                             <div class="small text-muted">Dur.</div>
                                             <div class="fw-semibold">@durationText</div>
                                         </div>
                                     </div>
 
                                     <div class="mt-3 d-flex gap-2">
-                                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-secondary btn-sm">Details</a>
-                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-primary btn-sm">Edit</a>
-                                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger btn-sm">Delete</a>
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-primary btn-sm" data-card-ignore>Edit</a>
+                                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger btn-sm" data-card-ignore>Delete</a>
                                     </div>
                                 </div>
 
                                 <div class="col-lg-5">
-                                    @if (item.ImageData != null)
+                                    @if (previewImage != null)
                                     {
-                                        <a asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none">
+                                        <button type="button" class="image-modal-trigger" data-card-ignore data-image-src="@Url.Action("GalleryImage", "JournalEntries", new { id = previewImage.Id })" data-image-title="@item.Asset screenshot">
+                                            <img src="@Url.Action("GalleryImage", "JournalEntries", new { id = previewImage.Id })"
+                                                 class="trade-image" />
+                                        </button>
+                                    }
+                                    else if (item.ImageData != null)
+                                    {
+                                        <button type="button" class="image-modal-trigger" data-card-ignore data-image-src="@Url.Action("Image", "JournalEntries", new { id = item.Id })" data-image-title="@item.Asset screenshot">
                                             <img src="@Url.Action("Image", "JournalEntries", new { id = item.Id })"
-                                                 class="img-fluid rounded border"
-                                                 style="max-height: 260px; width: 100%; object-fit: cover;" />
-                                        </a>
+                                                 class="trade-image" />
+                                        </button>
                                     }
                                     else
                                     {
-                                        <div class="border rounded bg-light d-flex align-items-center justify-content-center"
-                                             style="height: 260px;">
-                                            <span class="text-muted">No image</span>
+                                        <div class="empty-image">
+                                            <span>No image</span>
                                         </div>
                                     }
                                 </div>
@@ -126,3 +255,9 @@
         }
     </div>
 </div>
+
+<partial name="_ImagePreviewModal" />
+
+@section Scripts {
+    <script src="~/js/journal-ui.js" asp-append-version="true"></script>
+}

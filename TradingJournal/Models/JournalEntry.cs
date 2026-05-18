@@ -35,11 +35,13 @@ namespace TradingJournal.Models
 
         public decimal RiskPercentage { get; set; }
         public decimal EntryPrice { get; set; }
-        public decimal ExitPrice { get; set; }
+        public decimal? ExitPrice { get; set; }
 
         public bool FollowedTradingPlan { get; set; }
 
         public EntryStatus Status { get; set; } = EntryStatus.Executed;
+
+        public ICollection<JournalEntryImage> Images { get; set; } = new List<JournalEntryImage>();
 
         public byte[]? ImageData { get; set; }
 

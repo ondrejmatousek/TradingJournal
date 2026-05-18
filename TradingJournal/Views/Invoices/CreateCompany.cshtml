@@ -1,0 +1,123 @@
+@model TradingJournal.ViewModels.InvoiceCompanyFormViewModel
+
+@{
+    var isEdit = Model.Id.HasValue;
+    ViewData["Title"] = isEdit ? "Editace firmy" : "Nová firma";
+    ViewData["BodyClass"] = "journal-shell";
+}
+
+<div class="journal-page">
+    <div class="container-lg">
+        <div class="row justify-content-center">
+            <div class="col-xl-8">
+                <div class="journal-header compact">
+                    <div>
+                        <div class="eyebrow">Company profile</div>
+                        <h1>@(isEdit ? "Editace firmy" : "Nová firma")</h1>
+                        <p>@(isEdit ? "Uprav údaje firmy používané ve fakturaci." : "Ulož svoji firmu nebo klienta, kterému fakturuješ.")</p>
+                    </div>
+                    <a asp-action="Companies" class="btn btn-outline-secondary">Zpět</a>
+                </div>
+
+                <div class="app-card form-card">
+                    <div class="card-body">
+                        <form asp-action="@(isEdit ? "EditCompany" : "CreateCompany")" asp-route-id="@Model.Id" method="post">
+                            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                            <div class="ares-lookup-panel mb-4">
+                                <div>
+                                    <label for="aresIco" class="form-label">Načíst firmu z ARES podle IČO</label>
+                                    <div class="input-group">
+                                        <input id="aresIco" class="form-control" inputmode="numeric" maxlength="8" placeholder="Např. 27074358" />
+                                        <button type="button" class="btn btn-primary" id="aresLookupButton">Načíst z ARES</button>
+                                    </div>
+                                    <div class="form-text">ARES vyplní název, IČO, DIČ a adresu. Před uložením můžeš údaje upravit.</div>
+                                </div>
+                                <div id="aresLookupMessage" class="ares-lookup-message" role="status"></div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <label asp-for="Name" class="form-label">Název firmy</label>
+                                    <input asp-for="Name" class="form-control" />
+                                    <span asp-validation-for="Name" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <div class="form-check">
+                                        <input asp-for="IsDefaultSupplier" class="form-check-input" />
+                                        <label asp-for="IsDefaultSupplier" class="form-check-label">Moje firma / výchozí dodavatel</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label asp-for="RegistrationNumber" class="form-label">IČO</label>
+                                    <input asp-for="RegistrationNumber" class="form-control" inputmode="numeric" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="TaxNumber" class="form-label">DIČ</label>
+                                    <input asp-for="TaxNumber" class="form-control" />
+                                    <div class="form-text">Volitelné. Na faktuře ho zobrazím jen u plátce DPH.</div>
+                                </div>
+
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <div class="form-check">
+                                        <input asp-for="IsVatPayer" class="form-check-input" />
+                                        <label asp-for="IsVatPayer" class="form-check-label">Jsem plátce DPH</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-8">
+                                    <label asp-for="Street" class="form-label">Ulice</label>
+                                    <input asp-for="Street" class="form-control" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label asp-for="ZipCode" class="form-label">PSČ</label>
+                                    <input asp-for="ZipCode" class="form-control" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="City" class="form-label">Město</label>
+                                    <input asp-for="City" class="form-control" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="Country" class="form-label">Země</label>
+                                    <input asp-for="Country" class="form-control" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label asp-for="Email" class="form-label">Email</label>
+                                    <input asp-for="Email" class="form-control" />
+                                    <span asp-validation-for="Email" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="Phone" class="form-label">Telefon</label>
+                                    <input asp-for="Phone" class="form-control" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label asp-for="BankAccount" class="form-label">Bankovní účet</label>
+                                    <input asp-for="BankAccount" class="form-control" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="Iban" class="form-label">IBAN</label>
+                                    <input asp-for="Iban" class="form-control" />
+                                </div>
+                            </div>
+
+                            <div class="mt-4 d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">@(isEdit ? "Uložit změny" : "Uložit firmu")</button>
+                                <a asp-action="Companies" class="btn btn-outline-secondary">Zrušit</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script src="~/js/ares-lookup.js" asp-append-version="true"></script>
+}

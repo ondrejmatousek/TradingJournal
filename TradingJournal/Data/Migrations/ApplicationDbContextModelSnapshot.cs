@@ -246,7 +246,7 @@ namespace TradingJournal.Data.Migrations
                         .IsRequired()
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<decimal>("ExitPrice")
+                    b.Property<decimal?>("ExitPrice")
                         .HasPrecision(18, 8)
                         .HasColumnType("decimal(18,8)");
 
@@ -299,6 +299,40 @@ namespace TradingJournal.Data.Migrations
                     b.ToTable("JournalEntries");
                 });
 
+            modelBuilder.Entity("TradingJournal.Models.JournalEntryImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ImageContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte[]>("ImageData")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("ImageFileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int>("JournalEntryId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JournalEntryId");
+
+                    b.ToTable("JournalEntryImages");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -348,6 +382,22 @@ namespace TradingJournal.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("TradingJournal.Models.JournalEntryImage", b =>
+                {
+                    b.HasOne("TradingJournal.Models.JournalEntry", "JournalEntry")
+                        .WithMany("Images")
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JournalEntry");
+                });
+
+            modelBuilder.Entity("TradingJournal.Models.JournalEntry", b =>
+                {
+                    b.Navigation("Images");
                 });
 #pragma warning restore 612, 618
         }

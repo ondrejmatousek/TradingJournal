@@ -1,0 +1,137 @@
+@model TradingJournal.ViewModels.InvoiceIndexViewModel
+@using TradingJournal.Models
+
+@{
+    ViewData["Title"] = "Fakturace";
+    ViewData["BodyClass"] = "journal-shell";
+    var hasFilters = !string.IsNullOrWhiteSpace(Model.Filters.Search)
+        || Model.Filters.CustomerId.HasValue
+        || Model.Filters.DateFrom.HasValue
+        || Model.Filters.DateTo.HasValue;
+}
+
+<div class="journal-page">
+    <div class="journal-wrap">
+        <div class="journal-header">
+            <div>
+                <div class="eyebrow">EdgeDesk billing</div>
+                <h1>Fakturace</h1>
+                <p>Přehled faktur, firem, plateb a importů z Excelu.</p>
+            </div>
+            <div class="page-actions">
+                <a asp-action="Companies" class="btn btn-outline-secondary">Firmy</a>
+                <a asp-action="Import" class="btn btn-outline-secondary">Import Excel</a>
+                <a asp-action="Create" class="btn btn-primary">Nová faktura</a>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-xl-2">
+                <div class="stat-card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Faktury</div>
+                        <div class="fs-3 fw-semibold">@Model.Stats.TotalInvoices</div>
+                        <div class="text-muted small">@Model.Stats.DraftInvoices konceptů</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-xl-2">
+                <div class="stat-card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Uhrazeno</div>
+                        <div class="fs-3 fw-semibold">@Model.Stats.PaidInvoices</div>
+                        <div class="text-muted small">z filtrovaných faktur</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-4">
+                <div class="stat-card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Vystaveno celkem</div>
+                        <div class="fs-3 fw-semibold">@Model.Stats.TotalIssued.ToString("N2") Kč</div>
+                        <div class="text-muted small">bez stornovaných faktur</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-4">
+                <div class="stat-card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">K úhradě</div>
+                        <div class="fs-3 fw-semibold">@Model.Stats.Outstanding.ToString("N2") Kč</div>
+                        <div class="text-muted small">vystavené a po splatnosti</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form method="get" class="app-card filter-panel mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Hledat</label>
+                        <input name="search" value="@Model.Filters.Search" class="form-control" placeholder="Číslo faktury nebo firma" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Odběratel</label>
+                        <select name="customerId" asp-items="Model.CustomerOptions" class="form-select">
+                            <option value="">Všichni odběratelé</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Od</label>
+                        <input type="date" name="dateFrom" value="@Model.Filters.DateFrom?.ToString("yyyy-MM-dd")" class="form-control" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Do</label>
+                        <input type="date" name="dateTo" value="@Model.Filters.DateTo?.ToString("yyyy-MM-dd")" class="form-control" />
+                    </div>
+                    <div class="col-12 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Filtrovat</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        @if (!Model.Invoices.Any())
+        {
+            <div class="alert alert-info">
+                @(hasFilters ? "Žádná faktura neodpovídá filtrům." : "Zatím tu není žádná faktura. Začni vytvořením firmy a první faktury.")
+            </div>
+        }
+        else
+        {
+            <div class="invoice-list">
+                @foreach (var invoice in Model.Invoices)
+                {
+                    var variableSymbol = VariableSymbol(invoice.InvoiceNumber);
+
+                    <div class="invoice-card invoice-card-with-actions">
+                        <a asp-action="Details" asp-route-id="@invoice.Id" class="invoice-card-main">
+                            <div>
+                                <div class="invoice-number">@variableSymbol</div>
+                                <div class="muted small">@invoice.CustomerCompany?.Name</div>
+                            </div>
+                            <div class="invoice-meta">
+                                <span>Vystaveno @invoice.IssueDate.ToString("dd.MM.yyyy")</span>
+                                <span>Splatnost @invoice.DueDate.ToString("dd.MM.yyyy")</span>
+                            </div>
+                            <div class="invoice-total">
+                                <strong>@invoice.TotalGross.ToString("N2") @invoice.Currency</strong>
+                            </div>
+                        </a>
+                        <a asp-action="Print" asp-route-id="@invoice.Id" target="_blank" class="btn btn-outline-secondary btn-sm invoice-print-link">PDF</a>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@functions {
+    private static string VariableSymbol(string? invoiceNumber)
+    {
+        var digits = new string((invoiceNumber ?? string.Empty).Where(char.IsDigit).ToArray());
+        return string.IsNullOrWhiteSpace(digits) ? invoiceNumber ?? string.Empty : digits;
+    }
+}

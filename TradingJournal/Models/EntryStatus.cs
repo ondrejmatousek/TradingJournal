@@ -3,6 +3,7 @@
     public enum EntryStatus
     {
         Executed = 0,
-        Skipped = 1
+        Skipped = 1,
+        Open = 2
     }
 }

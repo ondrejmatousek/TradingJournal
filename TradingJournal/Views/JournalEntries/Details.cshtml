@@ -1,138 +1,144 @@
-﻿@model TradingJournal.Models.JournalEntry
+@model TradingJournal.Models.JournalEntry
 @using TradingJournal.Models
 
 @{
     ViewData["Title"] = "Journal entry";
+    ViewData["BodyClass"] = "journal-shell";
 
     var entryLocal = Model.EntryTime?.LocalDateTime;
     var exitLocal = Model.ExitTime?.LocalDateTime;
+    var durationText = entryLocal.HasValue && exitLocal.HasValue
+        ? (exitLocal.Value - entryLocal.Value).ToString(@"hh\:mm")
+        : "-";
 
     string outcomeClass = Model.Outcome switch
     {
-        TradeOutcome.Win => "bg-success",
-        TradeOutcome.Loss => "bg-danger",
-        TradeOutcome.Breakeven => "bg-secondary",
-        _ => "bg-light text-dark border"
+        TradeOutcome.Win => "badge-win",
+        TradeOutcome.Loss => "badge-loss",
+        TradeOutcome.Breakeven => "badge-neutral",
+        _ => "badge-muted"
     };
-
-    string sideClass = Model.Side == PositionSide.Long
-        ? "bg-primary"
-        : "bg-warning text-dark";
 }
 
-<div class="container-lg">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <div>
-            <h2 class="mb-0">@Model.Asset</h2>
-            <div class="text-muted small">
-                Created: @Model.CreatedAt.LocalDateTime.ToString("dd.MM.yyyy HH:mm")
+<div class="journal-page">
+    <div class="journal-wrap">
+        <div class="journal-header">
+            <div>
+                <div class="eyebrow">Trade review</div>
+                <h1>@Model.Asset</h1>
+                <p>Created @Model.CreatedAt.LocalDateTime.ToString("dd.MM.yyyy HH:mm")</p>
+            </div>
+
+            <div class="page-actions">
+                <a asp-action="Index" class="btn btn-outline-secondary">Back</a>
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Edit</a>
+                <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">Delete</a>
             </div>
         </div>
 
-        <div class="d-flex gap-2">
-            <a asp-action="Index" class="btn btn-outline-secondary">Back</a>
-            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Edit</a>
-            <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">Delete</a>
-        </div>
-    </div>
+        <div class="detail-grid">
+            <section class="app-card trade-summary">
+                <div class="trade-card-header">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="badge badge-side">@Model.Side</span>
+                        <span class="badge @outcomeClass">@Model.Outcome</span>
+                        @if (Model.Status == EntryStatus.Open)
+                        {
+                            <span class="badge badge-open">Open trade</span>
+                        }
+                        <span class="badge @(Model.FollowedTradingPlan ? "badge-plan" : "badge-muted")">
+                            @(Model.FollowedTradingPlan ? "Plan followed" : "Plan not followed")
+                        </span>
+                    </div>
+                </div>
 
-    <div class="card shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span class="badge @sideClass">@Model.Side</span>
-                <span class="badge @outcomeClass">@Model.Outcome</span>
+                <div class="review-verdict @(Model.FollowedTradingPlan ? "good" : "warning")">
+                    <span>Process</span>
+                    <strong>@(Model.FollowedTradingPlan ? "Disciplined execution" : "Needs review")</strong>
+                </div>
 
-                @if (Model.FollowedTradingPlan)
+                <div class="metric-grid">
+                    <div class="metric-cell">
+                        <span>Entry</span>
+                        <strong>@(entryLocal?.ToString("dd.MM.yyyy HH:mm") ?? "-")</strong>
+                    </div>
+                    <div class="metric-cell">
+                        <span>Exit</span>
+                        <strong>@(exitLocal?.ToString("dd.MM.yyyy HH:mm") ?? "-")</strong>
+                    </div>
+                    <div class="metric-cell">
+                        <span>Duration</span>
+                        <strong>@durationText</strong>
+                    </div>
+                    <div class="metric-cell">
+                        <span>Risk</span>
+                        <strong>@Model.RiskPercentage.ToString("0.##")%</strong>
+                    </div>
+                    <div class="metric-cell">
+                        <span>Entry price</span>
+                        <strong>@Model.EntryPrice.ToString("0.########")</strong>
+                    </div>
+                    <div class="metric-cell">
+                        <span>Exit price</span>
+                        <strong>@(Model.ExitPrice?.ToString("0.########") ?? "-")</strong>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Note))
                 {
-                    <span class="badge bg-info text-dark">Plan followed</span>
+                    <div class="journal-note">
+                        <span>Note</span>
+                        <div class="preline">@Model.Note</div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.FeelingsBeforeEntry))
+                {
+                    <div class="journal-note">
+                        <span>Feelings before entry</span>
+                        <div class="preline">@Model.FeelingsBeforeEntry</div>
+                    </div>
+                }
+            </section>
+
+            <aside class="app-card screenshot-panel">
+                <div class="panel-title">
+                    <span>Screenshots</span>
+                    <strong>@(Model.Images.Count + (Model.ImageData != null ? 1 : 0))</strong>
+                </div>
+
+                @if (Model.Images.Any() || Model.ImageData != null)
+                {
+                    <div class="image-gallery detail-gallery">
+                        @foreach (var image in Model.Images.OrderBy(i => i.CreatedAt))
+                        {
+                            <button type="button" class="image-modal-trigger" data-image-src="@Url.Action("GalleryImage", "JournalEntries", new { id = image.Id })" data-image-title="@Model.Asset screenshot">
+                                <img src="@Url.Action("GalleryImage", "JournalEntries", new { id = image.Id })"
+                                     class="detail-image" />
+                            </button>
+                        }
+                        @if (Model.ImageData != null)
+                        {
+                            <button type="button" class="image-modal-trigger" data-image-src="@Url.Action("Image", "JournalEntries", new { id = Model.Id })" data-image-title="@Model.Asset screenshot">
+                                <img src="@Url.Action("Image", "JournalEntries", new { id = Model.Id })"
+                                     class="detail-image" />
+                            </button>
+                        }
+                    </div>
                 }
                 else
                 {
-                    <span class="badge bg-light text-dark border">Plan not followed</span>
-                }
-            </div>
-
-            <div class="text-muted small">
-                Entry: @(entryLocal?.ToString("dd.MM.yyyy HH:mm") ?? "—")
-                <span class="mx-2">•</span>
-                Exit: @(exitLocal?.ToString("dd.MM.yyyy HH:mm") ?? "—")
-            </div>
-        </div>
-
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-lg-7">
-                    <div class="row g-2">
-                        <div class="col-sm-4">
-                            <div class="small text-muted">Risk</div>
-                            <div class="fw-semibold">@Model.RiskPercentage.ToString("0.##") %</div>
-                        </div>
-                        <div class="col-sm-4">
-                            <div class="small text-muted">Entry price</div>
-                            <div class="fw-semibold">@Model.EntryPrice.ToString("0.########")</div>
-                        </div>
-                        <div class="col-sm-4">
-                            <div class="small text-muted">Exit price</div>
-                            <div class="fw-semibold">@Model.ExitPrice.ToString("0.########")</div>
-                        </div>
+                    <div class="empty-image detail-empty">
+                        <span>No image</span>
                     </div>
-
-                    @if (!string.IsNullOrWhiteSpace(Model.Note))
-                    {
-                        <hr />
-                        <div class="small text-muted mb-1">Note</div>
-                        <div class="border rounded p-2 bg-light">
-                            @Html.Raw(Model.Note)
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrWhiteSpace(Model.FeelingsBeforeEntry))
-                    {
-                        <div class="small text-muted mt-3 mb-1">Feelings before entry</div>
-                        <div class="border rounded p-2">
-                            @Html.Raw(Model.FeelingsBeforeEntry)
-                        </div>
-                    }
-                </div>
-
-                <div class="col-lg-5">
-                    <div class="small text-muted mb-2">Screenshot</div>
-
-                    @if (Model.ImageData != null)
-                    {
-                        <img src="@Url.Action("Image", "JournalEntries", new { id = Model.Id })"
-                             class="img-fluid rounded border"
-                             style="max-height: 520px; width: 100%; object-fit: contain;" />
-                        @if (!string.IsNullOrWhiteSpace(Model.ImageFileName))
-                        {
-                            <div class="text-muted small mt-2">@Model.ImageFileName</div>
-                        }
-                    }
-                    else
-                    {
-                        <div class="border rounded bg-light d-flex align-items-center justify-content-center"
-                             style="height: 320px;">
-                            <span class="text-muted">No image</span>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <div class="card-footer d-flex justify-content-between flex-wrap gap-2">
-            <div class="text-muted small">
-                Entry time (local): @(entryLocal?.ToString("dd.MM.yyyy HH:mm") ?? "—")
-                @if (entryLocal.HasValue && exitLocal.HasValue)
-                {
-                    <span class="mx-2">•</span>
-                    <span>Duration: @(exitLocal.Value - entryLocal.Value)</span>
                 }
-            </div>
-
-            <div class="d-flex gap-2">
-                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary btn-sm">Edit</a>
-                <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Back</a>
-            </div>
+            </aside>
         </div>
     </div>
 </div>
+
+<partial name="_ImagePreviewModal" />
+
+@section Scripts {
+    <script src="~/js/journal-ui.js" asp-append-version="true"></script>
+}

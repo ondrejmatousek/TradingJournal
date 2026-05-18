@@ -1,2 +1,17 @@
-﻿<script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+<script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
 <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+<script>
+    if (window.jQuery?.validator) {
+        const normalizeDecimal = (value) => (value || "").toString().replace(/\s/g, "").replace(",", ".");
+
+        window.jQuery.validator.methods.number = function (value, element) {
+            const normalized = normalizeDecimal(value);
+            return this.optional(element) || /^-?(?:\d+|\d*\.\d+)$/.test(normalized);
+        };
+
+        window.jQuery.validator.methods.range = function (value, element, param) {
+            const normalized = Number.parseFloat(normalizeDecimal(value));
+            return this.optional(element) || (Number.isFinite(normalized) && normalized >= param[0] && normalized <= param[1]);
+        };
+    }
+</script>

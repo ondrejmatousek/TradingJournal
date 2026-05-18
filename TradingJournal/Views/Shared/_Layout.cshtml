@@ -1,37 +1,48 @@
-﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Identity
 @inject SignInManager<IdentityUser> SignInManager
+
+@{
+    var bodyClass = ViewData["BodyClass"] as string ?? string.Empty;
+    var isFullBleed = bodyClass.Contains("marketing-shell") || bodyClass.Contains("auth-shell") || bodyClass.Contains("journal-shell");
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    var action = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+    var isTradingSection = controller == "JournalEntries";
+    var isProgrammingSection = controller == "Invoices";
+    var showSidebar = SignInManager.IsSignedIn(User) && !bodyClass.Contains("marketing-shell") && !bodyClass.Contains("auth-shell") && (isTradingSection || isProgrammingSection);
+}
 
 <!DOCTYPE html>
 <html lang="cs">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - TradingJournal</title>
+    <title>@ViewData["Title"] - EdgeDesk</title>
+    <link rel="icon" type="image/svg+xml" href="~/favicon.svg" asp-append-version="true" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/TradingJournal.styles.css" asp-append-version="true" />
 </head>
-<body>
+<body class="@bodyClass">
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm app-navbar">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">TradingJournal</a>
+                <a class="navbar-brand app-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <span class="brand-mark">ED</span>
+                    <span>EdgeDesk</span>
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
-                        @* <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li> *@
                         @if (SignInManager.IsSignedIn(User))
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="JournalEntries" asp-action="Index">Journal</a>
+                                <a class="nav-link @(isTradingSection ? "active" : "")" asp-controller="JournalEntries" asp-action="Index">Trading</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(isProgrammingSection ? "active" : "")" asp-controller="Invoices" asp-action="Index">Programování</a>
                             </li>
                         }
                     </ul>
@@ -40,15 +51,31 @@
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
+    <div class="@(showSidebar ? "app-workspace" : isFullBleed ? "app-fullbleed" : "container")">
+        @if (showSidebar)
+        {
+            <aside class="app-sidebar">
+                @if (isTradingSection)
+                {
+                    <div class="sidebar-title">Trading</div>
+                    <a class="sidebar-link @(action == "Index" ? "active" : "")" asp-controller="JournalEntries" asp-action="Index">Journal</a>
+                    <a class="sidebar-link @(action == "Analysis" ? "active" : "")" asp-controller="JournalEntries" asp-action="Analysis">Analýza</a>
+                }
+                else if (isProgrammingSection)
+                {
+                    <div class="sidebar-title">Programování</div>
+                    <a class="sidebar-link @(controller == "Invoices" ? "active" : "")" asp-controller="Invoices" asp-action="Index">Fakturace</a>
+                }
+            </aside>
+        }
+        <main role="main" class="@(showSidebar ? "app-workspace-main" : "pb-3")">
+                @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
+    <footer class="footer text-muted @(isFullBleed ? "d-none" : "border-top")">
         <div class="container">
-            &copy; 2026 - TradingJournal - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            &copy; 2026 - EdgeDesk - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
