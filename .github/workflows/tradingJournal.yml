@@ -9,7 +9,6 @@ on:
 
 env:
   AZURE_WEBAPP_NAME: tradingJournal
-  AZURE_WEBAPP_URL: https://tradingjournal.azurewebsites.net
   AZURE_WEBAPP_PACKAGE_PATH: TradingJournal\published
   CONFIGURATION: Release
   DOTNET_CORE_VERSION: 8.0.x
@@ -36,7 +35,7 @@ jobs:
         run: dotnet test "${{ env.WORKING_DIRECTORY }}" --no-build
 
       - name: Publish
-        run: dotnet publish "${{ env.WORKING_DIRECTORY }}" --configuration ${{ env.CONFIGURATION }} --no-build --output "${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
+        run: dotnet publish "${{ env.WORKING_DIRECTORY }}" --configuration ${{ env.CONFIGURATION }} --no-restore --output "${{ env.AZURE_WEBAPP_PACKAGE_PATH }}"
 
       - name: Publish Artifacts
         uses: actions/upload-artifact@v4
@@ -55,6 +54,7 @@ jobs:
           path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
       - name: Deploy to Azure WebApp
+        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
@@ -64,11 +64,21 @@ jobs:
       - name: Post-deploy readiness check
         shell: pwsh
         run: |
-          $readyUrl = "${{ env.AZURE_WEBAPP_URL }}/health/deep"
+          $baseUrl = "${{ steps.deploy-to-webapp.outputs.webapp-url }}"
+          if ([string]::IsNullOrWhiteSpace($baseUrl)) {
+            $baseUrl = "https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          }
+
+          $readyUrl = "$($baseUrl.TrimEnd('/'))/health/deep"
+          $liveUrl = "$($baseUrl.TrimEnd('/'))/health/live"
           $lastError = $null
 
           for ($attempt = 1; $attempt -le 12; $attempt++) {
             try {
+              Write-Host "Checking $liveUrl (attempt $attempt/12)..."
+              $liveResponse = Invoke-WebRequest -Uri $liveUrl -UseBasicParsing -TimeoutSec 30
+              Write-Host $liveResponse.Content
+
               Write-Host "Checking $readyUrl (attempt $attempt/12)..."
               $response = Invoke-WebRequest -Uri $readyUrl -UseBasicParsing -TimeoutSec 30
               Write-Host $response.Content
