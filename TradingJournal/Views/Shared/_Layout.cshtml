@@ -22,7 +22,7 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/TradingJournal.styles.css" asp-append-version="true" />
 </head>
-<body class="@bodyClass">
+<body class="@($"{bodyClass} {(showSidebar ? "app-section-shell" : string.Empty)}".Trim())">
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm app-navbar">
             <div class="container-fluid">
@@ -73,7 +73,7 @@
         </main>
     </div>
 
-    <footer class="footer text-muted @(isFullBleed ? "d-none" : "border-top")">
+    <footer class="footer text-muted @((isFullBleed || showSidebar) ? "d-none" : "border-top")">
         <div class="container">
             &copy; 2026 - EdgeDesk - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>

@@ -114,12 +114,19 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   padding-bottom: 0 !important;
 }
 
+body.app-section-shell {
+  height: 100dvh;
+  overflow: hidden;
+}
+
 .app-workspace {
   background: var(--tj-bg);
   color: var(--tj-text);
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr);
-  min-height: calc(100vh - 64px);
+  height: calc(100dvh - 64px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app-sidebar {
@@ -129,7 +136,9 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   position: sticky;
   top: 0;
   align-self: start;
-  min-height: calc(100vh - 64px);
+  height: calc(100dvh - 64px);
+  min-height: 0;
+  overflow: auto;
 }
 
 .sidebar-title {
@@ -165,7 +174,9 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 }
 
 .app-workspace-main {
+  height: calc(100dvh - 64px);
   min-width: 0;
+  overflow: auto;
 }
 
 .marketing-shell,
@@ -175,13 +186,25 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   margin-bottom: 0;
 }
 
+.marketing-shell {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.marketing-shell .app-fullbleed,
+.marketing-shell main {
+  height: calc(100dvh - 64px);
+  overflow: hidden;
+}
+
 .hero-stage {
   display: grid;
-  gap: 3rem;
+  gap: clamp(1.5rem, 3vw, 3rem);
   grid-template-columns: minmax(0, 0.78fr) minmax(480px, 1.22fr);
-  min-height: calc(100vh - 64px);
+  height: calc(100dvh - 64px);
+  min-height: 0;
   overflow: hidden;
-  padding: clamp(4rem, 8vw, 8rem) clamp(1.25rem, 7vw, 7rem) 5rem;
+  padding: clamp(2.4rem, 5.5vw, 5.25rem) clamp(1.25rem, 7vw, 7rem) clamp(9.5rem, 16vh, 12rem);
   position: relative;
 }
 
@@ -283,7 +306,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
 .hero-visual {
   align-self: center;
-  min-height: 640px;
+  min-height: min(600px, calc(100dvh - 260px));
 }
 
 .calendar-panel,
@@ -359,7 +382,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   left: 0;
   padding: 1.2rem;
   position: absolute;
-  top: 5rem;
+  top: clamp(1.25rem, 4vh, 3.5rem);
   width: 360px;
 }
 
@@ -402,7 +425,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
 .trade-ticket {
   border-radius: 22px;
-  bottom: 4rem;
+  bottom: clamp(6.5rem, 13vh, 9rem);
   padding: 1rem;
   position: absolute;
   right: 6%;
@@ -430,7 +453,10 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   display: grid;
   gap: 1px;
   grid-template-columns: repeat(3, 1fr);
-  margin: -3rem clamp(1.25rem, 7vw, 7rem) 5rem;
+  inset: auto clamp(1.25rem, 7vw, 7rem) clamp(0.8rem, 2vh, 1.5rem);
+  margin: 0;
+  position: fixed;
+  z-index: 3;
 }
 
 .feature-strip div {
@@ -438,8 +464,8 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   border: 1px solid var(--tj-border);
   display: grid;
   gap: 0.4rem;
-  min-height: 130px;
-  padding: 1.4rem;
+  min-height: clamp(88px, 12vh, 118px);
+  padding: clamp(0.9rem, 2vh, 1.25rem);
 }
 
 .feature-strip div:first-child {
@@ -617,7 +643,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 }
 
 .journal-page {
-  min-height: calc(100vh - 64px);
+  min-height: 100%;
   padding: clamp(2rem, 4vw, 3.5rem) clamp(1rem, 3vw, 2rem) 4rem;
 }
 
@@ -1627,9 +1653,26 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 }
 
 @media (max-width: 992px) {
+  .marketing-shell {
+    height: auto;
+    overflow: auto;
+  }
+
+  .marketing-shell .app-fullbleed,
+  .marketing-shell main {
+    height: auto;
+    overflow: visible;
+  }
+
   .hero-stage,
   .auth-stage {
     grid-template-columns: 1fr;
+  }
+
+  .hero-stage {
+    height: auto;
+    min-height: calc(100dvh - 64px);
+    padding-bottom: 3rem;
   }
 
   .hero-visual {
@@ -1654,6 +1697,9 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
   .feature-strip {
     grid-template-columns: 1fr;
+    margin: 0 clamp(1.25rem, 7vw, 7rem) 2rem;
+    position: relative;
+    inset: auto;
   }
 
   .feature-strip div,
