@@ -92,6 +92,24 @@ jobs:
             }
             catch {
               $lastError = $_.Exception.Message
+
+              if ($_.Exception.Response -ne $null) {
+                try {
+                  $stream = $_.Exception.Response.GetResponseStream()
+                  if ($stream -ne $null) {
+                    $reader = [System.IO.StreamReader]::new($stream)
+                    $body = $reader.ReadToEnd()
+                    if (-not [string]::IsNullOrWhiteSpace($body)) {
+                      Write-Warning $body
+                      $lastError = "$lastError Body: $body"
+                    }
+                  }
+                }
+                catch {
+                  Write-Warning "Could not read error response body: $($_.Exception.Message)"
+                }
+              }
+
               Write-Warning $lastError
             }
 

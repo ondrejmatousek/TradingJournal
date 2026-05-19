@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
@@ -161,10 +162,23 @@ namespace TradingJournal.Controllers
                 await strategy.ExecuteAsync(async () =>
                 {
                     await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                    var healthUserId = $"__health_check__{Guid.NewGuid():N}";
+
+                    _context.Users.Add(new IdentityUser
+                    {
+                        Id = healthUserId,
+                        UserName = $"{healthUserId}@edgedesk.local",
+                        NormalizedUserName = $"{healthUserId}@EDGEDESK.LOCAL",
+                        Email = $"{healthUserId}@edgedesk.local",
+                        NormalizedEmail = $"{healthUserId}@EDGEDESK.LOCAL",
+                        EmailConfirmed = true,
+                        SecurityStamp = Guid.NewGuid().ToString("N"),
+                        ConcurrencyStamp = Guid.NewGuid().ToString("N")
+                    });
 
                     var entry = new JournalEntry
                     {
-                        UserId = "__health_check__",
+                        UserId = healthUserId,
                         Asset = AssetSymbol.XAUUSD,
                         Side = PositionSide.Long,
                         CreatedAt = DateTimeOffset.UtcNow,
