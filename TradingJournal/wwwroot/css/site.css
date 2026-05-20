@@ -201,11 +201,11 @@ body.app-section-shell {
   display: grid;
   align-items: center;
   gap: clamp(1.25rem, 2.4vw, 2.5rem);
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1180px);
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   height: calc(100dvh - 64px);
   min-height: 0;
   overflow: hidden;
-  padding: clamp(1.25rem, 4vw, 4rem) clamp(1.25rem, 4vw, 4.25rem);
+  padding: clamp(1.25rem, 4vw, 4rem) clamp(360px, 23vw, 460px) clamp(1.25rem, 4vw, 4rem) clamp(1.25rem, 4vw, 4.25rem);
   position: relative;
   justify-content: center;
 }
@@ -390,8 +390,8 @@ body.app-section-shell {
   display: grid;
   gap: 1rem;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  height: auto;
+  grid-template-rows: 1fr;
+  height: min(720px, calc(100dvh - 120px));
   max-height: calc(100dvh - 120px);
   min-height: 0;
   position: relative;
@@ -410,8 +410,8 @@ body.app-section-shell {
 }
 
 .daily-bias-panel {
+  align-self: center;
   border-radius: 28px;
-  grid-column: 1 / -1;
   padding: 1rem;
   position: relative;
   top: auto;
@@ -422,8 +422,36 @@ body.app-section-shell {
 .daily-bias-head {
   align-items: center;
   display: flex;
+  gap: 0.75rem;
   justify-content: space-between;
   margin-bottom: 0.8rem;
+}
+
+.daily-bias-head > div {
+  flex: 1;
+}
+
+.bias-refresh-form {
+  margin: 0;
+}
+
+.bias-refresh-button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  color: var(--tj-text);
+  font-size: 0.78rem;
+  font-weight: 850;
+  min-height: 34px;
+  padding: 0.35rem 0.75rem;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.bias-refresh-button:hover,
+.bias-refresh-button:focus {
+  background: rgba(32, 199, 185, 0.16);
+  border-color: rgba(32, 199, 185, 0.38);
+  transform: translateY(-1px);
 }
 
 .daily-bias-head span,
@@ -585,13 +613,16 @@ body.app-section-shell {
 }
 
 .stock-radar-panel {
-  border-radius: 24px;
-  align-self: stretch;
-  bottom: auto;
-  left: auto;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 64px);
+  min-height: 0;
   padding: 1rem;
-  position: relative;
-  width: min(520px, 100%);
+  position: fixed;
+  right: 0;
+  top: 64px;
+  width: clamp(340px, 22vw, 440px);
   z-index: 4;
 }
 
@@ -617,7 +648,12 @@ body.app-section-shell {
 
 .stock-idea-list {
   display: grid;
+  flex: 1;
+  align-content: start;
   gap: 0.5rem;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.15rem;
 }
 
 .stock-idea {
@@ -627,6 +663,7 @@ body.app-section-shell {
   display: grid;
   gap: 0.45rem;
   grid-template-columns: 1fr auto;
+  min-height: 118px;
   padding: 0.7rem;
 }
 
@@ -2044,6 +2081,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   .hero-stage {
     height: auto;
     min-height: calc(100dvh - 64px);
+    padding-right: clamp(1.25rem, 7vw, 7rem);
     padding-bottom: 3rem;
   }
 
@@ -2065,9 +2103,12 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
   .stock-radar-panel {
     bottom: auto;
+    height: auto;
     left: auto;
     margin-top: 1rem;
     position: relative;
+    right: auto;
+    top: auto;
     width: 100%;
   }
 

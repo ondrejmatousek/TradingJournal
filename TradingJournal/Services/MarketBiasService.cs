@@ -30,10 +30,18 @@ namespace TradingJournal.Services
             _logger = logger;
         }
 
-        public async Task<HomeIndexViewModel> GetHomeMarketBiasAsync(CancellationToken cancellationToken = default)
+        public async Task<HomeIndexViewModel> GetHomeMarketBiasAsync(CancellationToken cancellationToken = default, bool forceRefresh = false)
         {
             var today = DateTime.UtcNow.Date;
             var cards = new List<MarketBiasCard>();
+
+            if (forceRefresh)
+            {
+                var symbols = Markets.Select(m => m.Symbol).ToArray();
+                await _context.MarketBiases
+                    .Where(b => b.BiasDate == today && symbols.Contains(b.Symbol))
+                    .ExecuteDeleteAsync(cancellationToken);
+            }
 
             foreach (var market in Markets)
             {

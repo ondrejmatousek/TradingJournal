@@ -32,6 +32,14 @@ namespace TradingJournal.Controllers
             return View(model);
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RefreshMarketBias(CancellationToken cancellationToken)
+        {
+            await _marketBiasService.GetHomeMarketBiasAsync(cancellationToken, forceRefresh: true);
+            return RedirectToAction(nameof(Index));
+        }
+
         public IActionResult Privacy()
         {
             return View();

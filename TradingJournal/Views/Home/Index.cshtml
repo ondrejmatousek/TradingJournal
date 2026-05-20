@@ -53,6 +53,9 @@
                         ? Model.MarketBiasUpdatedAt.Value.ToLocalTime().ToString("dd.MM. HH:mm")
                         : "today")
                 </small>
+                <form asp-controller="Home" asp-action="RefreshMarketBias" method="post" class="bias-refresh-form">
+                    <button type="submit" class="bias-refresh-button">Refresh</button>
+                </form>
             </div>
 
             @if (Model.MarketBiases.Any())
