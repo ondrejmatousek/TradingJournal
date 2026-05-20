@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TradingJournal.Data;
+using TradingJournal.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<MarketBiasService>();
+builder.Services.AddScoped<StockRadarService>();
 
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>();
@@ -52,20 +55,33 @@ using (var scope = app.Services.CreateScope())
             try
             {
                 db.Database.Migrate();
-                logger.LogInformation("Database migration OK.");
+                SafeLog(() => logger.LogInformation("Database migration OK."));
                 break;
             }
             catch (Exception ex) when (attempt < 5)
             {
-                logger.LogWarning(ex, "Database migrate failed (attempt {Attempt}/5). Retrying...", attempt);
+                SafeLog(() => logger.LogWarning(ex, "Database migrate failed (attempt {Attempt}/5). Retrying...", attempt));
                 await Task.Delay(TimeSpan.FromSeconds(5));
             }
         }
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Database migration failed. App will continue running.");
+        SafeLog(() => logger.LogError(ex, "Database migration failed. App will continue running."));
         // app poběží dál → žádné 500.30
+    }
+}
+
+static void SafeLog(Action writeLog)
+{
+    try
+    {
+        writeLog();
+    }
+    catch
+    {
+        // Some local Windows environments cannot write EventLog entries.
+        // Logging must never prevent the web app from starting.
     }
 }
 

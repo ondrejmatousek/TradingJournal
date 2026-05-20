@@ -1,3 +1,4 @@
+@model TradingJournal.ViewModels.HomeIndexViewModel
 @using Microsoft.AspNetCore.Identity
 @inject SignInManager<IdentityUser> SignInManager
 
@@ -8,108 +9,163 @@
 
 <section class="hero-stage">
     <div class="hero-copy">
-        <div class="eyebrow">EdgeDesk trading journal</div>
-        <h1>The journal that shows what your trading is really doing.</h1>
-        <p>
-            Track execution, review discipline, compare setups, and turn every trade into
-            cleaner feedback for the next session.
-        </p>
+        <div class="home-command-card">
+            <div class="home-command-brand">
+                <span class="brand-mark">ED</span>
+                <strong>EdgeDesk</strong>
+            </div>
 
-        <div class="hero-actions">
-            @if (SignInManager.IsSignedIn(User))
+            <div class="home-command-actions">
+                @if (SignInManager.IsSignedIn(User))
+                {
+                    <a asp-controller="JournalEntries" asp-action="Index" class="home-action primary">Journal</a>
+                    <a asp-controller="JournalEntries" asp-action="Analysis" class="home-action">Analyza</a>
+                }
+                else
+                {
+                    <a asp-area="Identity" asp-page="/Account/Login" class="home-action primary">Sign in</a>
+                    <a asp-area="Identity" asp-page="/Account/Register" class="home-action">Create account</a>
+                }
+            </div>
+
+            <div class="home-mini-stats" aria-label="Quick overview">
+                <div>
+                    <span>Focus</span>
+                    <strong>XAU / NQ / BTC</strong>
+                </div>
+                <div>
+                    <span>Session</span>
+                    <strong>Daily</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="hero-visual">
+        <div class="daily-bias-panel">
+            <div class="daily-bias-head">
+                <div>
+                    <span>Market bias</span>
+                    <strong>XAU &middot; NQ &middot; BTC</strong>
+                </div>
+                <small>
+                    @(Model.MarketBiasUpdatedAt.HasValue
+                        ? Model.MarketBiasUpdatedAt.Value.ToLocalTime().ToString("dd.MM. HH:mm")
+                        : "today")
+                </small>
+            </div>
+
+            @if (Model.MarketBiases.Any())
             {
-                <a asp-controller="JournalEntries" asp-action="Index" class="btn btn-primary hero-primary">Open Journal</a>
+                <div class="bias-card-grid">
+                    @foreach (var bias in Model.MarketBiases)
+                    {
+                        var directionClass = bias.Direction.ToLowerInvariant();
+                        <article class="bias-card @directionClass">
+                            <button class="bias-card-button" type="button" aria-label="@bias.Symbol market bias">
+                                <span class="bias-card-top">
+                                    <span>
+                                        <strong>@bias.Symbol</strong>
+                                        <small>@bias.DisplayName</small>
+                                    </span>
+                                    <em>@bias.Direction</em>
+                                </span>
+
+                                <span class="bias-stars" aria-label="@bias.ConfidenceStars stars">
+                                    @for (var star = 1; star <= 5; star++)
+                                    {
+                                        <span class="@(star <= bias.ConfidenceStars ? "active" : "")">&#9733;</span>
+                                    }
+                                </span>
+
+                                <span class="bias-summary">@bias.Summary</span>
+
+                                <span class="bias-metrics">
+                                    <span>Score <strong>@bias.SignalScore.ToString("+#;-#;0")</strong></span>
+                                    @if (bias.ChangePercent.HasValue)
+                                    {
+                                        <span>Day <strong>@bias.ChangePercent.Value.ToString("+#.##;-#.##;0")%</strong></span>
+                                    }
+                                    @if (bias.Rsi14.HasValue)
+                                    {
+                                        <span>RSI <strong>@bias.Rsi14.Value.ToString("0.#")</strong></span>
+                                    }
+                                </span>
+
+                                <span class="bias-bullets">
+                                    @foreach (var bullet in bias.Bullets.Take(1))
+                                    {
+                                        <span>@bullet</span>
+                                    }
+                                </span>
+                            </button>
+                        </article>
+                    }
+                </div>
             }
             else
             {
-                <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary hero-primary">Sign in</a>
-                <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-dark hero-secondary">Create account</a>
+                <div class="bias-empty">Bias se nacte po startu aplikace.</div>
+            }
+
+            <div class="bias-disclaimer">
+                Technicky kontext, ne financni doporuceni.
+            </div>
+        </div>
+
+        <div class="stock-radar-panel">
+            <div class="stock-radar-head">
+                <div>
+                    <span>Stock radar</span>
+                    <strong>Undervalued watch</strong>
+                </div>
+                <small>
+                    @(Model.StockRadarUpdatedAt.HasValue
+                        ? Model.StockRadarUpdatedAt.Value.ToLocalTime().ToString("dd.MM. HH:mm")
+                        : "setup")
+                </small>
+            </div>
+
+            @if (Model.StockIdeas.Any())
+            {
+                <div class="stock-idea-list">
+                    @foreach (var idea in Model.StockIdeas)
+                    {
+                        <article class="stock-idea">
+                            <div>
+                                <strong>@idea.Symbol</strong>
+                                <span>@idea.Name</span>
+                            </div>
+                            <em>@idea.Score/7</em>
+                            <div class="stock-idea-metrics">
+                                @if (idea.TargetUpsidePercent.HasValue)
+                                {
+                                    <span>Upside <strong>@idea.TargetUpsidePercent.Value.ToString("+#.#;-#.#;0")%</strong></span>
+                                }
+                                @if (idea.PeRatio.HasValue)
+                                {
+                                    <span>P/E <strong>@idea.PeRatio.Value.ToString("0.#")</strong></span>
+                                }
+                                @if (idea.PegRatio.HasValue)
+                                {
+                                    <span>PEG <strong>@idea.PegRatio.Value.ToString("0.##")</strong></span>
+                                }
+                            </div>
+                            @foreach (var reason in idea.Reasons.Take(1))
+                            {
+                                <p>@reason</p>
+                            }
+                        </article>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="stock-radar-empty">
+                    @Model.StockRadarMessage
+                </div>
             }
         </div>
-    </div>
 
-    <div class="hero-visual" aria-hidden="true">
-        <div class="terminal-panel">
-            <div class="terminal-topline">
-                <span>Session Review</span>
-                <span class="text-teal">+2.6R</span>
-            </div>
-            <div class="mini-chart">
-                <span style="height: 22%"></span>
-                <span style="height: 36%"></span>
-                <span style="height: 30%"></span>
-                <span style="height: 52%"></span>
-                <span style="height: 49%"></span>
-                <span style="height: 72%"></span>
-                <span style="height: 62%"></span>
-                <span style="height: 85%"></span>
-            </div>
-            <div class="review-note">
-                <strong>Process insight</strong>
-                <span>Best results came from trades where the plan was followed before entry.</span>
-            </div>
-        </div>
-
-        <div class="calendar-panel">
-            <div class="panel-title">
-                <span>May Performance</span>
-                <strong>68% win rate</strong>
-            </div>
-            <div class="trade-calendar">
-                @{
-                    var days = new[]
-                    {
-                        ("26", ""), ("27", "win"), ("28", ""), ("29", ""), ("30", "loss"), ("31", ""),
-                        ("1", ""), ("2", "loss"), ("3", "win"), ("4", "win"), ("5", ""), ("6", ""),
-                        ("7", ""), ("8", "win"), ("9", ""), ("10", "loss"), ("11", "win"), ("12", ""),
-                        ("13", ""), ("14", ""), ("15", "win"), ("16", ""), ("17", "win"), ("18", "")
-                    };
-                }
-                @foreach (var day in days)
-                {
-                    <div class="calendar-day @day.Item2">
-                        <span>@day.Item1</span>
-                        @if (day.Item2 == "win")
-                        {
-                            <strong>+$215</strong>
-                        }
-                        else if (day.Item2 == "loss")
-                        {
-                            <strong>-$97</strong>
-                        }
-                    </div>
-                }
-            </div>
-        </div>
-
-        <div class="trade-ticket">
-            <div class="ticket-header">
-                <span>XAUUSD</span>
-                <strong>Long</strong>
-            </div>
-            <div class="ticket-row">
-                <span>Risk</span>
-                <strong>1.00%</strong>
-            </div>
-            <div class="ticket-row">
-                <span>Plan</span>
-                <strong class="text-teal">Followed</strong>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="feature-strip">
-    <div>
-        <strong>Review discipline</strong>
-        <span>Separate process quality from outcome noise.</span>
-    </div>
-    <div>
-        <strong>Find weak setups</strong>
-        <span>Filter by asset, side, result, and plan adherence.</span>
-    </div>
-    <div>
-        <strong>Trade with memory</strong>
-        <span>Screenshots, notes, emotions, and repeatable insights.</span>
     </div>
 </section>

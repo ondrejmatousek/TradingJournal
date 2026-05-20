@@ -11,6 +11,7 @@ namespace TradingJournal.Data
         public DbSet<InvoiceCompany> InvoiceCompanies => Set<InvoiceCompany>();
         public DbSet<Invoice> Invoices => Set<Invoice>();
         public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
+        public DbSet<MarketBias> MarketBiases => Set<MarketBias>();
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -94,6 +95,30 @@ namespace TradingJournal.Data
             builder.Entity<InvoiceItem>()
                 .Property(i => i.VatRate)
                 .HasPrecision(5, 2);
+
+            builder.Entity<MarketBias>()
+                .HasIndex(b => new { b.Symbol, b.BiasDate })
+                .IsUnique();
+
+            builder.Entity<MarketBias>()
+                .Property(b => b.LastClose)
+                .HasPrecision(18, 8);
+
+            builder.Entity<MarketBias>()
+                .Property(b => b.ChangePercent)
+                .HasPrecision(9, 4);
+
+            builder.Entity<MarketBias>()
+                .Property(b => b.Rsi14)
+                .HasPrecision(9, 4);
+
+            builder.Entity<MarketBias>()
+                .Property(b => b.Ma20)
+                .HasPrecision(18, 8);
+
+            builder.Entity<MarketBias>()
+                .Property(b => b.Ma50)
+                .HasPrecision(18, 8);
         }
     }
 }

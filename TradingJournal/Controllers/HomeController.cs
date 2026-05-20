@@ -1,21 +1,35 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using TradingJournal.Models;
+using TradingJournal.Services;
 
 namespace TradingJournal.Controllers
 {
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
+        private readonly MarketBiasService _marketBiasService;
+        private readonly StockRadarService _stockRadarService;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(
+            ILogger<HomeController> logger,
+            MarketBiasService marketBiasService,
+            StockRadarService stockRadarService)
         {
             _logger = logger;
+            _marketBiasService = marketBiasService;
+            _stockRadarService = stockRadarService;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index(CancellationToken cancellationToken)
         {
-            return View();
+            var model = await _marketBiasService.GetHomeMarketBiasAsync(cancellationToken);
+            var stockRadar = await _stockRadarService.GetStockRadarAsync(cancellationToken);
+            model.StockIdeas = stockRadar.Ideas;
+            model.StockRadarUpdatedAt = stockRadar.UpdatedAt;
+            model.StockRadarConfigured = stockRadar.IsConfigured;
+            model.StockRadarMessage = stockRadar.Message;
+            return View(model);
         }
 
         public IActionResult Privacy()

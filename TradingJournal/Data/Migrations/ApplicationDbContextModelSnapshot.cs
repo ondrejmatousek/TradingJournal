@@ -511,6 +511,84 @@ namespace TradingJournal.Data.Migrations
                     b.ToTable("JournalEntryImages");
                 });
 
+            modelBuilder.Entity("TradingJournal.Models.MarketBias", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("BiasDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("BulletJson")
+                        .IsRequired()
+                        .HasMaxLength(1600)
+                        .HasColumnType("nvarchar(1600)");
+
+                    b.Property<decimal?>("ChangePercent")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.Property<int>("ConfidenceStars")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Direction")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<decimal?>("LastClose")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal?>("Ma20")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal?>("Ma50")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal?>("Rsi14")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.Property<int>("SignalScore")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(700)
+                        .HasColumnType("nvarchar(700)");
+
+                    b.Property<string>("Symbol")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Symbol", "BiasDate")
+                        .IsUnique();
+
+                    b.ToTable("MarketBiases");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
