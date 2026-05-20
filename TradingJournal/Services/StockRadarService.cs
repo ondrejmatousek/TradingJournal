@@ -37,6 +37,21 @@ namespace TradingJournal.Services
                 ["QCOM"] = "Qualcomm Inc."
             };
 
+        private static readonly IReadOnlyDictionary<string, StockFallback> FallbackIdeas =
+            new Dictionary<string, StockFallback>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["MSFT"] = new("Microsoft Corporation", "Software", 6, 31.5m, 2.1m, 14.2m, 476m, 555m, "Kvalitni software business s vysokymi marzemi a silnym cloud segmentem."),
+                ["GOOGL"] = new("Alphabet Inc.", "Communication Services", 6, 22.8m, 1.4m, 13.1m, 173m, 207m, "Silny cashflow, vyhledavani a AI infrastruktura; valuace byva rozumnejsi nez u casti megacapu."),
+                ["AMZN"] = new("Amazon.com Inc.", "Consumer Cyclical", 5, 35.2m, 1.9m, 11.8m, 186m, 242m, "AWS a reklama mohou dlouhodobe tahnout marze, retail zustava objemova zakladna."),
+                ["AAPL"] = new("Apple Inc.", "Technology", 4, 29.4m, 2.5m, 6.3m, 197m, 260m, "Vysoce kvalitni firma, ale pro watchlist dava smysl hlidat hlavne cenu proti rustu."),
+                ["META"] = new("Meta Platforms Inc.", "Communication Services", 6, 24.6m, 1.2m, 15.5m, 626m, 740m, "Silna profitabilita reklamniho businessu a opce na AI/Reality Labs."),
+                ["NVDA"] = new("NVIDIA Corporation", "Semiconductors", 5, 38.7m, 1.6m, 35.0m, 135m, 195m, "Leader v AI akceleratorech; kvalita je vysoka, riziko je hlavne v oceneni."),
+                ["AMD"] = new("Advanced Micro Devices Inc.", "Semiconductors", 5, 33.0m, 1.7m, 18.0m, 164m, 227m, "AI a serverove CPU mohou podporit rust, ale cyklicnost polovodicu zustava riziko."),
+                ["ASML"] = new("ASML Holding N.V.", "Semiconductors", 6, 29.8m, 1.5m, 10.4m, 755m, 1110m, "Unikatni pozice v litografii a dlouhodoba poptavka po pokrocile vyrobe cipu."),
+                ["TSM"] = new("Taiwan Semiconductor", "Semiconductors", 6, 21.7m, 1.1m, 17.2m, 238m, 286m, "Klicovy foundry hrac pro AI a high-end cipy, solidni pomer rustu a valuace."),
+                ["AVGO"] = new("Broadcom Inc.", "Semiconductors", 5, 32.2m, 1.8m, 12.0m, 278m, 386m, "Kombinace polovodicu a infrastrukturalniho software, zajimavy cashflow profil.")
+            };
+
         private readonly IConfiguration _configuration;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<StockRadarService> _logger;
@@ -124,13 +139,28 @@ namespace TradingJournal.Services
                 .Take(10)
                 .ToList();
 
+            if (ordered.Count < 10)
+            {
+                var alreadyShown = ordered
+                    .Select(i => i.Symbol)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                ordered.AddRange(FallbackIdeas
+                    .Where(i => !alreadyShown.Contains(i.Key))
+                    .Select(i => BuildFallbackIdea(i.Key, i.Value))
+                    .OrderByDescending(i => i.Score)
+                    .Take(10 - ordered.Count));
+            }
+
+            await EnrichAthDiscountsAsync(ordered, cancellationToken);
+
             return new StockRadarResult
             {
                 IsConfigured = !string.IsNullOrWhiteSpace(apiKey),
                 UpdatedAt = DateTimeOffset.UtcNow,
                 Ideas = ordered,
-                Message = ordered.Count == 0
-                    ? "Live data se ted nepodarilo nacist."
+                Message = ideas.Count == 0
+                    ? "Live data ted nejsou dostupna, zobrazuji orientacni watchlist."
                     : "Akcie k provereni podle fundamentu."
             };
         }
@@ -164,6 +194,7 @@ namespace TradingJournal.Services
                     ReadYahooString(item, "sector") ?? "Market",
                     ReadYahooDecimal(item, "regularMarketPrice") ?? ReadYahooDecimal(item, "fiftyDayAverage"),
                     ReadYahooDecimal(item, "targetMeanPrice"),
+                    ReadYahooDecimal(item, "fiftyTwoWeekHigh"),
                     ReadYahooDecimal(item, "trailingPE") ?? ReadYahooDecimal(item, "forwardPE"),
                     ReadYahooDecimal(item, "trailingPegRatio"),
                     null,
@@ -192,6 +223,7 @@ namespace TradingJournal.Services
             var financialData = result.TryGetProperty("financialData", out var financial) ? financial : default;
             var keyStats = result.TryGetProperty("defaultKeyStatistics", out var stats) ? stats : default;
             var profile = result.TryGetProperty("summaryProfile", out var summaryProfile) ? summaryProfile : default;
+            var summaryDetail = result.TryGetProperty("summaryDetail", out var summary) ? summary : default;
 
             return BuildIdea(
                 symbol,
@@ -199,6 +231,7 @@ namespace TradingJournal.Services
                 ReadYahooString(profile, "sector") ?? "Market",
                 ReadYahooRaw(priceModule, "regularMarketPrice") ?? ReadYahooRaw(financialData, "currentPrice"),
                 ReadYahooRaw(financialData, "targetMeanPrice"),
+                ReadYahooRaw(summaryDetail, "fiftyTwoWeekHigh"),
                 ReadYahooRaw(priceModule, "trailingPE") ?? ReadYahooRaw(keyStats, "forwardPE"),
                 ReadYahooRaw(keyStats, "pegRatio"),
                 null,
@@ -230,6 +263,7 @@ namespace TradingJournal.Services
                 ReadString(root, "Sector") ?? "Market",
                 ReadDecimal(root, "50DayMovingAverage"),
                 ReadDecimal(root, "AnalystTargetPrice"),
+                ReadDecimal(root, "52WeekHigh"),
                 ReadDecimal(root, "PERatio"),
                 ReadDecimal(root, "PEGRatio"),
                 ReadDecimal(root, "ProfitMargin"),
@@ -251,6 +285,7 @@ namespace TradingJournal.Services
             string sector,
             decimal? price,
             decimal? target,
+            decimal? athPrice,
             decimal? pe,
             decimal? peg,
             decimal? margin,
@@ -262,6 +297,10 @@ namespace TradingJournal.Services
 
             decimal? upside = price.HasValue && price.Value > 0 && target.HasValue
                 ? (target.Value - price.Value) / price.Value * 100m
+                : null;
+
+            decimal? discountFromAth = price.HasValue && price.Value > 0 && athPrice.HasValue && athPrice.Value > price.Value
+                ? (athPrice.Value - price.Value) / athPrice.Value * 100m
                 : null;
 
             var score = 0;
@@ -320,12 +359,133 @@ namespace TradingJournal.Services
                 Price = price,
                 TargetPrice = target,
                 TargetUpsidePercent = upside,
+                AllTimeHighPrice = athPrice,
+                DiscountFromAthPercent = discountFromAth,
                 PeRatio = pe,
                 PegRatio = peg,
                 RevenueGrowthPercent = revenueGrowthPercent,
                 Reasons = reasons.Take(2).ToList(),
                 Source = source
             };
+        }
+
+        private static StockIdeaCard BuildFallbackIdea(string symbol, StockFallback fallback)
+        {
+            var reasons = new[]
+            {
+                fallback.Reason,
+                fallback.RevenueGrowthPercent > 10
+                    ? $"Orientacni rust trzeb: {fallback.RevenueGrowthPercent:0.#}%."
+                    : $"Orientacni P/E: {fallback.PeRatio:0.#}."
+            };
+
+            decimal? discountFromAth = fallback.AthPrice > fallback.Price
+                ? (fallback.AthPrice - fallback.Price) / fallback.AthPrice * 100m
+                : null;
+
+            return new StockIdeaCard
+            {
+                Symbol = symbol,
+                Name = fallback.Name,
+                Sector = fallback.Sector,
+                Score = fallback.Score,
+                Price = fallback.Price,
+                AllTimeHighPrice = fallback.AthPrice,
+                DiscountFromAthPercent = discountFromAth,
+                PeRatio = fallback.PeRatio,
+                PegRatio = fallback.PegRatio,
+                RevenueGrowthPercent = fallback.RevenueGrowthPercent,
+                Reasons = reasons,
+                Source = "Fallback"
+            };
+        }
+
+        private async Task EnrichAthDiscountsAsync(IReadOnlyList<StockIdeaCard> ideas, CancellationToken cancellationToken)
+        {
+            var tasks = ideas.Select(async idea =>
+            {
+                try
+                {
+                    var snapshot = await FetchYahooAthSnapshotAsync(idea.Symbol, cancellationToken);
+                    if (snapshot is null)
+                        return;
+
+                    idea.Price = snapshot.LastClose;
+                    idea.AllTimeHighPrice = snapshot.HighestHigh;
+                    idea.DiscountFromAthPercent = snapshot.HighestHigh > snapshot.LastClose
+                        ? (snapshot.HighestHigh - snapshot.LastClose) / snapshot.HighestHigh * 100m
+                        : 0m;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not load Yahoo ATH data for {Symbol}.", idea.Symbol);
+                }
+            });
+
+            await Task.WhenAll(tasks);
+        }
+
+        private async Task<StockAthSnapshot?> FetchYahooAthSnapshotAsync(string symbol, CancellationToken cancellationToken)
+        {
+            var client = CreateClient();
+            var url = $"https://query1.finance.yahoo.com/v8/finance/chart/{Uri.EscapeDataString(symbol)}?range=max&interval=1wk";
+            var json = await client.GetStringAsync(url, cancellationToken);
+
+            using var document = JsonDocument.Parse(json);
+            if (!document.RootElement.TryGetProperty("chart", out var chart) ||
+                !chart.TryGetProperty("result", out var results) ||
+                results.ValueKind != JsonValueKind.Array ||
+                results.GetArrayLength() == 0)
+            {
+                return null;
+            }
+
+            var result = results[0];
+
+            var currentPrice = result.TryGetProperty("meta", out var meta)
+                ? ReadYahooDecimal(meta, "regularMarketPrice")
+                : null;
+
+            if (!result.TryGetProperty("indicators", out var indicators) ||
+                !indicators.TryGetProperty("quote", out var quotes) ||
+                quotes.ValueKind != JsonValueKind.Array ||
+                quotes.GetArrayLength() == 0)
+            {
+                return null;
+            }
+
+            var quote = quotes[0];
+
+            decimal? highestHigh = null;
+            if (quote.TryGetProperty("high", out var highs) && highs.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var highElement in highs.EnumerateArray())
+                {
+                    if (highElement.ValueKind != JsonValueKind.Number)
+                        continue;
+
+                    var high = Convert.ToDecimal(highElement.GetDouble(), CultureInfo.InvariantCulture);
+                    highestHigh = highestHigh.HasValue ? Math.Max(highestHigh.Value, high) : high;
+                }
+            }
+
+            decimal? lastClose = null;
+            if (quote.TryGetProperty("close", out var closes) && closes.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var closeElement in closes.EnumerateArray())
+                {
+                    if (closeElement.ValueKind == JsonValueKind.Number)
+                    {
+                        lastClose = Convert.ToDecimal(closeElement.GetDouble(), CultureInfo.InvariantCulture);
+                    }
+                }
+            }
+
+            var price = currentPrice ?? lastClose;
+
+            return highestHigh.HasValue && price.HasValue
+                ? new StockAthSnapshot(price.Value, highestHigh.Value)
+                : null;
         }
 
         private static string? ReadString(JsonElement root, string propertyName)
@@ -399,4 +559,17 @@ namespace TradingJournal.Services
         public bool IsConfigured { get; set; }
         public string Message { get; set; } = string.Empty;
     }
+
+    internal sealed record StockFallback(
+        string Name,
+        string Sector,
+        int Score,
+        decimal PeRatio,
+        decimal PegRatio,
+        decimal RevenueGrowthPercent,
+        decimal Price,
+        decimal AthPrice,
+        string Reason);
+
+    internal sealed record StockAthSnapshot(decimal LastClose, decimal HighestHigh);
 }

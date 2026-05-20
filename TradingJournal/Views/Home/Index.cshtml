@@ -48,68 +48,20 @@
                     <span>Market bias</span>
                     <strong>XAU &middot; NQ &middot; BTC</strong>
                 </div>
-                <small>
-                    @(Model.MarketBiasUpdatedAt.HasValue
-                        ? Model.MarketBiasUpdatedAt.Value.ToLocalTime().ToString("dd.MM. HH:mm")
-                        : "today")
-                </small>
+                <small id="marketBiasUpdatedAt">loading</small>
                 <form asp-controller="Home" asp-action="RefreshMarketBias" method="post" class="bias-refresh-form">
-                    <button type="submit" class="bias-refresh-button">Refresh</button>
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="bias-refresh-button" id="marketBiasRefresh">Refresh</button>
                 </form>
             </div>
 
-            @if (Model.MarketBiases.Any())
-            {
-                <div class="bias-card-grid">
-                    @foreach (var bias in Model.MarketBiases)
-                    {
-                        var directionClass = bias.Direction.ToLowerInvariant();
-                        <article class="bias-card @directionClass">
-                            <button class="bias-card-button" type="button" aria-label="@bias.Symbol market bias">
-                                <span class="bias-card-top">
-                                    <span>
-                                        <strong>@bias.Symbol</strong>
-                                        <small>@bias.DisplayName</small>
-                                    </span>
-                                    <em>@bias.Direction</em>
-                                </span>
-
-                                <span class="bias-stars" aria-label="@bias.ConfidenceStars stars">
-                                    @for (var star = 1; star <= 5; star++)
-                                    {
-                                        <span class="@(star <= bias.ConfidenceStars ? "active" : "")">&#9733;</span>
-                                    }
-                                </span>
-
-                                <span class="bias-summary">@bias.Summary</span>
-
-                                <span class="bias-metrics">
-                                    <span>Score <strong>@bias.SignalScore.ToString("+#;-#;0")</strong></span>
-                                    @if (bias.ChangePercent.HasValue)
-                                    {
-                                        <span>Day <strong>@bias.ChangePercent.Value.ToString("+#.##;-#.##;0")%</strong></span>
-                                    }
-                                    @if (bias.Rsi14.HasValue)
-                                    {
-                                        <span>RSI <strong>@bias.Rsi14.Value.ToString("0.#")</strong></span>
-                                    }
-                                </span>
-
-                                <span class="bias-bullets">
-                                    @foreach (var bullet in bias.Bullets.Take(1))
-                                    {
-                                        <span>@bullet</span>
-                                    }
-                                </span>
-                            </button>
-                        </article>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="bias-empty">Bias se nacte po startu aplikace.</div>
-            }
+            <div class="widget-loading bias-loading" id="marketBiasLoading" aria-label="Loading market bias">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="bias-card-grid" id="marketBiasGrid" hidden></div>
+            <div class="bias-empty" id="marketBiasError" hidden>Bias se ted nepodarilo nacist.</div>
 
             <div class="bias-disclaimer">
                 Technicky kontext, ne financni doporuceni.
@@ -122,53 +74,235 @@
                     <span>Stock radar</span>
                     <strong>Undervalued watch</strong>
                 </div>
-                <small>
-                    @(Model.StockRadarUpdatedAt.HasValue
-                        ? Model.StockRadarUpdatedAt.Value.ToLocalTime().ToString("dd.MM. HH:mm")
-                        : "setup")
-                </small>
+                <small id="stockRadarUpdatedAt">loading</small>
             </div>
 
-            @if (Model.StockIdeas.Any())
-            {
-                <div class="stock-idea-list">
-                    @foreach (var idea in Model.StockIdeas)
-                    {
-                        <article class="stock-idea">
-                            <div>
-                                <strong>@idea.Symbol</strong>
-                                <span>@idea.Name</span>
-                            </div>
-                            <em>@idea.Score/7</em>
-                            <div class="stock-idea-metrics">
-                                @if (idea.TargetUpsidePercent.HasValue)
-                                {
-                                    <span>Upside <strong>@idea.TargetUpsidePercent.Value.ToString("+#.#;-#.#;0")%</strong></span>
-                                }
-                                @if (idea.PeRatio.HasValue)
-                                {
-                                    <span>P/E <strong>@idea.PeRatio.Value.ToString("0.#")</strong></span>
-                                }
-                                @if (idea.PegRatio.HasValue)
-                                {
-                                    <span>PEG <strong>@idea.PegRatio.Value.ToString("0.##")</strong></span>
-                                }
-                            </div>
-                            @foreach (var reason in idea.Reasons.Take(1))
-                            {
-                                <p>@reason</p>
-                            }
-                        </article>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="stock-radar-empty">
-                    @Model.StockRadarMessage
-                </div>
-            }
+            <div class="widget-loading stock-loading" id="stockRadarLoading" aria-label="Loading stock radar">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="stock-idea-list" id="stockRadarList" hidden></div>
+            <div class="stock-radar-empty" id="stockRadarError" hidden>Stock radar se ted nepodarilo nacist.</div>
         </div>
 
     </div>
 </section>
+
+@section Scripts {
+    <script>
+        (() => {
+            const endpoints = {
+                marketBias: '@Url.Action("MarketBiasData", "Home")',
+                refreshMarketBias: '@Url.Action("RefreshMarketBias", "Home")',
+                stockRadar: '@Url.Action("StockRadarData", "Home")'
+            };
+
+            const els = {
+                biasGrid: document.getElementById('marketBiasGrid'),
+                biasLoading: document.getElementById('marketBiasLoading'),
+                biasError: document.getElementById('marketBiasError'),
+                biasUpdatedAt: document.getElementById('marketBiasUpdatedAt'),
+                biasRefresh: document.getElementById('marketBiasRefresh'),
+                stockList: document.getElementById('stockRadarList'),
+                stockLoading: document.getElementById('stockRadarLoading'),
+                stockError: document.getElementById('stockRadarError'),
+                stockUpdatedAt: document.getElementById('stockRadarUpdatedAt')
+            };
+
+            const escapeHtml = (value) => String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+
+            const signedNumber = (value, digits = 0) => {
+                if (value === null || value === undefined || Number.isNaN(Number(value))) {
+                    return '';
+                }
+
+                const number = Number(value);
+                return `${number > 0 ? '+' : ''}${number.toLocaleString('cs-CZ', {
+                    minimumFractionDigits: digits,
+                    maximumFractionDigits: digits
+                })}`;
+            };
+
+            const compactNumber = (value, digits = 1) => {
+                if (value === null || value === undefined || Number.isNaN(Number(value))) {
+                    return '';
+                }
+
+                return Number(value).toLocaleString('cs-CZ', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: digits
+                });
+            };
+
+            const renderStars = (count) => Array.from({ length: 5 }, (_, index) =>
+                `<span class="${index < Number(count ?? 0) ? 'active' : ''}">&#9733;</span>`).join('');
+
+            const setVisible = (element, visible) => {
+                if (!element) return;
+                element.hidden = !visible;
+            };
+
+            const renderMarketBias = (data) => {
+                const items = Array.isArray(data.items) ? data.items : [];
+                setVisible(els.biasLoading, false);
+                els.biasUpdatedAt.textContent = data.updatedAt || 'offline';
+
+                if (!items.length) {
+                    els.biasError.textContent = data.message || 'Bias se ted nepodarilo nacist.';
+                    setVisible(els.biasError, true);
+                    setVisible(els.biasGrid, false);
+                    return;
+                }
+
+                els.biasGrid.innerHTML = items.map((bias) => {
+                    const direction = String(bias.direction || 'Neutral');
+                    const directionClass = direction.toLowerCase();
+                    const metrics = [
+                        `<span>Score <strong>${signedNumber(bias.signalScore)}</strong></span>`,
+                        bias.changePercent !== null && bias.changePercent !== undefined
+                            ? `<span>Day <strong>${signedNumber(bias.changePercent, 2)}%</strong></span>`
+                            : '',
+                        bias.rsi14 !== null && bias.rsi14 !== undefined
+                            ? `<span>RSI <strong>${compactNumber(bias.rsi14)}</strong></span>`
+                            : ''
+                    ].filter(Boolean).join('');
+
+                    const bullet = Array.isArray(bias.bullets) && bias.bullets.length
+                        ? `<span>${escapeHtml(bias.bullets[0])}</span>`
+                        : '';
+
+                    return `
+                        <article class="bias-card ${escapeHtml(directionClass)}">
+                            <button class="bias-card-button" type="button" aria-label="${escapeHtml(bias.symbol)} market bias">
+                                <span class="bias-card-top">
+                                    <span>
+                                        <strong>${escapeHtml(bias.symbol)}</strong>
+                                        <small>${escapeHtml(bias.displayName)}</small>
+                                    </span>
+                                    <em>${escapeHtml(direction)}</em>
+                                </span>
+                                <span class="bias-stars" aria-label="${escapeHtml(bias.confidenceStars)} stars">
+                                    ${renderStars(bias.confidenceStars)}
+                                </span>
+                                <span class="bias-summary">${escapeHtml(bias.summary)}</span>
+                                <span class="bias-metrics">${metrics}</span>
+                                <span class="bias-bullets">${bullet}</span>
+                            </button>
+                        </article>`;
+                }).join('');
+
+                setVisible(els.biasError, false);
+                setVisible(els.biasGrid, true);
+            };
+
+            const renderStockRadar = (data) => {
+                const items = Array.isArray(data.items) ? data.items : [];
+                setVisible(els.stockLoading, false);
+                els.stockUpdatedAt.textContent = data.updatedAt || 'offline';
+
+                if (!items.length) {
+                    els.stockError.textContent = data.message || 'Stock radar se ted nepodarilo nacist.';
+                    setVisible(els.stockError, true);
+                    setVisible(els.stockList, false);
+                    return;
+                }
+
+                els.stockList.innerHTML = items.map((idea) => {
+                    const metrics = [
+                        idea.targetUpsidePercent !== null && idea.targetUpsidePercent !== undefined
+                            ? `<span>Upside <strong>${signedNumber(idea.targetUpsidePercent, 1)}%</strong></span>`
+                            : '',
+                        idea.discountFromAthPercent !== null && idea.discountFromAthPercent !== undefined
+                            ? `<span>Sleva od ATH <strong>-${compactNumber(idea.discountFromAthPercent, 1)}%</strong></span>`
+                            : '',
+                        idea.peRatio !== null && idea.peRatio !== undefined
+                            ? `<span>P/E <strong>${compactNumber(idea.peRatio)}</strong></span>`
+                            : '',
+                        idea.pegRatio !== null && idea.pegRatio !== undefined
+                            ? `<span>PEG <strong>${compactNumber(idea.pegRatio, 2)}</strong></span>`
+                            : ''
+                    ].filter(Boolean).join('');
+
+                    const reason = Array.isArray(idea.reasons) && idea.reasons.length
+                        ? escapeHtml(idea.reasons[0])
+                        : 'Akcie ma dostupna live fundamentalni data.';
+
+                    return `
+                        <article class="stock-idea">
+                            <div>
+                                <strong>${escapeHtml(idea.symbol)}</strong>
+                                <span>${escapeHtml(idea.name)}</span>
+                            </div>
+                            <em>${escapeHtml(idea.score)}/7</em>
+                            <div class="stock-idea-metrics">${metrics}</div>
+                            <p>${reason}</p>
+                        </article>`;
+                }).join('');
+
+                setVisible(els.stockError, false);
+                setVisible(els.stockList, true);
+            };
+
+            const loadMarketBias = async (forceRefresh = false) => {
+                setVisible(els.biasLoading, true);
+                setVisible(els.biasError, false);
+                els.biasRefresh?.classList.add('is-loading');
+
+                try {
+                    const options = forceRefresh
+                        ? {
+                            method: 'POST',
+                            headers: {
+                                RequestVerificationToken: document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                            }
+                        }
+                        : {};
+
+                    const response = await fetch(forceRefresh ? endpoints.refreshMarketBias : endpoints.marketBias, options);
+                    if (!response.ok) {
+                        throw new Error(`Market bias failed: ${response.status}`);
+                    }
+
+                    renderMarketBias(await response.json());
+                } catch {
+                    renderMarketBias({ items: [], message: 'Market bias se ted nepodarilo nacist.' });
+                } finally {
+                    els.biasRefresh?.classList.remove('is-loading');
+                }
+            };
+
+            const loadStockRadar = async () => {
+                setVisible(els.stockLoading, true);
+                setVisible(els.stockError, false);
+
+                try {
+                    const response = await fetch(endpoints.stockRadar);
+                    if (!response.ok) {
+                        throw new Error(`Stock radar failed: ${response.status}`);
+                    }
+
+                    renderStockRadar(await response.json());
+                } catch {
+                    renderStockRadar({ items: [], message: 'Stock radar se ted nepodarilo nacist.' });
+                }
+            };
+
+            els.biasRefresh?.addEventListener('click', (event) => {
+                event.preventDefault();
+                loadMarketBias(true);
+            });
+
+            loadMarketBias();
+            loadStockRadar();
+        })();
+    </script>
+}

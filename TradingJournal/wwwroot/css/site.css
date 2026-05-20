@@ -454,6 +454,11 @@ body.app-section-shell {
   transform: translateY(-1px);
 }
 
+.bias-refresh-button.is-loading {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
 .daily-bias-head span,
 .daily-bias-head small,
 .bias-card span,
@@ -653,7 +658,30 @@ body.app-section-shell {
   gap: 0.5rem;
   min-height: 0;
   overflow: auto;
-  padding-right: 0.15rem;
+  padding-right: 0.45rem;
+  scrollbar-color: rgba(32, 199, 185, 0.45) rgba(255, 255, 255, 0.055);
+  scrollbar-width: thin;
+}
+
+.stock-idea-list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.stock-idea-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.055);
+  border-radius: 999px;
+}
+
+.stock-idea-list::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(180deg, rgba(32, 199, 185, 0.74), rgba(111, 99, 255, 0.68));
+  border: 2px solid rgba(24, 26, 28, 0.92);
+  border-radius: 999px;
+}
+
+.stock-idea-list::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(180deg, rgba(126, 242, 231, 0.86), rgba(129, 119, 255, 0.82));
 }
 
 .stock-idea {
@@ -720,6 +748,58 @@ body.app-section-shell {
   border: 1px dashed rgba(255, 255, 255, 0.16);
   border-radius: 16px;
   padding: 0.8rem;
+}
+
+.widget-loading {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.stock-loading {
+  flex: 1;
+  grid-template-columns: 1fr;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.widget-loading span {
+  animation: widget-shimmer 1.45s ease-in-out infinite;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.055) 0%,
+      rgba(255, 255, 255, 0.15) 45%,
+      rgba(32, 199, 185, 0.09) 58%,
+      rgba(255, 255, 255, 0.055) 100%
+    );
+  background-size: 240% 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  min-height: 180px;
+}
+
+.stock-loading span {
+  border-radius: 16px;
+  min-height: 118px;
+}
+
+.bias-card-grid[hidden],
+.stock-idea-list[hidden],
+.bias-empty[hidden],
+.stock-radar-empty[hidden],
+.widget-loading[hidden] {
+  display: none !important;
+}
+
+@keyframes widget-shimmer {
+  0% {
+    background-position: 120% 0;
+  }
+
+  100% {
+    background-position: -120% 0;
+  }
 }
 
 .calendar-panel {

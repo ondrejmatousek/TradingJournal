@@ -35,6 +35,8 @@ namespace TradingJournal.ViewModels
         public decimal? Price { get; set; }
         public decimal? TargetPrice { get; set; }
         public decimal? TargetUpsidePercent { get; set; }
+        public decimal? AllTimeHighPrice { get; set; }
+        public decimal? DiscountFromAthPercent { get; set; }
         public decimal? PeRatio { get; set; }
         public decimal? PegRatio { get; set; }
         public decimal? RevenueGrowthPercent { get; set; }
