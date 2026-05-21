@@ -68,6 +68,48 @@
             </div>
         </div>
 
+        <div class="home-insight-grid">
+            <section class="home-insight-card market-regime-card" id="marketRegimeCard">
+                <div class="home-insight-head">
+                    <div>
+                        <span>Market regime</span>
+                        <strong id="marketRegimeTitle">loading</strong>
+                    </div>
+                    <em id="marketRegimeScore">0</em>
+                </div>
+                <p id="marketRegimeSummary">Nacitam kontext trhu...</p>
+                <div class="regime-drivers" id="marketRegimeDrivers"></div>
+            </section>
+
+            <section class="home-insight-card macro-calendar-card">
+                <div class="home-insight-head">
+                    <div>
+                        <span>Macro calendar</span>
+                        <strong>Dnesni watch</strong>
+                    </div>
+                    <small id="macroCalendarUpdatedAt">loading</small>
+                </div>
+                <div class="macro-event-list" id="macroCalendarList">
+                    <span class="insight-loading-line"></span>
+                    <span class="insight-loading-line"></span>
+                </div>
+            </section>
+
+            <section class="home-insight-card setup-watch-card">
+                <div class="home-insight-head">
+                    <div>
+                        <span>Setup watchlist</span>
+                        <strong>XAU / NQ / BTC</strong>
+                    </div>
+                    <small id="setupWatchUpdatedAt">loading</small>
+                </div>
+                <div class="setup-watch-list" id="setupWatchList">
+                    <span class="insight-loading-line"></span>
+                    <span class="insight-loading-line"></span>
+                </div>
+            </section>
+        </div>
+
         <div class="stock-radar-panel">
             <div class="stock-radar-head">
                 <div>
@@ -98,7 +140,10 @@
             const endpoints = {
                 marketBias: '@Url.Action("MarketBiasData", "Home")',
                 refreshMarketBias: '@Url.Action("RefreshMarketBias", "Home")',
-                stockRadar: '@Url.Action("StockRadarData", "Home")'
+                stockRadar: '@Url.Action("StockRadarData", "Home")',
+                marketRegime: '@Url.Action("MarketRegimeData", "Home")',
+                macroCalendar: '@Url.Action("EconomicCalendarData", "Home")',
+                setupWatchlist: '@Url.Action("SetupWatchlistData", "Home")'
             };
 
             const els = {
@@ -110,7 +155,16 @@
                 stockList: document.getElementById('stockRadarList'),
                 stockLoading: document.getElementById('stockRadarLoading'),
                 stockError: document.getElementById('stockRadarError'),
-                stockUpdatedAt: document.getElementById('stockRadarUpdatedAt')
+                stockUpdatedAt: document.getElementById('stockRadarUpdatedAt'),
+                regimeCard: document.getElementById('marketRegimeCard'),
+                regimeTitle: document.getElementById('marketRegimeTitle'),
+                regimeScore: document.getElementById('marketRegimeScore'),
+                regimeSummary: document.getElementById('marketRegimeSummary'),
+                regimeDrivers: document.getElementById('marketRegimeDrivers'),
+                macroUpdatedAt: document.getElementById('macroCalendarUpdatedAt'),
+                macroList: document.getElementById('macroCalendarList'),
+                setupUpdatedAt: document.getElementById('setupWatchUpdatedAt'),
+                setupList: document.getElementById('setupWatchList')
             };
 
             const escapeHtml = (value) => String(value ?? '')
@@ -219,7 +273,7 @@
                 els.stockList.innerHTML = items.map((idea) => {
                     const metrics = [
                         idea.targetUpsidePercent !== null && idea.targetUpsidePercent !== undefined
-                            ? `<span>Upside <strong>${signedNumber(idea.targetUpsidePercent, 1)}%</strong></span>`
+                            ? `<span>Predikce <strong>${signedNumber(idea.targetUpsidePercent, 1)}%</strong></span>`
                             : '',
                         idea.discountFromAthPercent !== null && idea.discountFromAthPercent !== undefined
                             ? `<span>Sleva od ATH <strong>-${compactNumber(idea.discountFromAthPercent, 1)}%</strong></span>`
@@ -250,6 +304,56 @@
 
                 setVisible(els.stockError, false);
                 setVisible(els.stockList, true);
+            };
+
+            const renderMarketRegime = (data) => {
+                const tone = String(data.tone || 'neutral').toLowerCase();
+                els.regimeCard.classList.remove('bullish', 'bearish', 'neutral');
+                els.regimeCard.classList.add(tone);
+                els.regimeTitle.textContent = data.regime || 'Mixed';
+                els.regimeScore.textContent = signedNumber(data.score || 0);
+                els.regimeSummary.textContent = data.summary || 'Trzni rezim se ted nepodarilo nacist.';
+                els.regimeDrivers.innerHTML = (Array.isArray(data.drivers) ? data.drivers : [])
+                    .map(driver => `<span>${escapeHtml(driver)}</span>`)
+                    .join('');
+            };
+
+            const renderMacroCalendar = (data) => {
+                const items = Array.isArray(data.items) ? data.items : [];
+                els.macroUpdatedAt.textContent = data.updatedAt || 'offline';
+                els.macroList.innerHTML = items.length
+                    ? items.map(item => `
+                        <article class="macro-event ${escapeHtml(String(item.impact || 'Medium').toLowerCase())}">
+                            <time>${escapeHtml(item.time)}</time>
+                            <div>
+                                <strong>${escapeHtml(item.title)}</strong>
+                                <small>${escapeHtml([item.currency, item.source].filter(Boolean).join(' · '))}</small>
+                                <span>${escapeHtml(item.note)}</span>
+                                <div class="macro-values">
+                                    ${item.actual ? `<b>Actual ${escapeHtml(item.actual)}</b>` : ''}
+                                    ${item.forecast ? `<b>Forecast ${escapeHtml(item.forecast)}</b>` : ''}
+                                    ${item.previous ? `<b>Prev ${escapeHtml(item.previous)}</b>` : ''}
+                                </div>
+                            </div>
+                            <em>${escapeHtml(item.impact)}</em>
+                        </article>`).join('')
+                    : `<div class="insight-empty">${escapeHtml(data.message || 'Dnes nejsou pripravene zadne watchpointy.')}</div>`;
+            };
+
+            const renderSetupWatchlist = (data) => {
+                const items = Array.isArray(data.items) ? data.items : [];
+                els.setupUpdatedAt.textContent = data.updatedAt || 'offline';
+                els.setupList.innerHTML = items.length
+                    ? items.map(item => `
+                        <article class="setup-watch-item">
+                            <div>
+                                <strong>${escapeHtml(item.symbol)}</strong>
+                                <em>${escapeHtml(item.bias)}</em>
+                            </div>
+                            <p>${escapeHtml(item.trigger)}</p>
+                            <span>${escapeHtml(item.focus)}</span>
+                        </article>`).join('')
+                    : '<div class="insight-empty">Setup watchlist se ted nepodarilo nacist.</div>';
             };
 
             const loadMarketBias = async (forceRefresh = false) => {
@@ -296,6 +400,51 @@
                 }
             };
 
+            const loadMarketRegime = async () => {
+                try {
+                    const response = await fetch(endpoints.marketRegime);
+                    if (!response.ok) {
+                        throw new Error(`Market regime failed: ${response.status}`);
+                    }
+
+                    renderMarketRegime(await response.json());
+                } catch {
+                    renderMarketRegime({
+                        regime: 'Mixed',
+                        tone: 'neutral',
+                        score: 0,
+                        summary: 'Trzni rezim se ted nepodarilo nacist.',
+                        drivers: []
+                    });
+                }
+            };
+
+            const loadMacroCalendar = async () => {
+                try {
+                    const response = await fetch(endpoints.macroCalendar);
+                    if (!response.ok) {
+                        throw new Error(`Macro calendar failed: ${response.status}`);
+                    }
+
+                    renderMacroCalendar(await response.json());
+                } catch {
+                    renderMacroCalendar({ items: [], updatedAt: 'offline' });
+                }
+            };
+
+            const loadSetupWatchlist = async () => {
+                try {
+                    const response = await fetch(endpoints.setupWatchlist);
+                    if (!response.ok) {
+                        throw new Error(`Setup watchlist failed: ${response.status}`);
+                    }
+
+                    renderSetupWatchlist(await response.json());
+                } catch {
+                    renderSetupWatchlist({ items: [], updatedAt: 'offline' });
+                }
+            };
+
             els.biasRefresh?.addEventListener('click', (event) => {
                 event.preventDefault();
                 loadMarketBias(true);
@@ -303,6 +452,9 @@
 
             loadMarketBias();
             loadStockRadar();
+            loadMarketRegime();
+            loadMacroCalendar();
+            loadSetupWatchlist();
         })();
     </script>
 }

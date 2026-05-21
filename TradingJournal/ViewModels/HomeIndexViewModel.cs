@@ -43,4 +43,35 @@ namespace TradingJournal.ViewModels
         public IReadOnlyList<string> Reasons { get; set; } = [];
         public string Source { get; set; } = string.Empty;
     }
+
+    public class MarketRegimeCard
+    {
+        public string Regime { get; set; } = "Mixed";
+        public int Score { get; set; }
+        public string Tone { get; set; } = "neutral";
+        public string Summary { get; set; } = string.Empty;
+        public IReadOnlyList<string> Drivers { get; set; } = [];
+    }
+
+    public class EconomicEventCard
+    {
+        public string Time { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Currency { get; set; } = string.Empty;
+        public string Impact { get; set; } = "Medium";
+        public string Note { get; set; } = string.Empty;
+        public string Source { get; set; } = string.Empty;
+        public string? Actual { get; set; }
+        public string? Forecast { get; set; }
+        public string? Previous { get; set; }
+    }
+
+    public class TradeSetupCard
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public string Bias { get; set; } = "Wait";
+        public string Trigger { get; set; } = string.Empty;
+        public string Invalidation { get; set; } = string.Empty;
+        public string Focus { get; set; } = string.Empty;
+    }
 }

@@ -20,6 +20,7 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<MarketBiasService>();
 builder.Services.AddScoped<StockRadarService>();
+builder.Services.AddScoped<HomeInsightService>();
 
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>();

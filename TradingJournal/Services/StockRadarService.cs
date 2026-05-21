@@ -199,7 +199,7 @@ namespace TradingJournal.Services
                     ReadYahooDecimal(item, "trailingPegRatio"),
                     null,
                     ReadYahooDecimal(item, "revenueGrowth"),
-                    "Yahoo");
+                    "Yahoo Finance");
 
                 if (idea is not null)
                     ideas.Add(idea);
@@ -236,7 +236,7 @@ namespace TradingJournal.Services
                 ReadYahooRaw(keyStats, "pegRatio"),
                 null,
                 ReadYahooRaw(financialData, "revenueGrowth") is { } growth ? growth * 100m : null,
-                "Yahoo");
+                "Yahoo Finance");
         }
 
         private async Task<StockIdeaCard?> FetchCompanyOverviewAsync(string symbol, string apiKey, CancellationToken cancellationToken)
@@ -309,12 +309,12 @@ namespace TradingJournal.Services
             if (upside >= 20)
             {
                 score += 3;
-                reasons.Add($"Analyst target je cca +{upside.Value:0.#}% nad aktualni cenou.");
+                reasons.Add(BuildPredictionReason(source, upside.Value));
             }
             else if (upside >= 10)
             {
                 score += 2;
-                reasons.Add($"Target ukazuje cca +{upside.Value:0.#}% prostor.");
+                reasons.Add(BuildPredictionReason(source, upside.Value));
             }
 
             if (peg is > 0 and <= 1.8m)
@@ -366,6 +366,16 @@ namespace TradingJournal.Services
                 RevenueGrowthPercent = revenueGrowthPercent,
                 Reasons = reasons.Take(2).ToList(),
                 Source = source
+            };
+        }
+
+        private static string BuildPredictionReason(string source, decimal upside)
+        {
+            return source switch
+            {
+                "Yahoo Finance" => $"Analyticky konsenzus z Yahoo Finance ukazuje cca +{upside:0.#}% nad aktualni cenou.",
+                "Alpha Vantage" => $"Analyticky target z Alpha Vantage ukazuje cca +{upside:0.#}% nad aktualni cenou.",
+                _ => $"Analyticky target ukazuje cca +{upside:0.#}% nad aktualni cenou."
             };
         }
 

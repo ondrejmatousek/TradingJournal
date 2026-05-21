@@ -10,15 +10,18 @@ namespace TradingJournal.Controllers
         private readonly ILogger<HomeController> _logger;
         private readonly MarketBiasService _marketBiasService;
         private readonly StockRadarService _stockRadarService;
+        private readonly HomeInsightService _homeInsightService;
 
         public HomeController(
             ILogger<HomeController> logger,
             MarketBiasService marketBiasService,
-            StockRadarService stockRadarService)
+            StockRadarService stockRadarService,
+            HomeInsightService homeInsightService)
         {
             _logger = logger;
             _marketBiasService = marketBiasService;
             _stockRadarService = stockRadarService;
+            _homeInsightService = homeInsightService;
         }
 
         public IActionResult Index()
@@ -73,6 +76,61 @@ namespace TradingJournal.Controllers
                     message = "Stock radar se ted nepodarilo nacist."
                 });
             }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> MarketRegimeData(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var regime = await _homeInsightService.GetMarketRegimeAsync(cancellationToken);
+                return Json(regime);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not load market regime widget.");
+                return Json(new
+                {
+                    regime = "Mixed",
+                    tone = "neutral",
+                    score = 0,
+                    summary = "Trzni rezim se ted nepodarilo nacist.",
+                    drivers = Array.Empty<string>()
+                });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> EconomicCalendarData(CancellationToken cancellationToken)
+        {
+            try
+            {
+                return Json(new
+                {
+                    updatedAt = DateTimeOffset.Now.ToString("dd.MM. HH:mm"),
+                    items = await _homeInsightService.GetEconomicCalendarAsync(cancellationToken)
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not load economic calendar widget.");
+                return Json(new
+                {
+                    updatedAt = (string?)null,
+                    items = Array.Empty<object>(),
+                    message = "Makro kalendar se ted nepodarilo nacist."
+                });
+            }
+        }
+
+        [HttpGet]
+        public IActionResult SetupWatchlistData()
+        {
+            return Json(new
+            {
+                updatedAt = DateTimeOffset.Now.ToString("dd.MM. HH:mm"),
+                items = _homeInsightService.GetSetupWatchlist()
+            });
         }
 
         [HttpPost]
