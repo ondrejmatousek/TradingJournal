@@ -47,17 +47,20 @@ namespace TradingJournal.Services
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
         private readonly ILogger<HomeInsightService> _logger;
+        private readonly AppClock _clock;
 
         public HomeInsightService(
             MarketBiasService marketBiasService,
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration,
-            ILogger<HomeInsightService> logger)
+            ILogger<HomeInsightService> logger,
+            AppClock clock)
         {
             _marketBiasService = marketBiasService;
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
             _logger = logger;
+            _clock = clock;
         }
 
         public async Task<MarketRegimeCard> GetMarketRegimeAsync(CancellationToken cancellationToken = default)
@@ -106,7 +109,7 @@ namespace TradingJournal.Services
 
             try
             {
-                var today = DateTimeOffset.Now.Date;
+                var today = _clock.Now.Date;
                 var url = "https://financialmodelingprep.com/stable/economic-calendar" +
                     $"?from={today:yyyy-MM-dd}&to={today:yyyy-MM-dd}&apikey={Uri.EscapeDataString(apiKey)}";
 
@@ -148,9 +151,9 @@ namespace TradingJournal.Services
             }
         }
 
-        private static IReadOnlyList<EconomicEventCard> GetFallbackEconomicCalendar()
+        private IReadOnlyList<EconomicEventCard> GetFallbackEconomicCalendar()
         {
-            var now = DateTimeOffset.Now;
+            var now = _clock.Now;
             var events = new List<EconomicEventCard>
             {
                 new()
@@ -262,7 +265,7 @@ namespace TradingJournal.Services
             return $"{symbol}: {bias.Direction} ({bias.SignalScore:+#;-#;0})";
         }
 
-        private static EconomicEventCard? ParseEconomicEvent(JsonElement item)
+        private EconomicEventCard? ParseEconomicEvent(JsonElement item)
         {
             var title = ReadString(item, "event") ?? ReadString(item, "title") ?? ReadString(item, "name");
             if (string.IsNullOrWhiteSpace(title))
@@ -357,7 +360,7 @@ namespace TradingJournal.Services
             };
         }
 
-        private static string FormatEconomicEventTime(string? dateValue)
+        private string FormatEconomicEventTime(string? dateValue)
         {
             if (string.IsNullOrWhiteSpace(dateValue))
                 return "--:--";
@@ -368,7 +371,7 @@ namespace TradingJournal.Services
                 DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
                 out var parsed))
             {
-                return parsed.ToLocalTime().ToString("HH:mm");
+                return _clock.FormatTime(parsed);
             }
 
             return dateValue.Length >= 16 ? dateValue.Substring(11, 5) : "--:--";

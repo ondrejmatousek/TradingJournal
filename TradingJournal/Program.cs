@@ -18,6 +18,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<AppClock>();
 builder.Services.AddScoped<MarketBiasService>();
 builder.Services.AddScoped<StockRadarService>();
 builder.Services.AddScoped<HomeInsightService>();

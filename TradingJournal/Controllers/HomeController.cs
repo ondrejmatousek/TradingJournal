@@ -11,17 +11,20 @@ namespace TradingJournal.Controllers
         private readonly MarketBiasService _marketBiasService;
         private readonly StockRadarService _stockRadarService;
         private readonly HomeInsightService _homeInsightService;
+        private readonly AppClock _clock;
 
         public HomeController(
             ILogger<HomeController> logger,
             MarketBiasService marketBiasService,
             StockRadarService stockRadarService,
-            HomeInsightService homeInsightService)
+            HomeInsightService homeInsightService,
+            AppClock clock)
         {
             _logger = logger;
             _marketBiasService = marketBiasService;
             _stockRadarService = stockRadarService;
             _homeInsightService = homeInsightService;
+            _clock = clock;
         }
 
         public IActionResult Index()
@@ -37,7 +40,7 @@ namespace TradingJournal.Controllers
                 var model = await _marketBiasService.GetHomeMarketBiasAsync(cancellationToken);
                 return Json(new
                 {
-                    updatedAt = model.MarketBiasUpdatedAt?.ToLocalTime().ToString("dd.MM. HH:mm"),
+                    updatedAt = model.MarketBiasUpdatedAt is null ? null : _clock.FormatShort(model.MarketBiasUpdatedAt.Value),
                     items = model.MarketBiases
                 });
             }
@@ -61,7 +64,7 @@ namespace TradingJournal.Controllers
                 var stockRadar = await _stockRadarService.GetStockRadarAsync(cancellationToken);
                 return Json(new
                 {
-                    updatedAt = stockRadar.UpdatedAt?.ToLocalTime().ToString("dd.MM. HH:mm"),
+                    updatedAt = stockRadar.UpdatedAt is null ? null : _clock.FormatShort(stockRadar.UpdatedAt.Value),
                     message = stockRadar.Message,
                     items = stockRadar.Ideas
                 });
@@ -107,7 +110,7 @@ namespace TradingJournal.Controllers
             {
                 return Json(new
                 {
-                    updatedAt = DateTimeOffset.Now.ToString("dd.MM. HH:mm"),
+                    updatedAt = _clock.Now.ToString("dd.MM. HH:mm"),
                     items = await _homeInsightService.GetEconomicCalendarAsync(cancellationToken)
                 });
             }
@@ -128,7 +131,7 @@ namespace TradingJournal.Controllers
         {
             return Json(new
             {
-                updatedAt = DateTimeOffset.Now.ToString("dd.MM. HH:mm"),
+                updatedAt = _clock.Now.ToString("dd.MM. HH:mm"),
                 items = _homeInsightService.GetSetupWatchlist()
             });
         }
@@ -142,7 +145,7 @@ namespace TradingJournal.Controllers
                 var model = await _marketBiasService.GetHomeMarketBiasAsync(cancellationToken, forceRefresh: true);
                 return Json(new
                 {
-                    updatedAt = model.MarketBiasUpdatedAt?.ToLocalTime().ToString("dd.MM. HH:mm"),
+                    updatedAt = model.MarketBiasUpdatedAt is null ? null : _clock.FormatShort(model.MarketBiasUpdatedAt.Value),
                     items = model.MarketBiases
                 });
             }
