@@ -35,6 +35,7 @@
         MES = 61,  // Micro S&P 500 e-mini
         NQ = 62,   // Nasdaq e-mini
         MNQ = 63,  // Micro Nasdaq e-mini
+        US100 = 67, // Nasdaq 100 CFD / cash index
         CL = 64,    // Crude Oil
         GC = 65,    // Gold Futures
         MGC = 66,   // Micro Gold Futures
