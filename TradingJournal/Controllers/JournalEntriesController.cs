@@ -22,6 +22,18 @@ namespace TradingJournal.Controllers
         private string CurrentUserId =>
             User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
+        // GET: JournalEntries/TradeQuality
+        public IActionResult TradeQuality()
+        {
+            return View();
+        }
+
+        // GET: JournalEntries/Strategy
+        public IActionResult Strategy()
+        {
+            return View();
+        }
+
         // GET: JournalEntries/Analysis
         public async Task<IActionResult> Analysis()
         {

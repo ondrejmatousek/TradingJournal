@@ -59,6 +59,8 @@
                 {
                     <div class="sidebar-title">Trading</div>
                     <a class="sidebar-link @(action == "Index" ? "active" : "")" asp-controller="JournalEntries" asp-action="Index">Journal</a>
+                    <a class="sidebar-link @(action == "Strategy" ? "active" : "")" asp-controller="JournalEntries" asp-action="Strategy">Strategie</a>
+                    <a class="sidebar-link @(action == "TradeQuality" ? "active" : "")" asp-controller="JournalEntries" asp-action="TradeQuality">Kvalita tradu</a>
                     <a class="sidebar-link @(action == "Analysis" ? "active" : "")" asp-controller="JournalEntries" asp-action="Analysis">Analýza</a>
                 }
                 else if (isProgrammingSection)

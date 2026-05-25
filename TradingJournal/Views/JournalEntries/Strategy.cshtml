@@ -1,0 +1,226 @@
+@{
+    ViewData["Title"] = "Strategie";
+    ViewData["BodyClass"] = "journal-shell";
+}
+
+<div class="journal-page strategy-page">
+    <div class="journal-wrap strategy-wrap">
+        <div class="strategy-hero">
+            <div>
+                <p class="strategy-eyebrow">Trading playbook</p>
+                <h1>Petr Můčka setup</h1>
+                <p class="strategy-lead">
+                    Strukturovaný tahák pro intradenní vyhodnocení setupu. Entry model je až poslední potvrzení;
+                    bez kontextu, kvalitní zóny, liquidity, jasného TP a logického SL nemá samotný signál hodnotu.
+                </p>
+            </div>
+            <div class="strategy-hero-actions">
+                <span class="strategy-default-badge">Default strategie</span>
+                <a class="btn btn-primary" asp-controller="JournalEntries" asp-action="TradeQuality">Otevřít analyzer</a>
+            </div>
+        </div>
+
+        <section class="strategy-principle-card">
+            <div>
+                <span class="strategy-kicker">Základní princip</span>
+                <h2>Kvalitní trade je kombinace kontextu, zóny a exekuce.</h2>
+            </div>
+            <div class="strategy-principles">
+                <span>Daily bias / HTF kontext</span>
+                <span>Market structure</span>
+                <span>Kvalitní S/D nebo jiná zóna</span>
+                <span>Likvidita</span>
+                <span>Structure shift</span>
+                <span>Návrat do validní zóny</span>
+                <span>Jasný TP target</span>
+                <span>Logický SL</span>
+                <span>RRR minimálně 1:2</span>
+                <span>Validní obchodní čas</span>
+                <span>Zkontrolované news</span>
+            </div>
+        </section>
+
+        <div class="strategy-layout">
+            <section class="strategy-card strategy-card-large">
+                <div class="strategy-card-head">
+                    <span>01</span>
+                    <h2>Daily bias / kontext</h2>
+                </div>
+                <p>
+                    Ranní analýza začíná určením daily biasu. Může být bullish, bearish, neutral,
+                    případně dynamický při významných news. Pokud bias není jasný, setup není kompletně vyhodnocený.
+                </p>
+                <div class="strategy-check-list">
+                    <span>HTF kontext a price action</span>
+                    <span>Předchozí denní svíčka a close</span>
+                    <span>Supporty, rezistence a S/D zóny</span>
+                    <span>Session kontext, VWAP a fundamenty</span>
+                </div>
+                <div class="strategy-rule-note">
+                    Trade proti daily biasu musí mít silnější důvod: sweep liquidity, silnou HTF zónu,
+                    jasný structure shift, dobrý target a dobré RRR.
+                </div>
+            </section>
+
+            <section class="strategy-card">
+                <div class="strategy-card-head">
+                    <span>02</span>
+                    <h2>Kvalita S/D zóny</h2>
+                </div>
+                <p>
+                    S/D zóna není kvalitní jen proto, že je nakreslený box. Důležité je, co zóna způsobila.
+                </p>
+                <ul class="strategy-tight-list">
+                    <li>Vznikla před impulzivním pohybem.</li>
+                    <li>Pohyb ze zóny měl momentum a způsobil BOS.</li>
+                    <li>Cena se do ní vrací poprvé nebo není mnohokrát testovaná.</li>
+                    <li>SL za zónou dává smysl a TP má prostor.</li>
+                </ul>
+            </section>
+
+            <section class="strategy-card">
+                <div class="strategy-card-head">
+                    <span>03</span>
+                    <h2>Structure shift</h2>
+                </div>
+                <p>
+                    Shift potvrzuje, že se trh může otočit nebo pokračovat požadovaným směrem.
+                    Kvalitní shift má momentum a po něm vzniká návrat do validní vstupní zóny.
+                </p>
+                <div class="strategy-do-dont">
+                    <div>
+                        <strong>Fajfka</strong>
+                        <span>Silná změna struktury, návrat do FVG/S/D/GP/balančního levelu.</span>
+                    </div>
+                    <div>
+                        <strong>Křížek</strong>
+                        <span>Slabý CHoCH bez síly, vstup uprostřed range nebo proti HTF bez důvodu.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="strategy-card strategy-card-large">
+                <div class="strategy-card-head">
+                    <span>04</span>
+                    <h2>Entry model</h2>
+                </div>
+                <p>
+                    Entry model je poslední část setupu, ne samostatný důvod ke vstupu. Fajfku dostane
+                    pouze tehdy, když dává smysl v celém kontextu.
+                </p>
+                <div class="strategy-mini-grid">
+                    <span>Kvalitní zóna</span>
+                    <span>Reakce ceny</span>
+                    <span>Structure shift</span>
+                    <span>Návrat do oblasti</span>
+                    <span>Validní čas</span>
+                    <span>Jasný SL</span>
+                    <span>Jasný TP</span>
+                    <span>RRR 1:2+</span>
+                    <span>Započítaný spread</span>
+                    <span>Logický limit entry</span>
+                </div>
+            </section>
+
+            <section class="strategy-card">
+                <div class="strategy-card-head">
+                    <span>05</span>
+                    <h2>Vstupní zóny</h2>
+                </div>
+                <p>Ne každý setup musí mít všechny zóny. Stačí jedna až dvě silné zóny, pokud dávají smysl v kontextu.</p>
+                <div class="strategy-timeframes">
+                    <div><strong>1m</strong><span>Fibonacci, S/D, balanční levely, liquidity, fixed range.</span></div>
+                    <div><strong>5m</strong><span>Fibonacci, FVG, balanční levely, S/D, liquidity, fixed range.</span></div>
+                    <div><strong>15m</strong><span>Podobný entry model jako na 5m, ale selektivněji.</span></div>
+                </div>
+            </section>
+
+            <section class="strategy-card">
+                <div class="strategy-card-head">
+                    <span>06</span>
+                    <h2>Konfluence</h2>
+                </div>
+                <p>
+                    GP, 0.382, FVG, nPOC, VWAP, dOpen nebo DXY nejsou automaticky povinné.
+                    Prázdné znamená, že nejsou relevantní pro konkrétní model.
+                </p>
+                <div class="strategy-rule-note">
+                    Chybějící konfluence není chyba. Křížek dávej jen tehdy, když je faktor jasně proti tradu
+                    nebo byl povinnou součástí modelu.
+                </div>
+            </section>
+
+            <section class="strategy-card">
+                <div class="strategy-card-head">
+                    <span>07</span>
+                    <h2>Likvidita</h2>
+                </div>
+                <p>
+                    Likvidita je často nad high nebo pod low, u session high/low, Asian high/low, dOpen
+                    nebo jiných zřetelných úrovní.
+                </p>
+                <ul class="strategy-tight-list">
+                    <li>Nejdřív sweep liquidity.</li>
+                    <li>Potom reakce z validní zóny.</li>
+                    <li>Následně structure shift.</li>
+                    <li>TP míří na další logickou liquidity.</li>
+                </ul>
+            </section>
+
+            <section class="strategy-card">
+                <div class="strategy-card-head">
+                    <span>08</span>
+                    <h2>TP, SL a RRR</h2>
+                </div>
+                <p>
+                    Trade bez jasného TP není validní. SL musí být za logickou invalidační úrovní,
+                    ne náhodně podle toho, aby vyšlo RRR.
+                </p>
+                <div class="strategy-do-dont">
+                    <div>
+                        <strong>TP</strong>
+                        <span>Liquidity, Asia high/low, nPOC/POC, Close VWAP, dOpen, S/D, previous day high/low.</span>
+                    </div>
+                    <div>
+                        <strong>RRR</strong>
+                        <span>Minimum 1:2. Průměrný cíl strategie je přibližně 1:2.5.</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <section class="strategy-decision-panel">
+            <div class="strategy-state-card yes">
+                <span>Fajfka</span>
+                <strong>Faktor setup opravdu podporuje.</strong>
+            </div>
+            <div class="strategy-state-card no">
+                <span>Křížek</span>
+                <strong>Faktor je proti setupu nebo chybí povinná část modelu.</strong>
+            </div>
+            <div class="strategy-state-card empty">
+                <span>Prázdné</span>
+                <strong>Faktor není použitý, relevantní nebo potřebný.</strong>
+            </div>
+        </section>
+
+        <section class="strategy-no-trade">
+            <div>
+                <p class="strategy-eyebrow">No trade pravidla</p>
+                <h2>Neobchoduji, pokud setup stojí jen na jedné slabé konfluenci.</h2>
+            </div>
+            <div class="strategy-no-trade-grid">
+                <span>Nevím daily bias</span>
+                <span>Není kvalitní zóna</span>
+                <span>Není structure shift</span>
+                <span>Vstup je uprostřed ničeho</span>
+                <span>Není jasný TP</span>
+                <span>SL není logický</span>
+                <span>RRR je pod 1:2</span>
+                <span>Trade je mimo obchodní čas</span>
+                <span>Nejsou zkontrolované news</span>
+                <span>Vstupuji z emocí nebo FOMO</span>
+            </div>
+        </section>
+    </div>
+</div>
