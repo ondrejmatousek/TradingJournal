@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.Security.Claims;
 using TradingJournal.Data;
 using TradingJournal.Models;
@@ -177,8 +178,26 @@ namespace TradingJournal.Controllers
             if (!entry.ExitPrice.HasValue || entry.EntryPrice == 0)
                 return null;
 
-            var rawMove = entry.ExitPrice.Value - entry.EntryPrice;
+            var entryPrice = NormalizePriceForAnalysis(entry.Asset, entry.EntryPrice);
+            var exitPrice = NormalizePriceForAnalysis(entry.Asset, entry.ExitPrice.Value);
+            var rawMove = exitPrice - entryPrice;
             return entry.Side == PositionSide.Long ? rawMove : -rawMove;
+        }
+
+        private static decimal NormalizePriceForAnalysis(AssetSymbol asset, decimal price)
+        {
+            if (!IsForexAsset(asset) || price <= 10m)
+                return price;
+
+            while (price > 10m)
+                price /= 10m;
+
+            return price;
+        }
+
+        private static bool IsForexAsset(AssetSymbol asset)
+        {
+            return asset is AssetSymbol.EURUSD or AssetSymbol.GBPUSD;
         }
 
         // GET: JournalEntries
@@ -340,6 +359,8 @@ namespace TradingJournal.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(JournalEntry entry, IReadOnlyList<IFormFile>? imageFiles, IFormFile? imageFile)
         {
+            ApplyDecimalFormValues(entry);
+
             // Server-side vlastnictví + created timestamp
             entry.UserId = CurrentUserId;
             entry.CreatedAt = DateTimeOffset.UtcNow;
@@ -378,6 +399,8 @@ namespace TradingJournal.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, JournalEntry form, IReadOnlyList<IFormFile>? imageFiles, IFormFile? imageFile, bool removeImage = false)
         {
+            ApplyDecimalFormValues(form);
+
             var userId = CurrentUserId;
 
             // Načteme původní záznam patřící uživateli
@@ -465,6 +488,56 @@ namespace TradingJournal.Controllers
             entry.ExitTime = null;
             entry.ExitPrice = null;
             entry.Outcome = TradeOutcome.Unknown;
+        }
+
+        private void ApplyDecimalFormValues(JournalEntry entry)
+        {
+            if (TryReadDecimalFromForm(nameof(JournalEntry.RiskPercentage), out var riskPercentage) && riskPercentage.HasValue)
+                entry.RiskPercentage = riskPercentage.Value;
+
+            if (TryReadDecimalFromForm(nameof(JournalEntry.EntryPrice), out var entryPrice) && entryPrice.HasValue)
+                entry.EntryPrice = entryPrice.Value;
+
+            if (TryReadDecimalFromForm(nameof(JournalEntry.ExitPrice), out var exitPrice))
+                entry.ExitPrice = exitPrice;
+        }
+
+        private bool TryReadDecimalFromForm(string key, out decimal? value)
+        {
+            value = null;
+
+            if (!Request.HasFormContentType || !Request.Form.TryGetValue(key, out var formValue))
+                return false;
+
+            var rawValue = formValue.ToString().Trim();
+            if (string.IsNullOrWhiteSpace(rawValue))
+                return true;
+
+            var normalized = NormalizeDecimalInput(rawValue);
+            if (decimal.TryParse(normalized, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+            {
+                value = parsed;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string NormalizeDecimalInput(string value)
+        {
+            var normalized = value.Trim().Replace(" ", string.Empty);
+            var lastComma = normalized.LastIndexOf(',');
+            var lastDot = normalized.LastIndexOf('.');
+
+            if (lastComma >= 0 && lastDot >= 0)
+            {
+                var decimalSeparator = lastComma > lastDot ? ',' : '.';
+                var thousandsSeparator = decimalSeparator == ',' ? "." : ",";
+                normalized = normalized.Replace(thousandsSeparator, string.Empty);
+                return normalized.Replace(decimalSeparator, '.');
+            }
+
+            return normalized.Replace(',', '.');
         }
 
         private async Task ApplyImageUploadsAsync(JournalEntry entry, IReadOnlyList<IFormFile>? imageFiles, IFormFile? legacyImageFile)
