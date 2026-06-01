@@ -15,6 +15,7 @@
                     <option>EUR/USD</option>
                     <option>XAU/USD</option>
                     <option>NQ</option>
+                    <option>6E</option>
                     <option>GBP/USD</option>
                     <option>XAG/USD</option>
                     <option>Other</option>
@@ -23,6 +24,15 @@
                     <option value="long">Long</option>
                     <option value="short">Short</option>
                 </select>
+                <label class="quality-risk-field quality-time-field">
+                    <span>Čas</span>
+                    <input type="time" id="tradeTime" aria-label="Čas vstupu" />
+                </label>
+                <button type="button" class="btn btn-outline-secondary quality-now-button" id="useCurrentTime">Teď</button>
+                <label class="quality-risk-field quality-account-field">
+                    <span>Účet</span>
+                    <input type="text" id="accountSize" inputmode="decimal" aria-label="Velikost účtu" />
+                </label>
                 <label class="quality-risk-field">
                     <span>Entry</span>
                     <input type="text" id="entryPrice" inputmode="decimal" aria-label="Entry price" />
@@ -41,6 +51,27 @@
                 </label>
                 <button type="button" class="btn btn-outline-secondary" id="qualityReset">Reset</button>
             </div>
+        </div>
+
+        <div class="quality-position-card" id="qualityPositionCard">
+            <div>
+                <span class="quality-session-label">Position sizing</span>
+                <strong>Otevři <span id="topPositionSize">-</span></strong>
+                <p id="topPositionHint">Zadej velikost účtu, risk %, Entry a SL.</p>
+            </div>
+            <div class="quality-position-stats">
+                <div><span>Risk částka</span><strong id="topRiskAmount">-</strong></div>
+                <div><span>RRR</span><strong id="topRrr">-</strong></div>
+                <div><span>Instrument</span><strong id="topInstrument">-</strong></div>
+            </div>
+        </div>
+
+        <div class="quality-session-card is-empty" id="sessionWindowResult">
+            <div>
+                <span class="quality-session-label">Časové okno</span>
+                <strong>Zadej čas vstupu</strong>
+            </div>
+            <p>Vyhodnotím, jestli čas spadá do Frankfurt, London nebo NY killzone podle strategie.</p>
         </div>
 
         <div class="trade-quality-board quality-compact-board quality-strategy-board">
@@ -86,6 +117,8 @@
                     <div><span>Setup</span><strong id="qualityGrade">NEVYHODNOCENO</strong></div>
                     <div><span>RRR</span><strong id="qualityRrr">-</strong></div>
                     <div><span>Risk</span><strong id="qualityRisk">0,00 %</strong></div>
+                    <div><span>Risk částka</span><strong id="qualityRiskAmount">-</strong></div>
+                    <div><span>Pozice</span><strong id="qualityPositionSize">-</strong></div>
                 </div>
 
                 <p id="qualityRecommendation">Vyhodnoť povinné položky. Nepoužité konfluence nech prázdné.</p>
@@ -202,6 +235,43 @@
 
             const states = Object.fromEntries(rules.map(rule => [rule.id, "empty"]));
             const manuallyChangedRules = new Set();
+            const sessionWindows = [
+                {
+                    name: "Frankfurt open",
+                    start: "08:00",
+                    end: "09:30",
+                    strength: "valid",
+                    detail: "Validní ranní okno. Hledej jasný HTF kontext, liquidity a návrat do zóny."
+                },
+                {
+                    name: "London open",
+                    start: "09:00",
+                    end: "11:00",
+                    strength: "valid",
+                    detail: "Hlavní evropské okno. Dobré pro EUR/USD, GBP/USD i zlato, pokud sedí bias a news."
+                },
+                {
+                    name: "NY precision window",
+                    start: "15:40",
+                    end: "16:10",
+                    strength: "prime",
+                    detail: "Nejpřesnější US okno. Po úvodní volatilitě hledej potvrzený shift a návrat do validní zóny."
+                },
+                {
+                    name: "NY open",
+                    start: "15:30",
+                    end: "17:00",
+                    strength: "valid",
+                    detail: "Silné US okno. Pozor na news a první impuls po otevření trhu."
+                },
+                {
+                    name: "NY continuation",
+                    start: "20:00",
+                    end: "21:00",
+                    strength: "conditional",
+                    detail: "Pouze selektivně. Obchoduj jen jasný continuation/retest, ne náhodný pozdní impulse."
+                }
+            ];
             const sectionTargets = {
                 context: document.getElementById("rules-context"),
                 zone: document.getElementById("rules-zone"),
@@ -222,18 +292,31 @@
                 percent: document.getElementById("qualityPercent"),
                 risk: document.getElementById("qualityRisk"),
                 rrr: document.getElementById("qualityRrr"),
+                riskAmount: document.getElementById("qualityRiskAmount"),
+                positionSize: document.getElementById("qualityPositionSize"),
+                topPositionSize: document.getElementById("topPositionSize"),
+                topRiskAmount: document.getElementById("topRiskAmount"),
+                topRrr: document.getElementById("topRrr"),
+                topInstrument: document.getElementById("topInstrument"),
+                topPositionHint: document.getElementById("topPositionHint"),
+                positionCard: document.getElementById("qualityPositionCard"),
                 missingRequired: document.getElementById("qualityMissingRequired"),
                 blockers: document.getElementById("qualityBlockers"),
                 conflicts: document.getElementById("qualityConflicts")
             };
             const inputs = {
+                instrument: document.getElementById("instrument"),
                 direction: document.getElementById("direction"),
+                tradeTime: document.getElementById("tradeTime"),
+                accountSize: document.getElementById("accountSize"),
                 entry: document.getElementById("entryPrice"),
                 stop: document.getElementById("stopLossPrice"),
                 take: document.getElementById("takeProfitPrice"),
                 standardRisk: document.getElementById("standardRiskPercent")
             };
             const reset = document.getElementById("qualityReset");
+            const sessionResult = document.getElementById("sessionWindowResult");
+            const useCurrentTime = document.getElementById("useCurrentTime");
 
             function clamp(value, min, max) {
                 return Math.max(min, Math.min(max, value));
@@ -245,8 +328,87 @@
                 return Number.isFinite(parsed) ? parsed : 0;
             }
 
+            function toMinutes(time) {
+                const match = /^(\d{1,2}):(\d{2})$/.exec(String(time || ""));
+                if (!match) return null;
+
+                const hours = Number(match[1]);
+                const minutes = Number(match[2]);
+                if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+
+                return (hours * 60) + minutes;
+            }
+
+            function isWithinWindow(value, window) {
+                const minutes = toMinutes(value);
+                const start = toMinutes(window.start);
+                const end = toMinutes(window.end);
+
+                if (minutes === null || start === null || end === null) return false;
+                if (start <= end) return minutes >= start && minutes <= end;
+
+                return minutes >= start || minutes <= end;
+            }
+
+            function evaluateSessionWindow() {
+                const value = inputs.tradeTime.value;
+                if (!value) {
+                    return {
+                        state: "empty",
+                        title: "Zadej čas vstupu",
+                        detail: "Vyhodnotím, jestli čas spadá do Frankfurt, London nebo NY killzone podle strategie."
+                    };
+                }
+
+                const matchedWindow = sessionWindows
+                    .filter(window => isWithinWindow(value, window))
+                    .sort((first, second) => {
+                        const firstDuration = Math.abs(toMinutes(first.end) - toMinutes(first.start));
+                        const secondDuration = Math.abs(toMinutes(second.end) - toMinutes(second.start));
+                        return firstDuration - secondDuration;
+                    })[0];
+                if (!matchedWindow) {
+                    return {
+                        state: "no",
+                        title: `${value} není validní vstupní okno`,
+                        detail: "Mimo hlavní plán. Bez extrémně silného kontextu raději NO TRADE."
+                    };
+                }
+
+                const prefix = matchedWindow.strength === "prime" ? "Prime okno" : matchedWindow.strength === "conditional" ? "Podmíněně validní" : "Validní okno";
+                return {
+                    state: matchedWindow.strength === "conditional" ? "yes" : "yes",
+                    title: `${prefix}: ${matchedWindow.name} ${matchedWindow.start}-${matchedWindow.end}`,
+                    detail: matchedWindow.detail
+                };
+            }
+
+            function syncSessionRule() {
+                const session = evaluateSessionWindow();
+
+                sessionResult.classList.toggle("is-empty", session.state === "empty");
+                sessionResult.classList.toggle("is-valid", session.state === "yes");
+                sessionResult.classList.toggle("is-invalid", session.state === "no");
+                sessionResult.querySelector("strong").textContent = session.title;
+                sessionResult.querySelector("p").textContent = session.detail;
+
+                if (manuallyChangedRules.has("market_open_time")) return;
+
+                states.market_open_time = session.state;
+                syncRuleElement("market_open_time");
+            }
+
             function formatPercent(value) {
                 return value.toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " %";
+            }
+
+            function formatMoney(value) {
+                return value.toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            function formatSize(value, suffix) {
+                const digits = value >= 10 ? 2 : 3;
+                return value.toLocaleString("cs-CZ", { minimumFractionDigits: 0, maximumFractionDigits: digits }) + " " + suffix;
             }
 
             function getGrade(score) {
@@ -302,6 +464,55 @@
                 return reward / risk;
             }
 
+            function getInstrumentSpec() {
+                const specs = {
+                    "EUR/USD": { type: "cfd", suffix: "lot", label: "CFD forex", pipSize: 0.0001, pipValuePerLot: 10 },
+                    "GBP/USD": { type: "cfd", suffix: "lot", label: "CFD forex", pipSize: 0.0001, pipValuePerLot: 10 },
+                    "XAU/USD": { type: "cfd", suffix: "lot", label: "CFD XAUUSD", contractSize: 100 },
+                    "XAG/USD": { type: "cfd", suffix: "lot", label: "CFD XAGUSD", contractSize: 5000 },
+                    "NQ": { type: "futures", suffix: "kontr.", label: "Futures NQ", tickSize: 0.25, tickValue: 5 },
+                    "6E": { type: "futures", suffix: "kontr.", label: "Futures 6E", tickSize: 0.00005, tickValue: 6.25 },
+                    "Other": { type: "generic", suffix: "jedn.", label: "Obecný výpočet" }
+                };
+
+                return specs[inputs.instrument.value] || specs.Other;
+            }
+
+            function calculatePositionSize() {
+                const accountSize = parseDecimal(inputs.accountSize.value);
+                const riskPercent = parseDecimal(inputs.standardRisk.value);
+                const entry = parseDecimal(inputs.entry.value);
+                const stop = parseDecimal(inputs.stop.value);
+
+                if (accountSize <= 0 || riskPercent <= 0 || entry <= 0 || stop <= 0) {
+                    return null;
+                }
+
+                const distance = Math.abs(entry - stop);
+                if (distance <= 0) return null;
+
+                const riskAmount = accountSize * (riskPercent / 100);
+                const spec = getInstrumentSpec();
+                let riskPerUnit = distance;
+
+                if (spec.type === "cfd" && spec.pipSize && spec.pipValuePerLot) {
+                    riskPerUnit = (distance / spec.pipSize) * spec.pipValuePerLot;
+                } else if (spec.type === "cfd" && spec.contractSize) {
+                    riskPerUnit = distance * spec.contractSize;
+                } else if (spec.type === "futures") {
+                    riskPerUnit = (distance / spec.tickSize) * spec.tickValue;
+                }
+
+                if (!Number.isFinite(riskPerUnit) || riskPerUnit <= 0) return null;
+
+                return {
+                    riskAmount,
+                    size: riskAmount / riskPerUnit,
+                    suffix: spec.suffix,
+                    label: spec.label
+                };
+            }
+
             function syncRrrRule() {
                 if (manuallyChangedRules.has("rr_minimum")) return;
 
@@ -309,6 +520,13 @@
                 const nextState = rrr === null ? "empty" : rrr >= 2 ? "yes" : "no";
                 states.rr_minimum = nextState;
                 syncRuleElement("rr_minimum");
+            }
+
+            function syncPositionSizeRule() {
+                if (manuallyChangedRules.has("position_size_defined")) return;
+
+                states.position_size_defined = calculatePositionSize() ? "yes" : "empty";
+                syncRuleElement("position_size_defined");
             }
 
             function calculateSetupQuality(rules, states, conflictPenalties, standardRiskPercent) {
@@ -448,10 +666,13 @@
             }
 
             function update() {
+                syncSessionRule();
                 syncRrrRule();
+                syncPositionSizeRule();
                 const standardRiskPercent = Math.max(0, parseDecimal(inputs.standardRisk.value));
                 const result = calculateSetupQuality(rules, states, conflictPenalties, standardRiskPercent);
                 const rrr = calculateRrr();
+                const position = calculatePositionSize();
 
                 output.pro.textContent = result.proCount;
                 output.contra.textContent = result.contraCount;
@@ -464,6 +685,16 @@
                 output.recommendation.textContent = result.recommendation;
                 output.risk.textContent = formatPercent(result.suggestedRiskPercent);
                 output.rrr.textContent = rrr === null ? "-" : rrr.toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "R";
+                output.riskAmount.textContent = position ? formatMoney(position.riskAmount) : "-";
+                output.positionSize.textContent = position ? formatSize(position.size, position.suffix) : "-";
+                output.topPositionSize.textContent = position ? formatSize(position.size, position.suffix) : "-";
+                output.topRiskAmount.textContent = position ? formatMoney(position.riskAmount) : "-";
+                output.topRrr.textContent = rrr === null ? "-" : rrr.toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "R";
+                output.topInstrument.textContent = position ? position.label : getInstrumentSpec().label;
+                output.topPositionHint.textContent = position
+                    ? `Riskuješ ${formatMoney(position.riskAmount)} při stopu ${Math.abs(parseDecimal(inputs.entry.value) - parseDecimal(inputs.stop.value)).toLocaleString("cs-CZ", { maximumFractionDigits: 5 })}.`
+                    : "Zadej velikost účtu, risk %, Entry a SL.";
+                output.positionCard.classList.toggle("is-ready", Boolean(position));
 
                 renderText(output.missingRequired, "Missing required", result.missingRequired, "žádné");
                 renderText(output.blockers, "Hard blockers", result.blockers, "žádné");
@@ -473,6 +704,8 @@
 
             reset.addEventListener("click", () => {
                 manuallyChangedRules.clear();
+                inputs.tradeTime.value = "";
+                inputs.accountSize.value = "";
                 rules.forEach(rule => {
                     states[rule.id] = "empty";
                     syncRuleElement(rule.id);
@@ -480,7 +713,14 @@
                 update();
             });
 
-            [inputs.direction, inputs.entry, inputs.stop, inputs.take, inputs.standardRisk].forEach(input => {
+            useCurrentTime.addEventListener("click", () => {
+                const now = new Date();
+                inputs.tradeTime.value = now.toTimeString().slice(0, 5);
+                manuallyChangedRules.delete("market_open_time");
+                update();
+            });
+
+            [inputs.instrument, inputs.direction, inputs.tradeTime, inputs.accountSize, inputs.entry, inputs.stop, inputs.take, inputs.standardRisk].forEach(input => {
                 input.addEventListener("input", update);
                 input.addEventListener("change", update);
             });

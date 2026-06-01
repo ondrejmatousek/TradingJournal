@@ -2970,6 +2970,142 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   text-align: right;
 }
 
+.quality-time-field input,
+.quality-account-field input {
+  max-width: 104px;
+}
+
+.quality-time-field input {
+  text-align: center;
+}
+
+.quality-now-button {
+  border-radius: 999px;
+  font-weight: 900;
+  min-height: 42px;
+  padding-left: 0.95rem;
+  padding-right: 0.95rem;
+}
+
+.quality-session-card {
+  align-items: center;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025)),
+    rgba(18, 20, 22, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.18);
+  color: var(--tj-text);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+  padding: 0.78rem 1rem;
+}
+
+.quality-session-card strong {
+  display: block;
+  font-size: 0.98rem;
+  font-weight: 900;
+}
+
+.quality-session-card p {
+  color: var(--tj-muted);
+  font-size: 0.82rem;
+  margin: 0;
+  text-align: right;
+}
+
+.quality-session-label {
+  color: var(--tj-teal);
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.quality-session-card.is-valid {
+  background:
+    linear-gradient(145deg, rgba(32, 199, 185, 0.15), rgba(255, 255, 255, 0.025)),
+    rgba(18, 20, 22, 0.9);
+  border-color: rgba(32, 199, 185, 0.34);
+}
+
+.quality-session-card.is-invalid {
+  background:
+    linear-gradient(145deg, rgba(224, 61, 102, 0.16), rgba(255, 255, 255, 0.025)),
+    rgba(18, 20, 22, 0.9);
+  border-color: rgba(224, 61, 102, 0.38);
+}
+
+.quality-position-card {
+  align-items: center;
+  background:
+    linear-gradient(145deg, rgba(111, 99, 255, 0.12), rgba(32, 199, 185, 0.07)),
+    rgba(18, 20, 22, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+  padding: 0.85rem 1rem;
+}
+
+.quality-position-card strong {
+  color: var(--tj-text);
+  display: block;
+  font-size: clamp(1.15rem, 1.6vw, 1.65rem);
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.quality-position-card #topPositionSize {
+  color: #7ef2e7;
+}
+
+.quality-position-card p {
+  color: var(--tj-muted);
+  font-size: 0.82rem;
+  margin: 0.25rem 0 0;
+}
+
+.quality-position-card.is-ready {
+  border-color: rgba(32, 199, 185, 0.34);
+}
+
+.quality-position-stats {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(118px, 1fr));
+  min-width: min(540px, 48vw);
+}
+
+.quality-position-stats div {
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  display: grid;
+  gap: 0.12rem;
+  min-height: 48px;
+  padding: 0.45rem 0.6rem;
+}
+
+.quality-position-stats span {
+  color: var(--tj-muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.quality-position-stats strong {
+  font-size: 0.92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .quality-section-card {
   display: grid;
   gap: 0.65rem;
@@ -3631,6 +3767,15 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 }
 
 @media (max-width: 1500px) {
+  .trade-quality-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .trade-quality-controls {
+    flex-wrap: wrap;
+  }
+
   .quality-strategy-board .quality-side-stack {
     grid-template-columns: 1fr;
   }
@@ -3645,6 +3790,26 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 }
 
 @media (max-width: 1100px) {
+  .quality-session-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .quality-session-card p {
+    text-align: left;
+  }
+
+  .quality-position-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .quality-position-stats {
+    grid-template-columns: 1fr;
+    min-width: 0;
+    width: 100%;
+  }
+
   .quality-strategy-board.trade-quality-board {
     grid-template-areas:
       "context"
