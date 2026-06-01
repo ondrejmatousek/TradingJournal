@@ -65,8 +65,10 @@
                 }
                 else if (isProgrammingSection)
                 {
+                    var isCompanyAction = action.Contains("Company") || action == "Companies";
                     <div class="sidebar-title">Programování</div>
-                    <a class="sidebar-link @(controller == "Invoices" ? "active" : "")" asp-controller="Invoices" asp-action="Index">Fakturace</a>
+                    <a class="sidebar-link @(!isCompanyAction ? "active" : "")" asp-controller="Invoices" asp-action="Index">Fakturace</a>
+                    <a class="sidebar-link @(isCompanyAction ? "active" : "")" asp-controller="Invoices" asp-action="Companies">Firmy</a>
                 }
             </aside>
         }
