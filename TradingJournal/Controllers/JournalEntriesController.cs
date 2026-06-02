@@ -205,7 +205,9 @@ namespace TradingJournal.Controllers
             AssetSymbol? asset,
             TradeOutcome? outcome,
             PositionSide? side,
-            bool planOnly = false)
+            bool planOnly = false,
+            DateOnly? month = null,
+            DateOnly? selectedDate = null)
         {
             var userId = CurrentUserId;
 
@@ -233,6 +235,21 @@ namespace TradingJournal.Controllers
                 .OrderByDescending(e => e.EntryTime ?? e.CreatedAt)
                 .ToList();
 
+            var localToday = DateOnly.FromDateTime(DateTime.Now);
+            var selectedCalendarDate = selectedDate ?? entries
+                .Select(e => DateOnly.FromDateTime((e.EntryTime ?? e.CreatedAt).LocalDateTime))
+                .DefaultIfEmpty(localToday)
+                .Max();
+            var calendarMonth = month ?? new DateOnly(selectedCalendarDate.Year, selectedCalendarDate.Month, 1);
+            calendarMonth = new DateOnly(calendarMonth.Year, calendarMonth.Month, 1);
+            selectedCalendarDate = selectedDate ?? selectedCalendarDate;
+
+            var calendar = BuildJournalCalendar(entries, calendarMonth, selectedCalendarDate);
+            var selectedDayEntries = entries
+                .Where(e => DateOnly.FromDateTime((e.EntryTime ?? e.CreatedAt).LocalDateTime) == selectedCalendarDate)
+                .OrderBy(e => e.EntryTime ?? e.CreatedAt)
+                .ToList();
+
             var completedTrades = entries
                 .Where(e => e.Outcome is TradeOutcome.Win or TradeOutcome.Loss or TradeOutcome.Breakeven)
                 .ToList();
@@ -257,12 +274,15 @@ namespace TradingJournal.Controllers
             var model = new JournalIndexViewModel
             {
                 Entries = entries,
+                SelectedDayEntries = selectedDayEntries,
                 Filters = new JournalIndexFilters
                 {
                     Asset = asset,
                     Outcome = outcome,
                     Side = side,
-                    PlanOnly = planOnly
+                    PlanOnly = planOnly,
+                    Month = calendarMonth,
+                    SelectedDate = selectedCalendarDate
                 },
                 Stats = new JournalStats
                 {
@@ -277,6 +297,7 @@ namespace TradingJournal.Controllers
                     BestAsset = bestAsset?.Asset,
                     BestAssetWinRate = bestAsset?.WinRate
                 },
+                Calendar = calendar,
                 AssetOptions = Enum.GetValues<AssetSymbol>()
                     .Select(value => new SelectListItem(value.ToString(), value.ToString(), value == asset))
                     .ToList(),
@@ -289,6 +310,48 @@ namespace TradingJournal.Controllers
             };
 
             return View(model);
+        }
+
+        private static JournalCalendar BuildJournalCalendar(IReadOnlyList<JournalEntry> entries, DateOnly month, DateOnly selectedDate)
+        {
+            var firstOfMonth = new DateOnly(month.Year, month.Month, 1);
+            var daysBeforeMonth = (int)firstOfMonth.DayOfWeek;
+            var firstVisibleDay = firstOfMonth.AddDays(-daysBeforeMonth);
+            var days = new List<JournalCalendarDay>(42);
+
+            var daySummaries = entries
+                .GroupBy(e => DateOnly.FromDateTime((e.EntryTime ?? e.CreatedAt).LocalDateTime))
+                .ToDictionary(
+                    g => g.Key,
+                    g => new
+                    {
+                        TradeCount = g.Count(),
+                        NetMove = g.Sum(entry => CalculatePriceMove(entry) ?? 0)
+                    });
+
+            for (var i = 0; i < 42; i++)
+            {
+                var date = firstVisibleDay.AddDays(i);
+                daySummaries.TryGetValue(date, out var summary);
+
+                days.Add(new JournalCalendarDay
+                {
+                    Date = date,
+                    IsCurrentMonth = date.Month == month.Month && date.Year == month.Year,
+                    IsSelected = date == selectedDate,
+                    TradeCount = summary?.TradeCount ?? 0,
+                    NetMove = summary?.NetMove ?? 0
+                });
+            }
+
+            return new JournalCalendar
+            {
+                Month = month,
+                PreviousMonth = firstOfMonth.AddMonths(-1),
+                NextMonth = firstOfMonth.AddMonths(1),
+                SelectedDate = selectedDate,
+                Days = days
+            };
         }
 
         // GET: JournalEntries/Details/5

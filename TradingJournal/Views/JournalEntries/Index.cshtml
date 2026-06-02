@@ -1,14 +1,49 @@
 @model TradingJournal.ViewModels.JournalIndexViewModel
 @using TradingJournal.Models
+@using System.Globalization
 
 @{
     ViewData["Title"] = "Journal";
     ViewData["BodyClass"] = "journal-shell";
+    var czechCulture = new CultureInfo("cs-CZ");
 
     var hasActiveFilters = Model.Filters.Asset.HasValue
         || Model.Filters.Outcome.HasValue
         || Model.Filters.Side.HasValue
         || Model.Filters.PlanOnly;
+
+    string SignedMove(decimal value)
+    {
+        if (value > 0)
+            return "+" + value.ToString("0.##", czechCulture);
+
+        return value.ToString("0.##", czechCulture);
+    }
+
+    decimal? PriceMove(JournalEntry entry)
+    {
+        if (!entry.ExitPrice.HasValue || entry.EntryPrice == 0)
+            return null;
+
+        decimal NormalizePrice(AssetSymbol asset, decimal price)
+        {
+            if ((asset == AssetSymbol.EURUSD || asset == AssetSymbol.GBPUSD) && price > 10m)
+            {
+                while (price > 10m)
+                    price /= 10m;
+            }
+
+            return price;
+        }
+
+        var entryPrice = NormalizePrice(entry.Asset, entry.EntryPrice);
+        var exitPrice = NormalizePrice(entry.Asset, entry.ExitPrice.Value);
+        var rawMove = exitPrice - entryPrice;
+        return entry.Side == PositionSide.Long ? rawMove : -rawMove;
+    }
+
+    var selectedDayTitle = Model.Calendar.SelectedDate.ToDateTime(TimeOnly.MinValue).ToString("d. MMMM yyyy", czechCulture);
+    var monthTitle = Model.Calendar.Month.ToDateTime(TimeOnly.MinValue).ToString("MMMM yyyy", czechCulture);
 }
 
 <div class="journal-page">
@@ -88,6 +123,9 @@
 
         <form method="get" class="app-card filter-panel mb-4">
             <div class="card-body">
+                <input type="hidden" name="month" value="@Model.Calendar.Month.ToString("yyyy-MM-dd")" />
+                <input type="hidden" name="selectedDate" value="@Model.Calendar.SelectedDate.ToString("yyyy-MM-dd")" />
+
                 <div class="row g-3 align-items-end">
                     <div class="col-md-3">
                         <label class="form-label">Asset</label>
@@ -141,117 +179,112 @@
         }
         else
         {
-            <div class="journal-list">
-                @foreach (var item in Model.Entries)
-                {
-                    var entry = item.EntryTime?.LocalDateTime;
-                    var exit = item.ExitTime?.LocalDateTime;
-                    var durationText = (entry.HasValue && exit.HasValue)
-                    ? (exit.Value - entry.Value).ToString(@"hh\:mm")
-                    : "-";
+            <section class="journal-calendar-section">
+                <div class="journal-calendar-header">
+                    <h2>@monthTitle</h2>
+                    <div class="journal-calendar-nav">
+                        <a asp-action="Index"
+                           asp-route-asset="@Model.Filters.Asset"
+                           asp-route-outcome="@Model.Filters.Outcome"
+                           asp-route-side="@Model.Filters.Side"
+                           asp-route-planOnly="@Model.Filters.PlanOnly"
+                           asp-route-month="@Model.Calendar.PreviousMonth.ToString("yyyy-MM-dd")"
+                           asp-route-selectedDate="@Model.Calendar.PreviousMonth.ToString("yyyy-MM-dd")"
+                           aria-label="Předchozí měsíc">←</a>
+                        <a asp-action="Index"
+                           asp-route-asset="@Model.Filters.Asset"
+                           asp-route-outcome="@Model.Filters.Outcome"
+                           asp-route-side="@Model.Filters.Side"
+                           asp-route-planOnly="@Model.Filters.PlanOnly"
+                           asp-route-month="@Model.Calendar.NextMonth.ToString("yyyy-MM-dd")"
+                           asp-route-selectedDate="@Model.Calendar.NextMonth.ToString("yyyy-MM-dd")"
+                           aria-label="Další měsíc">→</a>
+                    </div>
+                </div>
 
-                    string outcomeClass = item.Outcome switch
+                <div class="journal-calendar-grid">
+                    @foreach (var dayName in new[] { "Sun", "Mon", "Út", "St", "Čt", "Pá", "Sat" })
                     {
-                        TradeOutcome.Win => "bg-success",
-                        TradeOutcome.Loss => "bg-danger",
-                        TradeOutcome.Breakeven => "bg-secondary",
-                        _ => "bg-light text-dark border"
-                    };
+                        <div class="journal-calendar-weekday">@dayName</div>
+                    }
 
-                    var previewImage = item.Images.OrderBy(i => i.CreatedAt).FirstOrDefault();
+                    @foreach (var day in Model.Calendar.Days)
+                    {
+                        <a class="journal-calendar-day @day.Tone @(day.IsCurrentMonth ? "" : "muted-month") @(day.IsSelected ? "selected" : "")"
+                           asp-action="Index"
+                           asp-route-asset="@Model.Filters.Asset"
+                           asp-route-outcome="@Model.Filters.Outcome"
+                           asp-route-side="@Model.Filters.Side"
+                           asp-route-planOnly="@Model.Filters.PlanOnly"
+                           asp-route-month="@Model.Calendar.Month.ToString("yyyy-MM-dd")"
+                           asp-route-selectedDate="@day.Date.ToString("yyyy-MM-dd")">
+                            <span class="journal-calendar-date">@day.Date.Day.</span>
+                            @if (day.TradeCount > 0)
+                            {
+                                <span class="journal-calendar-result">@SignedMove(day.NetMove)</span>
+                                <span class="journal-calendar-count">⇄ @day.TradeCount @(day.TradeCount == 1 ? "trade" : "trades")</span>
+                            }
+                        </a>
+                    }
+                </div>
+            </section>
 
-                    <div class="trade-card clickable-card" data-href="@Url.Action("Details", "JournalEntries", new { id = item.Id })" tabindex="0" role="link" aria-label="Open @item.Asset trade detail">
-                        <div class="trade-card-header">
-                            <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <span class="fw-semibold">@item.Asset</span>
+            <section class="journal-day-trades">
+                <h2>Obchody (@selectedDayTitle)</h2>
 
-                                <span class="badge @(item.Side == PositionSide.Long ? "bg-primary" : "bg-warning text-dark")">
-                                    @item.Side
-                                </span>
-
-                                <span class="badge @outcomeClass">
-                                    @item.Outcome
-                                </span>
-
-                                @if (item.Status == EntryStatus.Open)
+                @if (!Model.SelectedDayEntries.Any())
+                {
+                    <div class="journal-day-empty">Pro tento den nejsou žádné obchody.</div>
+                }
+                else
+                {
+                    <div class="journal-trade-table-wrap">
+                        <table class="journal-trade-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Symbol</th>
+                                    <th>Směr</th>
+                                    <th>Outcome</th>
+                                    <th>Otevírací cena</th>
+                                    <th>Zavírací cena</th>
+                                    <th>Čas otevření</th>
+                                    <th>Čas uzavření</th>
+                                    <th>Risk</th>
+                                    <th>Výsledek</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var trade in Model.SelectedDayEntries)
                                 {
-                                    <span class="badge badge-open">Open</span>
+                                    var entry = trade.EntryTime?.LocalDateTime;
+                                    var exit = trade.ExitTime?.LocalDateTime;
+                                    var move = PriceMove(trade);
+
+                                    <tr class="clickable-card" data-href="@Url.Action("Details", "JournalEntries", new { id = trade.Id })" tabindex="0" role="link">
+                                        <td>@trade.Id</td>
+                                        <td class="fw-semibold">@trade.Asset</td>
+                                        <td>
+                                            <span class="journal-table-pill @(trade.Side == PositionSide.Long ? "long" : "short")">
+                                                @(trade.Side == PositionSide.Long ? "Nákup" : "Prodej")
+                                            </span>
+                                        </td>
+                                        <td>@trade.Outcome</td>
+                                        <td>@trade.EntryPrice.ToString("0.########", czechCulture)</td>
+                                        <td>@(trade.ExitPrice?.ToString("0.########", czechCulture) ?? "-")</td>
+                                        <td>@(entry?.ToString("d. M. yyyy H:mm:ss", czechCulture) ?? "-")</td>
+                                        <td>@(exit?.ToString("d. M. yyyy H:mm:ss", czechCulture) ?? "-")</td>
+                                        <td>@trade.RiskPercentage.ToString("0.##", czechCulture)%</td>
+                                        <td class="journal-table-result @(move > 0 ? "positive" : move < 0 ? "negative" : "")">
+                                            @(move.HasValue ? SignedMove(move.Value) : "-")
+                                        </td>
+                                    </tr>
                                 }
-
-                                @if (item.FollowedTradingPlan)
-                                {
-                                    <span class="badge bg-info text-dark">Plan followed</span>
-                                }
-                            </div>
-
-                            <div class="muted small">
-                                Created: @item.CreatedAt.LocalDateTime.ToString("dd.MM.yyyy HH:mm")
-                            </div>
-                        </div>
-
-                        <div class="card-body">
-                            <div class="row g-3 align-items-center">
-                                <div class="col-lg-7">
-                                    <div class="row g-2">
-                                        <div class="col-6 col-md-3 metric-cell">
-                                            <div class="small text-muted">Entry</div>
-                                            <div class="fw-semibold">@(entry?.ToString("dd.MM.yyyy HH:mm") ?? "-")</div>
-                                        </div>
-                                        <div class="col-6 col-md-3 metric-cell">
-                                            <div class="small text-muted">Exit</div>
-                                            <div class="fw-semibold">@(exit?.ToString("dd.MM.yyyy HH:mm") ?? "-")</div>
-                                        </div>
-                                        <div class="col-6 col-md-2 metric-cell">
-                                            <div class="small text-muted">Risk</div>
-                                            <div class="fw-semibold">@item.RiskPercentage.ToString("0.##") %</div>
-                                        </div>
-                                        <div class="col-6 col-md-2 metric-cell">
-                                            <div class="small text-muted">Entry px</div>
-                                            <div class="fw-semibold">@item.EntryPrice.ToString("0.########")</div>
-                                        </div>
-                                        <div class="col-6 col-md-2 metric-cell">
-                                            <div class="small text-muted">Exit px</div>
-                                            <div class="fw-semibold">@(item.ExitPrice?.ToString("0.########") ?? "-")</div>
-                                        </div>
-                                        <div class="col-6 col-md-2 metric-cell">
-                                            <div class="small text-muted">Dur.</div>
-                                            <div class="fw-semibold">@durationText</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="mt-3 d-flex gap-2">
-                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-primary btn-sm" data-card-ignore>Edit</a>
-                                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger btn-sm" data-card-ignore>Delete</a>
-                                    </div>
-                                </div>
-
-                                <div class="col-lg-5">
-                                    @if (previewImage != null)
-                                    {
-                                        <button type="button" class="image-modal-trigger" data-card-ignore data-image-src="@Url.Action("GalleryImage", "JournalEntries", new { id = previewImage.Id })" data-image-title="@item.Asset screenshot">
-                                            <img src="@Url.Action("GalleryImage", "JournalEntries", new { id = previewImage.Id })"
-                                                 class="trade-image" />
-                                        </button>
-                                    }
-                                    else if (item.ImageData != null)
-                                    {
-                                        <button type="button" class="image-modal-trigger" data-card-ignore data-image-src="@Url.Action("Image", "JournalEntries", new { id = item.Id })" data-image-title="@item.Asset screenshot">
-                                            <img src="@Url.Action("Image", "JournalEntries", new { id = item.Id })"
-                                                 class="trade-image" />
-                                        </button>
-                                    }
-                                    else
-                                    {
-                                        <div class="empty-image">
-                                            <span>No image</span>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
                 }
-            </div>
+            </section>
         }
     </div>
 </div>

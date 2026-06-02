@@ -1468,6 +1468,266 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   gap: 1rem;
 }
 
+.journal-calendar-section {
+  margin-bottom: 2rem;
+}
+
+.journal-calendar-header {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+
+.journal-calendar-header h2,
+.journal-day-trades h2 {
+  color: var(--tj-text);
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  font-weight: 850;
+  letter-spacing: 0;
+  margin: 0;
+  text-transform: lowercase;
+}
+
+.journal-calendar-nav {
+  display: inline-flex;
+  gap: 0.65rem;
+}
+
+.journal-calendar-nav a {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.075);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  color: var(--tj-text);
+  display: inline-flex;
+  font-size: 1.5rem;
+  font-weight: 850;
+  height: 42px;
+  justify-content: center;
+  text-decoration: none;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+  width: 42px;
+}
+
+.journal-calendar-nav a:hover {
+  background: rgba(32, 199, 185, 0.16);
+  border-color: rgba(32, 199, 185, 0.34);
+  transform: translateY(-1px);
+}
+
+.journal-calendar-grid {
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.journal-calendar-weekday {
+  background: rgba(255, 255, 255, 0.075);
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.9rem;
+  font-weight: 850;
+  padding: 0.8rem 0.9rem;
+  text-align: center;
+}
+
+.journal-calendar-weekday:nth-child(7) {
+  border-right: 0;
+}
+
+.journal-calendar-day {
+  background: rgba(255, 255, 255, 0.025);
+  border-right: 1px solid rgba(255, 255, 255, 0.055);
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  color: var(--tj-text);
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  justify-content: flex-start;
+  min-height: 96px;
+  padding: 0.7rem 0.75rem;
+  position: relative;
+  text-align: right;
+  text-decoration: none;
+  transition: filter 160ms ease, outline-color 160ms ease;
+}
+
+.journal-calendar-day:nth-child(7n) {
+  border-right: 0;
+}
+
+.journal-calendar-day:hover {
+  filter: brightness(1.14);
+}
+
+.journal-calendar-day.selected::after {
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 50%;
+  color: #171819;
+  content: "";
+  height: 0.45rem;
+  position: absolute;
+  right: 0.55rem;
+  top: 0.55rem;
+  width: 0.45rem;
+}
+
+.journal-calendar-day.muted-month {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.journal-calendar-day.win {
+  background: linear-gradient(135deg, rgba(64, 98, 0, 0.92), rgba(75, 115, 0, 0.92));
+}
+
+.journal-calendar-day.loss {
+  background: linear-gradient(135deg, rgba(255, 71, 66, 0.96), rgba(235, 56, 83, 0.94));
+}
+
+.journal-calendar-day.flat {
+  background: rgba(255, 255, 255, 0.085);
+}
+
+.journal-calendar-date {
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 850;
+  line-height: 1;
+}
+
+.journal-calendar-result {
+  font-size: clamp(1rem, 1.6vw, 1.35rem);
+  font-weight: 900;
+  line-height: 1.1;
+  margin-top: auto;
+}
+
+.journal-calendar-count {
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.85rem;
+  font-weight: 850;
+}
+
+.journal-day-trades {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.journal-trade-table-wrap,
+.journal-day-empty {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 20px;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.26);
+  overflow: hidden;
+}
+
+.journal-trade-table-wrap {
+  overflow-x: auto;
+}
+
+.journal-day-empty {
+  color: var(--tj-muted);
+  padding: 1.2rem;
+}
+
+.journal-trade-table {
+  border-collapse: collapse;
+  color: var(--tj-text);
+  margin: 0;
+  min-width: 980px;
+  width: 100%;
+}
+
+.journal-trade-table th,
+.journal-trade-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  padding: 1rem 1.15rem;
+  vertical-align: middle;
+}
+
+.journal-trade-table th {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.journal-trade-table tbody tr {
+  transition: background 160ms ease;
+}
+
+.journal-trade-table tbody tr:hover {
+  background: rgba(32, 199, 185, 0.06);
+}
+
+.journal-table-pill {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0.28rem 0.6rem;
+}
+
+.journal-table-pill.long {
+  background: rgba(32, 199, 185, 0.14);
+  border: 1px solid rgba(32, 199, 185, 0.32);
+  color: #80fff4;
+}
+
+.journal-table-pill.short {
+  background: rgba(224, 61, 102, 0.14);
+  border: 1px solid rgba(224, 61, 102, 0.32);
+  color: #ff9db5;
+}
+
+.journal-table-result {
+  color: var(--tj-muted);
+  font-weight: 900;
+}
+
+.journal-table-result.positive {
+  color: #80fff4;
+}
+
+.journal-table-result.negative {
+  color: #ff5f7c;
+}
+
+@media (max-width: 900px) {
+  .journal-calendar-day {
+    min-height: 76px;
+    padding: 0.55rem;
+  }
+
+  .journal-calendar-result {
+    font-size: 1rem;
+  }
+
+  .journal-calendar-count {
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .journal-calendar-weekday {
+    font-size: 0.72rem;
+    padding: 0.6rem 0.25rem;
+  }
+
+  .journal-calendar-day {
+    min-height: 64px;
+  }
+
+  .journal-calendar-count {
+    display: none;
+  }
+}
+
 .trade-card {
   transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
