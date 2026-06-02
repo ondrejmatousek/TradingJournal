@@ -108,37 +108,72 @@
                             </div>
 
                             <div class="col-12">
-                                <label class="form-label">Screenshots</label>
-
-                                @if (Model.Images.Any() || Model.ImageData != null)
-                                {
-                                    <div class="image-gallery mb-3">
-                                        @foreach (var image in Model.Images.OrderBy(i => i.CreatedAt))
-                                        {
-                                            <button type="button" class="image-modal-trigger" data-image-src="@Url.Action("GalleryImage", "JournalEntries", new { id = image.Id })" data-image-title="@Model.Asset screenshot">
-                                                <img src="@Url.Action("GalleryImage", "JournalEntries", new { id = image.Id })"
-                                                     class="form-image-preview" />
-                                            </button>
-                                        }
-                                        @if (Model.ImageData != null)
-                                        {
-                                            <button type="button" class="image-modal-trigger" data-image-src="@Url.Action("Image", "JournalEntries", new { id = Model.Id })" data-image-title="@Model.Asset screenshot">
-                                                <img src="@Url.Action("Image", "JournalEntries", new { id = Model.Id })"
-                                                     class="form-image-preview" />
-                                            </button>
-                                        }
+                                <div class="journal-image-manager">
+                                    <div class="journal-image-manager-head">
+                                        <div>
+                                            <label class="form-label mb-1">Screenshots</label>
+                                            <div class="form-text m-0">Klikni na obrázek pro náhled, košem smažeš konkrétní screenshot.</div>
+                                        </div>
                                     </div>
 
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" name="removeImage" value="true" id="removeImage">
-                                        <label class="form-check-label" for="removeImage">
-                                            Remove existing image
-                                        </label>
-                                    </div>
-                                }
+                                    @if (Model.Images.Any() || Model.ImageData != null)
+                                    {
+                                        <div class="journal-image-edit-grid" id="journalImageGrid">
+                                            @foreach (var image in Model.Images.OrderBy(i => i.CreatedAt))
+                                            {
+                                                <div class="journal-image-edit-card" data-image-card>
+                                                    <button type="button" class="image-modal-trigger" data-image-src="@Url.Action("GalleryImage", "JournalEntries", new { id = image.Id })" data-image-title="@Model.Asset screenshot">
+                                                        <img src="@Url.Action("GalleryImage", "JournalEntries", new { id = image.Id })"
+                                                             class="form-image-preview" />
+                                                    </button>
+                                                    <div class="journal-image-card-footer">
+                                                        <div class="journal-image-meta">@((image.ImageFileName ?? "Screenshot"))</div>
+                                                        <button type="button"
+                                                                class="journal-image-delete-button"
+                                                                data-delete-image
+                                                                data-delete-url="@Url.Action("DeleteGalleryImage", "JournalEntries", new { id = image.Id })"
+                                                                data-image-name="@((image.ImageFileName ?? "screenshot"))"
+                                                                aria-label="Smazat obrázek">
+                                                            <span aria-hidden="true">&#215;</span>
+                                                            Smazat
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            }
+                                            @if (Model.ImageData != null)
+                                            {
+                                                <div class="journal-image-edit-card" data-image-card>
+                                                    <button type="button" class="image-modal-trigger" data-image-src="@Url.Action("Image", "JournalEntries", new { id = Model.Id })" data-image-title="@Model.Asset screenshot">
+                                                        <img src="@Url.Action("Image", "JournalEntries", new { id = Model.Id })"
+                                                             class="form-image-preview" />
+                                                    </button>
+                                                    <div class="journal-image-card-footer">
+                                                        <div class="journal-image-meta">Legacy screenshot</div>
+                                                        <button type="button"
+                                                                class="journal-image-delete-button"
+                                                                data-delete-image
+                                                                data-delete-url="@Url.Action("DeleteLegacyImage", "JournalEntries", new { id = Model.Id })"
+                                                                data-image-name="legacy screenshot"
+                                                                aria-label="Smazat obrázek">
+                                                            <span aria-hidden="true">&#215;</span>
+                                                            Smazat
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="journal-empty-images" id="journalEmptyImages">Zatím tu nejsou žádné screenshoty.</div>
+                                    }
 
-                                <input type="file" name="imageFiles" class="form-control" accept="image/*" multiple />
-                                <div class="form-text">New uploads are added to the gallery. You can upload up to 8 images at once.</div>
+                                    <label class="journal-upload-drop">
+                                        <span>Přidat další obrázky</span>
+                                        <small>Vyber více PNG/JPG najednou. Nové obrázky se přidají do galerie.</small>
+                                        <input type="file" name="imageFiles" class="form-control" accept="image/*" multiple />
+                                    </label>
+                                </div>
                             </div>
                         </div>
 
@@ -159,6 +194,27 @@
 </div>
 
 <partial name="_ImagePreviewModal" />
+
+<div class="modal fade" id="deleteJournalImageModal" tabindex="-1" aria-labelledby="deleteJournalImageModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content journal-confirm-modal">
+            <div class="modal-header">
+                <div>
+                    <div class="eyebrow">Delete screenshot</div>
+                    <h5 class="modal-title" id="deleteJournalImageModalTitle">Opravdu smazat fotku?</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0" id="deleteJournalImageModalText">Tahle akce smaže obrázek okamžitě a nepůjde vrátit zpět.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Zrušit</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteJournalImage">Smazat fotku</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     @{
@@ -182,6 +238,76 @@
 
             status?.addEventListener('change', syncTradeStatus);
             syncTradeStatus();
+        })();
+
+        (() => {
+            const modalElement = document.getElementById('deleteJournalImageModal');
+            const confirmButton = document.getElementById('confirmDeleteJournalImage');
+            const modalText = document.getElementById('deleteJournalImageModalText');
+            const grid = document.getElementById('journalImageGrid');
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+            if (!modalElement || !confirmButton || !modalText || !window.bootstrap) {
+                return;
+            }
+
+            const modal = new bootstrap.Modal(modalElement);
+            let pendingButton = null;
+
+            document.querySelectorAll('[data-delete-image]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    pendingButton = button;
+                    const imageName = button.getAttribute('data-image-name') || 'tuhle fotku';
+                    modalText.textContent = `Chceš skutečně smazat ${imageName}? Obrázek se smaže hned, bez čekání na uložení formuláře.`;
+                    modal.show();
+                });
+            });
+
+            confirmButton.addEventListener('click', async () => {
+                if (!pendingButton || !token) {
+                    return;
+                }
+
+                const deleteUrl = pendingButton.getAttribute('data-delete-url');
+                const card = pendingButton.closest('[data-image-card]');
+
+                if (!deleteUrl || !card) {
+                    return;
+                }
+
+                confirmButton.disabled = true;
+                pendingButton.disabled = true;
+                card.classList.add('is-deleting');
+
+                try {
+                    const response = await fetch(deleteUrl, {
+                        method: 'POST',
+                        headers: {
+                            'RequestVerificationToken': token,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Delete failed');
+                    }
+
+                    card.remove();
+                    modal.hide();
+
+                    if (grid && !grid.querySelector('[data-image-card]')) {
+                        grid.insertAdjacentHTML('afterend', '<div class="journal-empty-images" id="journalEmptyImages">Zatím tu nejsou žádné screenshoty.</div>');
+                        grid.remove();
+                    }
+                } catch {
+                    card.classList.remove('is-deleting');
+                    pendingButton.disabled = false;
+                    modalText.textContent = 'Fotku se nepodařilo smazat. Zkus to prosím ještě jednou.';
+                } finally {
+                    confirmButton.disabled = false;
+                    pendingButton = null;
+                }
+            });
         })();
     </script>
     <script src="~/js/journal-ui.js" asp-append-version="true"></script>

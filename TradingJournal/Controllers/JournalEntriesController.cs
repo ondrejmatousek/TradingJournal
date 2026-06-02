@@ -344,6 +344,58 @@ namespace TradingJournal.Controllers
             return File(image.ImageData, image.ImageContentType);
         }
 
+        // POST: JournalEntries/DeleteGalleryImage/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteGalleryImage(int id)
+        {
+            var userId = CurrentUserId;
+
+            var image = await _context.JournalEntryImages
+                .Include(i => i.JournalEntry)
+                .FirstOrDefaultAsync(i => i.Id == id && i.JournalEntry.UserId == userId);
+
+            if (image == null)
+                return NotFound(new { message = "Obrázek se nepodařilo najít." });
+
+            var entryId = image.JournalEntryId;
+
+            _context.JournalEntryImages.Remove(image);
+            await _context.SaveChangesAsync();
+
+            return Json(new
+            {
+                success = true,
+                remainingCount = await CountEntryImagesAsync(entryId, userId)
+            });
+        }
+
+        // POST: JournalEntries/DeleteLegacyImage/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteLegacyImage(int id)
+        {
+            var userId = CurrentUserId;
+
+            var entry = await _context.JournalEntries
+                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId);
+
+            if (entry == null)
+                return NotFound(new { message = "Záznam se nepodařilo najít." });
+
+            entry.ImageData = null;
+            entry.ImageContentType = null;
+            entry.ImageFileName = null;
+
+            await _context.SaveChangesAsync();
+
+            return Json(new
+            {
+                success = true,
+                remainingCount = await CountEntryImagesAsync(id, userId)
+            });
+        }
+
         // GET: JournalEntries/Create
         public IActionResult Create()
         {
@@ -397,7 +449,11 @@ namespace TradingJournal.Controllers
         // POST: JournalEntries/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, JournalEntry form, IReadOnlyList<IFormFile>? imageFiles, IFormFile? imageFile, bool removeImage = false)
+        public async Task<IActionResult> Edit(
+            int id,
+            JournalEntry form,
+            IReadOnlyList<IFormFile>? imageFiles,
+            IFormFile? imageFile)
         {
             ApplyDecimalFormValues(form);
 
@@ -425,15 +481,6 @@ namespace TradingJournal.Controllers
             entry.Status = form.Status;
             NormalizeOpenTrade(entry);
 
-            // Smazání obrázku (volitelné)
-            if (removeImage)
-            {
-                entry.ImageData = null;
-                entry.ImageContentType = null;
-                entry.ImageFileName = null;
-                _context.JournalEntryImages.RemoveRange(entry.Images);
-            }
-
             // Nové uploady se přidají do galerie.
             await ApplyImageUploadsAsync(entry, imageFiles, imageFile);
 
@@ -442,6 +489,17 @@ namespace TradingJournal.Controllers
 
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
+        }
+
+        private async Task<int> CountEntryImagesAsync(int entryId, string userId)
+        {
+            var galleryCount = await _context.JournalEntryImages
+                .CountAsync(i => i.JournalEntryId == entryId && i.JournalEntry.UserId == userId);
+
+            var hasLegacyImage = await _context.JournalEntries
+                .AnyAsync(e => e.Id == entryId && e.UserId == userId && e.ImageData != null);
+
+            return galleryCount + (hasLegacyImage ? 1 : 0);
         }
 
         // GET: JournalEntries/Delete/5
