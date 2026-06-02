@@ -326,7 +326,7 @@ namespace TradingJournal.Controllers
                     g => new
                     {
                         TradeCount = g.Count(),
-                        NetMove = g.Sum(entry => CalculatePriceMove(entry) ?? 0)
+                        NetMove = g.Sum(entry => CalculateTradeRMultiple(entry) ?? 0)
                     });
 
             for (var i = 0; i < 42; i++)
@@ -351,6 +351,17 @@ namespace TradingJournal.Controllers
                 NextMonth = firstOfMonth.AddMonths(1),
                 SelectedDate = selectedDate,
                 Days = days
+            };
+        }
+
+        private static decimal? CalculateTradeRMultiple(JournalEntry entry)
+        {
+            return entry.Outcome switch
+            {
+                TradeOutcome.Win => 1m,
+                TradeOutcome.Loss => -1m,
+                TradeOutcome.Breakeven => 0m,
+                _ => null
             };
         }
 

@@ -20,26 +20,15 @@
         return value.ToString("0.##", czechCulture);
     }
 
-    decimal? PriceMove(JournalEntry entry)
+    decimal? TradeRMultiple(JournalEntry entry)
     {
-        if (!entry.ExitPrice.HasValue || entry.EntryPrice == 0)
-            return null;
-
-        decimal NormalizePrice(AssetSymbol asset, decimal price)
+        return entry.Outcome switch
         {
-            if ((asset == AssetSymbol.EURUSD || asset == AssetSymbol.GBPUSD) && price > 10m)
-            {
-                while (price > 10m)
-                    price /= 10m;
-            }
-
-            return price;
-        }
-
-        var entryPrice = NormalizePrice(entry.Asset, entry.EntryPrice);
-        var exitPrice = NormalizePrice(entry.Asset, entry.ExitPrice.Value);
-        var rawMove = exitPrice - entryPrice;
-        return entry.Side == PositionSide.Long ? rawMove : -rawMove;
+            TradeOutcome.Win => 1m,
+            TradeOutcome.Loss => -1m,
+            TradeOutcome.Breakeven => 0m,
+            _ => null
+        };
     }
 
     var selectedDayTitle = Model.Calendar.SelectedDate.ToDateTime(TimeOnly.MinValue).ToString("d. MMMM yyyy", czechCulture);
@@ -221,7 +210,7 @@
                             <span class="journal-calendar-date">@day.Date.Day.</span>
                             @if (day.TradeCount > 0)
                             {
-                                <span class="journal-calendar-result">@SignedMove(day.NetMove)</span>
+                                <span class="journal-calendar-result">@SignedMove(day.NetMove)R</span>
                                 <span class="journal-calendar-count">⇄ @day.TradeCount @(day.TradeCount == 1 ? "trade" : "trades")</span>
                             }
                         </a>
@@ -259,7 +248,7 @@
                                 {
                                     var entry = trade.EntryTime?.LocalDateTime;
                                     var exit = trade.ExitTime?.LocalDateTime;
-                                    var move = PriceMove(trade);
+                                    var rMultiple = TradeRMultiple(trade);
 
                                     <tr class="clickable-card" data-href="@Url.Action("Details", "JournalEntries", new { id = trade.Id })" tabindex="0" role="link">
                                         <td>@trade.Id</td>
@@ -275,8 +264,8 @@
                                         <td>@(entry?.ToString("d. M. yyyy H:mm:ss", czechCulture) ?? "-")</td>
                                         <td>@(exit?.ToString("d. M. yyyy H:mm:ss", czechCulture) ?? "-")</td>
                                         <td>@trade.RiskPercentage.ToString("0.##", czechCulture)%</td>
-                                        <td class="journal-table-result @(move > 0 ? "positive" : move < 0 ? "negative" : "")">
-                                            @(move.HasValue ? SignedMove(move.Value) : "-")
+                                        <td class="journal-table-result @(rMultiple > 0 ? "positive" : rMultiple < 0 ? "negative" : "")">
+                                            @(rMultiple.HasValue ? $"{SignedMove(rMultiple.Value)}R" : "-")
                                         </td>
                                     </tr>
                                 }
