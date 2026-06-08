@@ -8,219 +8,287 @@
         <div class="strategy-hero">
             <div>
                 <p class="strategy-eyebrow">Trading playbook</p>
-                <h1>Petr Můčka setup</h1>
+                <h1>Strategie</h1>
                 <p class="strategy-lead">
-                    Strukturovaný tahák pro intradenní vyhodnocení setupu. Entry model je až poslední potvrzení;
-                    bez kontextu, kvalitní zóny, liquidity, jasného TP a logického SL nemá samotný signál hodnotu.
+                    Přepínej mezi metodikami a používej k nim odpovídající checklist kvality setupu.
+                    Každá strategie má trochu jiný důraz: Petr Můčka řeší kvalitu intradenního entry modelu,
+                    CoreX staví na top-down Supply & Demand procesu.
                 </p>
             </div>
             <div class="strategy-hero-actions">
-                <span class="strategy-default-badge">Default strategie</span>
+                <div class="strategy-switcher" role="tablist" aria-label="Výběr strategie">
+                    <button type="button" class="active" data-strategy-tab="mucka" role="tab" aria-selected="true">Petr Můčka</button>
+                    <button type="button" data-strategy-tab="corex" role="tab" aria-selected="false">CoreX S/D</button>
+                </div>
                 <a class="btn btn-primary" asp-controller="JournalEntries" asp-action="TradeQuality">Otevřít analyzer</a>
             </div>
         </div>
 
-        <section class="strategy-principle-card">
-            <div>
-                <span class="strategy-kicker">Základní princip</span>
-                <h2>Kvalitní trade je kombinace kontextu, zóny a exekuce.</h2>
-            </div>
-            <div class="strategy-principles">
-                <span>Daily bias / HTF kontext</span>
-                <span>Market structure</span>
-                <span>Kvalitní S/D nebo jiná zóna</span>
-                <span>Likvidita</span>
-                <span>Structure shift</span>
-                <span>Návrat do validní zóny</span>
-                <span>Jasný TP target</span>
-                <span>Logický SL</span>
-                <span>RRR minimálně 1:2</span>
-                <span>Validní obchodní čas</span>
-                <span>Zkontrolované news</span>
+        <section class="strategy-panel active" id="strategy-panel-mucka" data-strategy-panel="mucka">
+            <section class="strategy-principle-card">
+                <div>
+                    <span class="strategy-kicker">Petr Můčka setup</span>
+                    <h2>Kvalitní trade je kombinace kontextu, zóny a exekuce.</h2>
+                </div>
+                <div class="strategy-principles">
+                    <span>Daily bias / HTF kontext</span>
+                    <span>Market structure</span>
+                    <span>Kvalitní S/D nebo jiná zóna</span>
+                    <span>Likvidita</span>
+                    <span>Structure shift</span>
+                    <span>Návrat do validní zóny</span>
+                    <span>Jasný TP target</span>
+                    <span>Logický SL</span>
+                    <span>RRR minimálně 1:2</span>
+                    <span>Validní obchodní čas</span>
+                    <span>Zkontrolované news</span>
+                </div>
+            </section>
+
+            <div class="strategy-layout">
+                <section class="strategy-card strategy-card-large">
+                    <div class="strategy-card-head">
+                        <span>01</span>
+                        <h2>Daily bias / kontext</h2>
+                    </div>
+                    <p>
+                        Ranní analýza začíná určením daily biasu. Trade ve směru biasu má vyšší kvalitu;
+                        trade proti biasu musí mít silnější důvod, například sweep liquidity, silnou HTF zónu,
+                        jasný structure shift, dobrý target a dobré RRR.
+                    </p>
+                    <div class="strategy-check-list">
+                        <span>HTF kontext a price action</span>
+                        <span>Předchozí denní svíčka a close</span>
+                        <span>Supporty, rezistence a S/D zóny</span>
+                        <span>Session kontext, VWAP a fundamenty</span>
+                    </div>
+                </section>
+
+                <section class="strategy-card">
+                    <div class="strategy-card-head">
+                        <span>02</span>
+                        <h2>Kvalita zóny</h2>
+                    </div>
+                    <p>S/D zóna není kvalitní jen proto, že je nakreslený box. Důležité je, co zóna způsobila.</p>
+                    <ul class="strategy-tight-list">
+                        <li>Vznikla před impulzivním pohybem.</li>
+                        <li>Pohyb ze zóny měl momentum a způsobil BOS.</li>
+                        <li>Cena se do ní nevracela pořád dokola.</li>
+                        <li>SL za zónou dává smysl a TP má prostor.</li>
+                    </ul>
+                </section>
+
+                <section class="strategy-card">
+                    <div class="strategy-card-head">
+                        <span>03</span>
+                        <h2>Entry model</h2>
+                    </div>
+                    <p>
+                        Entry model je poslední část setupu, ne samostatný důvod ke vstupu.
+                        Nestačí jeden signál na 1m nebo 5m bez kontextu.
+                    </p>
+                    <div class="strategy-mini-grid">
+                        <span>Kvalitní zóna</span>
+                        <span>Reakce ceny</span>
+                        <span>Structure shift</span>
+                        <span>Návrat do oblasti</span>
+                        <span>Validní čas</span>
+                        <span>Jasný SL</span>
+                        <span>Jasný TP</span>
+                        <span>RRR 1:2+</span>
+                    </div>
+                </section>
+
+                <section class="strategy-card">
+                    <div class="strategy-card-head">
+                        <span>04</span>
+                        <h2>Konfluence</h2>
+                    </div>
+                    <p>
+                        GP, 0.382, FVG, nPOC, VWAP, dOpen nebo DXY nejsou automaticky povinné.
+                        Prázdné znamená, že faktor není relevantní pro konkrétní model.
+                    </p>
+                    <div class="strategy-rule-note">
+                        Chybějící konfluence není chyba. Křížek dávej jen tehdy, když je faktor jasně proti tradu
+                        nebo byl povinnou součástí modelu.
+                    </div>
+                </section>
             </div>
         </section>
 
-        <div class="strategy-layout">
-            <section class="strategy-card strategy-card-large">
-                <div class="strategy-card-head">
-                    <span>01</span>
-                    <h2>Daily bias / kontext</h2>
+        <section class="strategy-panel" id="strategy-panel-corex" data-strategy-panel="corex" hidden>
+            <section class="strategy-principle-card">
+                <div>
+                    <span class="strategy-kicker">CoreX S/D daytrading</span>
+                    <h2>Bias-first Supply & Demand proces: připravit ráno, obchodovat jen předem označené levely.</h2>
                 </div>
-                <p>
-                    Ranní analýza začíná určením daily biasu. Může být bullish, bearish, neutral,
-                    případně dynamický při významných news. Pokud bias není jasný, setup není kompletně vyhodnocený.
-                </p>
-                <div class="strategy-check-list">
-                    <span>HTF kontext a price action</span>
-                    <span>Předchozí denní svíčka a close</span>
-                    <span>Supporty, rezistence a S/D zóny</span>
-                    <span>Session kontext, VWAP a fundamenty</span>
-                </div>
-                <div class="strategy-rule-note">
-                    Trade proti daily biasu musí mít silnější důvod: sweep liquidity, silnou HTF zónu,
-                    jasný structure shift, dobrý target a dobré RRR.
+                <div class="strategy-principles">
+                    <span>Daily / Weekly bias</span>
+                    <span>4H strong/weak high-low</span>
+                    <span>M15 zóny pro přípravu vstupu</span>
+                    <span>M5 exekuce</span>
+                    <span>Base + impuls + čerstvost</span>
+                    <span>Pivotal zóna jako trigger</span>
+                    <span>Preferred boundary entry</span>
+                    <span>SL za wide zone + buffer</span>
+                    <span>TP na protilehlou S/D</span>
+                    <span>Limit order, set & forget</span>
                 </div>
             </section>
 
-            <section class="strategy-card">
-                <div class="strategy-card-head">
-                    <span>02</span>
-                    <h2>Kvalita S/D zóny</h2>
-                </div>
-                <p>
-                    S/D zóna není kvalitní jen proto, že je nakreslený box. Důležité je, co zóna způsobila.
-                </p>
-                <ul class="strategy-tight-list">
-                    <li>Vznikla před impulzivním pohybem.</li>
-                    <li>Pohyb ze zóny měl momentum a způsobil BOS.</li>
-                    <li>Cena se do ní vrací poprvé nebo není mnohokrát testovaná.</li>
-                    <li>SL za zónou dává smysl a TP má prostor.</li>
-                </ul>
-            </section>
-
-            <section class="strategy-card">
-                <div class="strategy-card-head">
-                    <span>03</span>
-                    <h2>Structure shift</h2>
-                </div>
-                <p>
-                    Shift potvrzuje, že se trh může otočit nebo pokračovat požadovaným směrem.
-                    Kvalitní shift má momentum a po něm vzniká návrat do validní vstupní zóny.
-                </p>
-                <div class="strategy-do-dont">
-                    <div>
-                        <strong>Fajfka</strong>
-                        <span>Silná změna struktury, návrat do FVG/S/D/GP/balančního levelu.</span>
+            <div class="strategy-layout">
+                <section class="strategy-card strategy-card-large">
+                    <div class="strategy-card-head">
+                        <span>01</span>
+                        <h2>Top-down hierarchie</h2>
                     </div>
-                    <div>
-                        <strong>Křížek</strong>
-                        <span>Slabý CHoCH bez síly, vstup uprostřed range nebo proti HTF bez důvodu.</span>
+                    <p>
+                        CoreX jde shora dolů: Daily/Weekly určí směr, 4H dá strukturu a kontext,
+                        M15 zpřesní zóny a M5 slouží pro exekuci. Vstup bez vyššího biasu je slabý setup.
+                    </p>
+                    <div class="strategy-timeframes">
+                        <div><strong>Daily / Weekly</strong><span>Trend, bias a klíčové Supply/Demand zóny.</span></div>
+                        <div><strong>4H</strong><span>Strong/weak high-low, interní struktura, HTF kontext.</span></div>
+                        <div><strong>M15 / M5</strong><span>Příprava vstupu, refinement zóny, RSI/PA potvrzení.</span></div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <section class="strategy-card strategy-card-large">
-                <div class="strategy-card-head">
-                    <span>04</span>
-                    <h2>Entry model</h2>
-                </div>
-                <p>
-                    Entry model je poslední část setupu, ne samostatný důvod ke vstupu. Fajfku dostane
-                    pouze tehdy, když dává smysl v celém kontextu.
-                </p>
-                <div class="strategy-mini-grid">
-                    <span>Kvalitní zóna</span>
-                    <span>Reakce ceny</span>
-                    <span>Structure shift</span>
-                    <span>Návrat do oblasti</span>
-                    <span>Validní čas</span>
-                    <span>Jasný SL</span>
-                    <span>Jasný TP</span>
-                    <span>RRR 1:2+</span>
-                    <span>Započítaný spread</span>
-                    <span>Logický limit entry</span>
-                </div>
-            </section>
+                <section class="strategy-card">
+                    <div class="strategy-card-head">
+                        <span>02</span>
+                        <h2>Validní S/D zóna</h2>
+                    </div>
+                    <p>Zóna je validní jen když splní tři základní části: base, impuls a čerstvost.</p>
+                    <ul class="strategy-tight-list">
+                        <li>Base: konsolidace s menšími těly svíček.</li>
+                        <li>Impuls: výrazný pohyb ze zóny, institucionální footprint.</li>
+                        <li>Čerstvost: cena se do zóny ještě nevrátila.</li>
+                    </ul>
+                </section>
 
-            <section class="strategy-card">
-                <div class="strategy-card-head">
-                    <span>05</span>
-                    <h2>Vstupní zóny</h2>
-                </div>
-                <p>Ne každý setup musí mít všechny zóny. Stačí jedna až dvě silné zóny, pokud dávají smysl v kontextu.</p>
-                <div class="strategy-timeframes">
-                    <div><strong>1m</strong><span>Fibonacci, S/D, balanční levely, liquidity, fixed range.</span></div>
-                    <div><strong>5m</strong><span>Fibonacci, FVG, balanční levely, S/D, liquidity, fixed range.</span></div>
-                    <div><strong>15m</strong><span>Podobný entry model jako na 5m, ale selektivněji.</span></div>
-                </div>
-            </section>
+                <section class="strategy-card">
+                    <div class="strategy-card-head">
+                        <span>03</span>
+                        <h2>Pivotal vs. Internal</h2>
+                    </div>
+                    <p>
+                        Pivotal zóna leží na swing extrému vyššího timeframe a má reakční potenciál.
+                        Internal zóna je uvnitř swingu a v CoreX slouží hlavně pro daytrading management,
+                        ne jako samostatný swing trigger.
+                    </p>
+                    <div class="strategy-do-dont">
+                        <div><strong>Pivotal</strong><span>Silnější trigger, vyšší váha v kvalitě setupu.</span></div>
+                        <div><strong>Internal</strong><span>Spíš scalping a management; pozor na záměnu role.</span></div>
+                    </div>
+                </section>
 
-            <section class="strategy-card">
-                <div class="strategy-card-head">
-                    <span>06</span>
-                    <h2>Konfluence</h2>
-                </div>
-                <p>
-                    GP, 0.382, FVG, nPOC, VWAP, dOpen nebo DXY nejsou automaticky povinné.
-                    Prázdné znamená, že nejsou relevantní pro konkrétní model.
-                </p>
-                <div class="strategy-rule-note">
-                    Chybějící konfluence není chyba. Křížek dávej jen tehdy, když je faktor jasně proti tradu
-                    nebo byl povinnou součástí modelu.
-                </div>
-            </section>
+                <section class="strategy-card strategy-card-large">
+                    <div class="strategy-card-head">
+                        <span>04</span>
+                        <h2>CoreX scoring konfluencí</h2>
+                    </div>
+                    <p>Minimum pro daytrade je přibližně 3 body konfluence, swing potřebuje přísnější filtr.</p>
+                    <div class="strategy-score-table">
+                        <span>Pivotal zóna <strong>+3</strong></span>
+                        <span>Stacked levely <strong>+2</strong></span>
+                        <span>Nested Daily-in-Weekly <strong>+2</strong></span>
+                        <span>Premium/Discount <strong>+2</strong></span>
+                        <span>POC / VAH / VAL <strong>+1</strong></span>
+                        <span>Fib 50-61,8 % <strong>+1</strong></span>
+                        <span>PA potvrzení <strong>+1</strong></span>
+                        <span>Round number <strong>+1</strong></span>
+                    </div>
+                </section>
 
-            <section class="strategy-card">
+                <section class="strategy-card">
+                    <div class="strategy-card-head">
+                        <span>05</span>
+                        <h2>Exekuce</h2>
+                    </div>
+                    <p>
+                        Zóna se ráno připraví, zpřesní z wide na narrow/preferred boundary
+                        a vstup se zadává plánovaně. Žádné objevování zón uprostřed session.
+                    </p>
+                    <div class="strategy-mini-grid">
+                        <span>Ready-marked levely</span>
+                        <span>RSI / PA potvrzení</span>
+                        <span>Limit order</span>
+                        <span>Set & forget</span>
+                    </div>
+                </section>
+
+                <section class="strategy-card">
+                    <div class="strategy-card-head">
+                        <span>06</span>
+                        <h2>Risk management</h2>
+                    </div>
+                    <p>
+                        SL patří za wide zone s bufferem nebo za lokální high/low.
+                        TP míří na nejbližší protilehlou S/D zónu a daytrade se nedrží přes noc.
+                    </p>
+                    <div class="strategy-rule-note">
+                        Pokud se cena dlouho motá kolem breakevenu, CoreX počítá s možností BE exitu.
+                    </div>
+                </section>
+            </div>
+
+            <section class="strategy-corex-workflow">
                 <div class="strategy-card-head">
                     <span>07</span>
-                    <h2>Likvidita</h2>
+                    <h2>Entry checklist - 11 kroků</h2>
                 </div>
-                <p>
-                    Likvidita je často nad high nebo pod low, u session high/low, Asian high/low, dOpen
-                    nebo jiných zřetelných úrovní.
-                </p>
-                <ul class="strategy-tight-list">
-                    <li>Nejdřív sweep liquidity.</li>
-                    <li>Potom reakce z validní zóny.</li>
-                    <li>Následně structure shift.</li>
-                    <li>TP míří na další logickou liquidity.</li>
-                </ul>
-            </section>
-
-            <section class="strategy-card">
-                <div class="strategy-card-head">
-                    <span>08</span>
-                    <h2>TP, SL a RRR</h2>
-                </div>
-                <p>
-                    Trade bez jasného TP není validní. SL musí být za logickou invalidační úrovní,
-                    ne náhodně podle toho, aby vyšlo RRR.
-                </p>
-                <div class="strategy-do-dont">
+                <div class="strategy-workflow-grid">
                     <div>
-                        <strong>TP</strong>
-                        <span>Liquidity, Asia high/low, nPOC/POC, Close VWAP, dOpen, S/D, previous day high/low.</span>
+                        <strong>Daily</strong>
+                        <span>1. Určit trend + klíčové S/D zóny.</span>
+                        <span>2. Zkontrolovat mini S/D zóny na aktuální hladině.</span>
                     </div>
                     <div>
-                        <strong>RRR</strong>
-                        <span>Minimum 1:2. Průměrný cíl strategie je přibližně 1:2.5.</span>
+                        <strong>4H</strong>
+                        <span>3. Určit strong/weak high & low.</span>
+                        <span>4. Identifikovat interní strukturu.</span>
+                        <span>5. Složit high timeframe kontext.</span>
+                    </div>
+                    <div>
+                        <strong>Příprava</strong>
+                        <span>6. Zkontrolovat čas, den, news a likviditu.</span>
+                        <span>7. Přenést kontext na M15.</span>
+                        <span>8. Zpřesnit M15 zóny.</span>
+                    </div>
+                    <div>
+                        <strong>M5 exekuce</strong>
+                        <span>9. Vstup dle RSI/PA potvrzení.</span>
+                        <span>10. SL nad local high / pod local low.</span>
+                        <span>11. TP na protilehlou S/D, ideálně 1:2.</span>
                     </div>
                 </div>
             </section>
-        </div>
-
-        <section class="strategy-decision-panel">
-            <div class="strategy-state-card yes">
-                <span>Fajfka</span>
-                <strong>Faktor setup opravdu podporuje.</strong>
-            </div>
-            <div class="strategy-state-card no">
-                <span>Křížek</span>
-                <strong>Faktor je proti setupu nebo chybí povinná část modelu.</strong>
-            </div>
-            <div class="strategy-state-card empty">
-                <span>Prázdné</span>
-                <strong>Faktor není použitý, relevantní nebo potřebný.</strong>
-            </div>
-        </section>
-
-        <section class="strategy-no-trade">
-            <div>
-                <p class="strategy-eyebrow">No trade pravidla</p>
-                <h2>Neobchoduji, pokud setup stojí jen na jedné slabé konfluenci.</h2>
-            </div>
-            <div class="strategy-no-trade-grid">
-                <span>Nevím daily bias</span>
-                <span>Není kvalitní zóna</span>
-                <span>Není structure shift</span>
-                <span>Vstup je uprostřed ničeho</span>
-                <span>Není jasný TP</span>
-                <span>SL není logický</span>
-                <span>RRR je pod 1:2</span>
-                <span>Trade je mimo obchodní čas</span>
-                <span>Nejsou zkontrolované news</span>
-                <span>Vstupuji z emocí nebo FOMO</span>
-            </div>
         </section>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const buttons = document.querySelectorAll("[data-strategy-tab]");
+            const panels = document.querySelectorAll("[data-strategy-panel]");
+
+            buttons.forEach(button => {
+                button.addEventListener("click", () => {
+                    const key = button.dataset.strategyTab;
+                    buttons.forEach(item => {
+                        const active = item === button;
+                        item.classList.toggle("active", active);
+                        item.setAttribute("aria-selected", active ? "true" : "false");
+                    });
+
+                    panels.forEach(panel => {
+                        const active = panel.dataset.strategyPanel === key;
+                        panel.classList.toggle("active", active);
+                        panel.hidden = !active;
+                    });
+                });
+            });
+        })();
+    </script>
+}

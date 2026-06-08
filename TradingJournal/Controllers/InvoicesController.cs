@@ -622,11 +622,14 @@ namespace TradingJournal.Controllers
             if (string.IsNullOrWhiteSpace(iban))
                 iban = TryCreateCzechIban(invoice.SupplierCompany?.BankAccount);
 
-            if (string.IsNullOrWhiteSpace(iban) || invoice.TotalGross <= 0)
+            var supplierIsVatPayer = invoice.SupplierCompany?.IsVatPayer == true;
+            var amountDue = supplierIsVatPayer ? invoice.TotalGross : invoice.TotalNet;
+
+            if (string.IsNullOrWhiteSpace(iban) || amountDue <= 0)
                 return null;
 
             var variableSymbol = DigitsOnly(invoice.InvoiceNumber);
-            var amount = invoice.TotalGross.ToString("0.00", CultureInfo.InvariantCulture);
+            var amount = amountDue.ToString("0.00", CultureInfo.InvariantCulture);
             var currency = string.IsNullOrWhiteSpace(invoice.Currency) ? "CZK" : invoice.Currency.Trim().ToUpperInvariant();
             var message = SanitizeQrField($"Faktura {invoice.InvoiceNumber}");
             var payload = $"SPD*1.0*ACC:{iban}*AM:{amount}*CC:{currency}";

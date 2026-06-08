@@ -7,13 +7,15 @@
     var culture = CultureInfo.GetCultureInfo("cs-CZ");
     var supplier = Model.SupplierCompany;
     var customer = Model.CustomerCompany;
+    var supplierIsVatPayer = supplier?.IsVatPayer == true;
     var account = supplier?.BankAccount ?? supplier?.Iban ?? string.Empty;
     var variableSymbol = DigitsOnly(Model.InvoiceNumber);
     var invoiceNumber = !string.IsNullOrWhiteSpace(variableSymbol) ? variableSymbol : Model.InvoiceNumber;
     var paymentQrCodeDataUri = ViewBag.PaymentQrCodeDataUri as string;
-    var invoiceTitle = "FAKTURA";
+    var invoiceTitle = "FAKTURA – DOKLAD";
+    var invoiceTotal = supplierIsVatPayer ? Model.TotalGross : Model.TotalNet;
     var lines = Model.Items
-        .GroupBy(i => new { i.Unit, i.UnitPrice, i.VatRate })
+        .GroupBy(i => new { i.Unit, i.UnitPrice, VatRate = supplierIsVatPayer ? i.VatRate : 0m })
         .Select(g => new PrintableLine(
             g.Key.Unit.Equals("hod", StringComparison.OrdinalIgnoreCase) ? "Expertní vývojové práce MS.NET" : string.Join(", ", g.Select(i => i.Description).Distinct()),
             g.Sum(i => i.Quantity),
@@ -413,6 +415,10 @@
                             {
                                 <div>DIČ: @supplier.TaxNumber</div>
                             }
+                            @if (!supplierIsVatPayer)
+                            {
+                                <div>Nejsem plátce DPH.</div>
+                            }
                             @if (!string.IsNullOrWhiteSpace(supplier?.Phone))
                             {
                                 <div>Telefon: @supplier.Phone</div>
@@ -435,7 +441,10 @@
                     <div class="date-box">
                         <div class="date-row"><span>Datum vystavení:</span><strong>@Model.IssueDate.ToString("dd.MM.yyyy", culture)</strong></div>
                         <div class="date-row"><span>Datum splatnosti:</span><strong>@Model.DueDate.ToString("dd.MM.yyyy", culture)</strong></div>
-                        <div class="date-row"><span>Datum uskutečnění plnění:</span><strong>@(Model.TaxableSupplyDate?.ToString("dd.MM.yyyy", culture) ?? "-")</strong></div>
+                        @if (supplierIsVatPayer)
+                        {
+                            <div class="date-row"><span>Datum uskutečnění plnění:</span><strong>@(Model.TaxableSupplyDate?.ToString("dd.MM.yyyy", culture) ?? "-")</strong></div>
+                        }
                         <div class="payment-row"><span>Forma úhrady:</span><span>Příkazem</span></div>
                     </div>
                 </div>
@@ -476,12 +485,15 @@
                     <tr>
                         <th>Označení dodávky</th>
                         <th>Množství</th>
-                        <th>J.cena</th>
-                        <th>Sleva</th>
-                        <th>Cena</th>
-                        <th>%DPH</th>
-                        <th>DPH</th>
-                        <th>Kč Celkem</th>
+                        <th>Jednotková cena</th>
+                        @if (supplierIsVatPayer)
+                        {
+                            <th>Sleva</th>
+                            <th>Cena</th>
+                            <th>%DPH</th>
+                            <th>DPH</th>
+                        }
+                        <th>Cena celkem</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -491,24 +503,35 @@
                             <td>@line.Description.ToLowerInvariant()</td>
                             <td>@line.Quantity.ToString("N2", culture) @line.Unit</td>
                             <td>@line.UnitPrice.ToString("N2", culture)</td>
-                            <td>0%</td>
-                            <td>@line.TotalNet.ToString("N2", culture)</td>
-                            <td>@line.VatRate.ToString("N0", culture)%</td>
-                            <td>@line.TotalVat.ToString("N2", culture)</td>
-                            <td>@line.TotalGross.ToString("N2", culture)</td>
+                            @if (supplierIsVatPayer)
+                            {
+                                <td>0%</td>
+                                <td>@line.TotalNet.ToString("N2", culture)</td>
+                                <td>@line.VatRate.ToString("N0", culture)%</td>
+                                <td>@line.TotalVat.ToString("N2", culture)</td>
+                            }
+                            <td>@((supplierIsVatPayer ? line.TotalGross : line.TotalNet).ToString("N2", culture))</td>
                         </tr>
                     }
                     <tr class="summary-line">
                         <td>Součet položek</td>
-                        <td colspan="3"></td>
-                        <td>@Model.TotalNet.ToString("N2", culture)</td>
-                        <td></td>
-                        <td>@Model.TotalVat.ToString("N2", culture)</td>
-                        <td>@Model.TotalGross.ToString("N2", culture)</td>
+                        @if (supplierIsVatPayer)
+                        {
+                            <td colspan="3"></td>
+                            <td>@Model.TotalNet.ToString("N2", culture)</td>
+                            <td></td>
+                            <td>@Model.TotalVat.ToString("N2", culture)</td>
+                            <td>@invoiceTotal.ToString("N2", culture)</td>
+                        }
+                        else
+                        {
+                            <td colspan="2"></td>
+                            <td>@invoiceTotal.ToString("N2", culture)</td>
+                        }
                     </tr>
                     <tr class="total-line">
-                        <td colspan="7">CELKEM K ÚHRADĚ</td>
-                        <td>@Model.TotalGross.ToString("N2", culture)</td>
+                        <td colspan="@(supplierIsVatPayer ? 7 : 3)">CELKEM K ÚHRADĚ</td>
+                        <td>@invoiceTotal.ToString("N2", culture)</td>
                     </tr>
                 </tbody>
             </table>
@@ -530,26 +553,29 @@
                         <div class="payment-qr-label">QR platba není dostupná</div>
                     }
                 </div>
-                <table class="vat-recap">
-                    <thead>
-                        <tr>
-                            <th>Rekapitulace DPH v Kč:</th>
-                            <th>Základ v Kč</th>
-                            <th>Sazba</th>
-                            <th>DPH v Kč</th>
-                            <th>Celkem s DPH v Kč</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td></td>
-                            <td>@Model.TotalNet.ToString("N2", culture)</td>
-                            <td>@(Model.TotalVat == 0 ? "0%" : "")</td>
-                            <td>@Model.TotalVat.ToString("N2", culture)</td>
-                            <td>@Model.TotalGross.ToString("N2", culture)</td>
-                        </tr>
-                    </tbody>
-                </table>
+                @if (supplierIsVatPayer)
+                {
+                    <table class="vat-recap">
+                        <thead>
+                            <tr>
+                                <th>Rekapitulace DPH v Kč:</th>
+                                <th>Základ v Kč</th>
+                                <th>Sazba</th>
+                                <th>DPH v Kč</th>
+                                <th>Celkem s DPH v Kč</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td></td>
+                                <td>@Model.TotalNet.ToString("N2", culture)</td>
+                                <td>@(Model.TotalVat == 0 ? "0%" : "")</td>
+                                <td>@Model.TotalVat.ToString("N2", culture)</td>
+                                <td>@invoiceTotal.ToString("N2", culture)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                }
             </section>
         </section>
     </main>

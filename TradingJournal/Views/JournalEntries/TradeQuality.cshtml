@@ -11,6 +11,10 @@
             </div>
 
             <div class="trade-quality-controls">
+                <select class="form-select quality-strategy-select" id="strategyProfile" aria-label="Strategie">
+                    <option value="mucka">Petr Můčka</option>
+                    <option value="corex">CoreX S/D</option>
+                </select>
                 <select class="form-select" id="instrument" aria-label="Instrument">
                     <option>EUR/USD</option>
                     <option>XAU/USD</option>
@@ -47,7 +51,7 @@
                 </label>
                 <label class="quality-risk-field">
                     <span>Risk</span>
-                    <input type="text" id="standardRiskPercent" value="1" inputmode="decimal" aria-label="Standardni risk v procentech" />
+                    <input type="text" id="standardRiskPercent" value="1" inputmode="decimal" aria-label="Standardní risk v procentech" />
                 </label>
                 <button type="button" class="btn btn-outline-secondary" id="qualityReset">Reset</button>
             </div>
@@ -71,33 +75,33 @@
                 <span class="quality-session-label">Časové okno</span>
                 <strong>Zadej čas vstupu</strong>
             </div>
-            <p>Vyhodnotím, jestli čas spadá do Frankfurt, London nebo NY killzone podle strategie.</p>
+            <p>Vyhodnotím, jestli čas spadá do validního okna podle zvolené strategie.</p>
         </div>
 
-        <div class="trade-quality-board quality-compact-board quality-strategy-board">
+        <div class="trade-quality-board quality-compact-board quality-strategy-board" id="tradeQualityBoard">
             <section class="quality-box quality-context-box">
-                <h2>Kontext</h2>
+                <h2 id="sectionTitleContext">Kontext</h2>
                 <div class="quality-factor-grid two" id="rules-context"></div>
             </section>
 
             <section class="quality-box quality-zone-box">
-                <h2>Zóna / konfluence</h2>
+                <h2 id="sectionTitleZone">Zóna / konfluence</h2>
                 <div class="quality-factor-grid two" id="rules-zone"></div>
             </section>
 
             <div class="quality-side-stack">
                 <section class="quality-box">
-                    <h2>Entry model</h2>
+                    <h2 id="sectionTitleEntry">Entry model</h2>
                     <div class="quality-factor-grid two" id="rules-entry"></div>
                 </section>
 
                 <section class="quality-box">
-                    <h2>Take Profit</h2>
+                    <h2 id="sectionTitleTp">Take Profit</h2>
                     <div class="quality-factor-grid two" id="rules-tp"></div>
                 </section>
 
                 <section class="quality-box">
-                    <h2>Stop Loss / Risk</h2>
+                    <h2 id="sectionTitleRisk">Stop Loss / Risk</h2>
                     <div class="quality-factor-grid two" id="rules-risk"></div>
                 </section>
             </div>
@@ -136,7 +140,7 @@
 @section Scripts {
     <script>
         (() => {
-            const rules = [
+            const muckaRules = [
                 { id: "weekly_price_action", label: "Weekly price action", section: "context", weight: 3, type: "confluence", description: "Weekly timeframe není proti směru tradu." },
                 { id: "daily_bias", label: "Daily Bias", section: "context", weight: 8, type: "core", required: true, description: "Denní bias je vyhodnocený a ideálně podporuje směr tradu." },
                 { id: "daily_sd", label: "Daily S/D", section: "context", weight: 5, type: "core", description: "Setup reaguje na relevantní daily supply/demand zónu." },
@@ -148,7 +152,6 @@
                 { id: "m15_sd", label: "15m S/D", section: "context", weight: 5, type: "core", description: "Vstup nebo reakce vzniká u validní 15m supply/demand zóny." },
                 { id: "dxy", label: "DXY", section: "context", weight: 2, type: "confluence", description: "DXY potvrzuje směr nebo není proti tradu, hlavně u USD párů." },
                 { id: "news_checked", label: "News checked", section: "context", weight: 8, type: "core", required: true, hardBlocker: true, description: "News jsou zkontrolované a v blízkosti vstupu nejsou nebezpečné high impact zprávy." },
-
                 { id: "entry_zone_quality", label: "Kvalitní vstupní zóna", section: "zone", weight: 10, type: "core", required: true, description: "Existuje předem označená kvalitní zóna, ze které dává vstup smysl." },
                 { id: "sd_caused_bos", label: "S/D způsobila BOS", section: "zone", weight: 6, type: "core", description: "S/D zóna způsobila významný break of structure." },
                 { id: "order_block", label: "Order Block", section: "zone", weight: 3, type: "confluence", description: "Order block podporuje vstup nebo reakční oblast." },
@@ -161,7 +164,6 @@
                 { id: "npoc", label: "nPOC", section: "zone", weight: 3, type: "confluence", description: "nPOC funguje jako magnet, reakční úroveň nebo target." },
                 { id: "vwap", label: "VWAP", section: "zone", weight: 2, type: "confluence", description: "VWAP podporuje směr nebo target." },
                 { id: "dopen", label: "dOpen", section: "zone", weight: 2, type: "confluence", description: "Denní open podporuje intraday kontext nebo target." },
-
                 { id: "market_open_time", label: "Validní obchodní čas", section: "entry", weight: 10, type: "core", required: true, hardBlocker: true, description: "Trade vzniká v předem definovaném obchodním čase podle strategie." },
                 { id: "structure_shift", label: "Structure shift 1m/5m/15m", section: "entry", weight: 10, type: "core", required: true, hardBlocker: true, description: "Proběhla validní změna struktury s momentem, ne jen slabý CHoCH." },
                 { id: "entry_model", label: "Entry model valid", section: "entry", weight: 12, type: "core", required: true, hardBlocker: true, description: "Entry model je validní pouze tehdy, když existuje kvalitní zóna, structure shift, validní čas, jasný SL, TP a RRR." },
@@ -169,7 +171,6 @@
                 { id: "entry_from_valid_zone", label: "Entry z validní zóny", section: "entry", weight: 8, type: "core", description: "Vstup je z validní S/D, FVG, OB, balančního levelu nebo jiné předem určené zóny." },
                 { id: "spread_accounted", label: "Spread započítaný", section: "entry", weight: 2, type: "confluence", description: "U limitního vstupu je zohledněn spread." },
                 { id: "momentum_on_shift", label: "Momentum při shiftu", section: "entry", weight: 4, type: "confluence", description: "Změna struktury proběhla s výrazným momentem." },
-
                 { id: "clear_tp_target", label: "Jasný TP target", section: "tp", weight: 10, type: "core", required: true, hardBlocker: true, description: "Trade má jasný logický target. Bez targetu je NO TRADE." },
                 { id: "tp_local_liquidity", label: "Lokální liquidity", section: "tp", weight: 4, type: "confluence", description: "TP míří na lokální liquidity." },
                 { id: "tp_asia_high_low", label: "Asia high / low", section: "tp", weight: 4, type: "confluence", description: "TP míří na Asian high/low." },
@@ -180,9 +181,8 @@
                 { id: "tp_sd_target", label: "S/D target", section: "tp", weight: 4, type: "confluence", description: "TP je u relevantní S/D zóny." },
                 { id: "tp_previous_day_hl", label: "Previous day high / low", section: "tp", weight: 3, type: "confluence", description: "TP míří na previous day high/low." },
                 { id: "tp_candle_close_logic", label: "Close svíček", section: "tp", weight: 2, type: "confluence", description: "Exit může být řízen zavíráním svíček podle plánu." },
-
                 { id: "valid_stop_loss", label: "Validní stop loss", section: "risk", weight: 12, type: "core", required: true, hardBlocker: true, description: "SL je za logickou invalidační úrovní." },
-                { id: "sl_according_to_instrument", label: "SL podle instrumentu", section: "risk", weight: 6, type: "core", description: "SL odpovídá trhu, který se obchoduje. EUR/USD, XAU/USD a NQ nemají stejnou logiku pipů/pointů." },
+                { id: "sl_according_to_instrument", label: "SL podle instrumentu", section: "risk", weight: 6, type: "core", description: "SL odpovídá trhu, který se obchoduje." },
                 { id: "sl_not_too_tight", label: "SL není příliš těsný", section: "risk", weight: 4, type: "core", description: "SL není tak těsný, že ho běžná volatilita snadno vyhodí." },
                 { id: "sl_not_too_wide", label: "SL není příliš široký", section: "risk", weight: 3, type: "confluence", description: "SL není nesmyslně široký vůči setupu a RRR." },
                 { id: "rr_minimum", label: "RR minimálně 2R", section: "risk", weight: 12, type: "core", required: true, hardBlocker: true, description: "RRR musí být minimálně 2R." },
@@ -191,93 +191,74 @@
                 { id: "daily_max_loss_not_hit", label: "Denní max loss není dosažený", section: "risk", weight: 10, type: "core", hardBlocker: true, description: "Pokud je dosažen denní max loss, další trade je NO TRADE." }
             ];
 
-            const conflictPenalties = [
-                {
-                    id: "daily_and_h4_against",
-                    penalty: 12,
-                    message: "Daily bias i 4H struktura jsou proti tradu.",
-                    condition: states => states.daily_bias === "no" && states.h4_swing_ms === "no"
-                },
-                {
-                    id: "entry_without_zone",
-                    penalty: 15,
-                    message: "Entry model je označený jako validní, ale chybí kvalitní vstupní zóna.",
-                    condition: states => states.entry_model === "yes" && states.entry_zone_quality !== "yes"
-                },
-                {
-                    id: "shift_without_liq_or_zone",
-                    penalty: 10,
-                    message: "Structure shift existuje, ale chybí likvidita i kvalitní zóna.",
-                    condition: states => states.structure_shift === "yes" && states.liquidity === "no" && states.entry_zone_quality === "no"
-                },
-                {
-                    id: "tp_without_confluence",
-                    penalty: 8,
-                    message: "TP je označený jako jasný, ale není podložený žádnou TP konfluencí.",
-                    condition: states =>
-                        states.clear_tp_target === "yes" &&
-                        states.tp_local_liquidity !== "yes" &&
-                        states.tp_asia_high_low !== "yes" &&
-                        states.tp_session_liquidity !== "yes" &&
-                        states.tp_npoc_poc !== "yes" &&
-                        states.tp_close_vwap !== "yes" &&
-                        states.tp_dopen !== "yes" &&
-                        states.tp_sd_target !== "yes" &&
-                        states.tp_previous_day_hl !== "yes"
-                },
-                {
-                    id: "rr_valid_but_sl_invalid",
-                    penalty: 10,
-                    message: "RRR vychází, ale stop loss není logicky umístěný.",
-                    condition: states => states.rr_minimum === "yes" && states.valid_stop_loss === "no"
-                }
+            const corexRules = [
+                { id: "daily_trend_zones", label: "1. Určit trend + klíčové S/D zóny", section: "context", weight: 10, type: "core", required: true, hardBlocker: true, description: "Na Daily timeframu definuj směr trendu a vyznač hlavní supply a demand zóny." },
+                { id: "mini_sd_current_level", label: "2. Mini S/D zóny na aktuální hladině", section: "context", weight: 10, type: "core", required: true, hardBlocker: true, description: "Zkontroluj, jestli na aktuální cenové hladině nejsou menší (mini) S/D zóny relevantní pro dnešek." },
+                { id: "strong_weak_hl", label: "3. Strong/weak high & low", section: "zone", weight: 10, type: "core", required: true, hardBlocker: true, description: "Urči strong low + weak high (uptrend) nebo weak low + strong high (downtrend) podle směru trendu." },
+                { id: "h4_internal_structure", label: "4. Aktuální interní struktura", section: "zone", weight: 10, type: "core", required: true, hardBlocker: true, description: "Identifikuj interní strukturu uvnitř 4H rozsahu (slouží k managementu, ne ke swing vstupu)." },
+                { id: "htf_context", label: "5. High timeframe kontext", section: "zone", weight: 10, type: "core", required: true, hardBlocker: true, description: "Slož HTF kontext - kde jsme v rámci vyšších TF a kam má cena prostor jít." },
+                { id: "market_open_time", label: "6. Kontrola času + dne", section: "entry", weight: 10, type: "core", required: true, hardBlocker: true, description: "Ověř čas a den (sezení, news, likvidita) - jestli je vhodné okno pro vstup." },
+                { id: "m15_context_transfer", label: "7. Přechod na M15", section: "entry", weight: 10, type: "core", required: true, hardBlocker: true, description: "Přejdi na 15min timeframe a přenes na něj kontext z vyšších TF." },
+                { id: "m15_zone_refined", label: "8. Specifikace M15 zón", section: "entry", weight: 10, type: "core", required: true, hardBlocker: true, description: "Zpřesni 15min zóny vytipované z vyšších TF - odkud chceš reagovat." },
+                { id: "m5_rsi_confirmation", label: "9. Vstup na M5 dle RSI potvrzení", section: "risk", weight: 10, type: "core", required: true, hardBlocker: true, description: "Na 5min TF vstupuj na základě potvrzení na RSI uvnitř M15 zóny." },
+                { id: "valid_stop_loss", label: "10. Stop loss nad local high / pod low", section: "risk", weight: 10, type: "core", required: true, hardBlocker: true, description: "SL nad lokální high (short) nebo pod lokální low (long). Limit order, set & forget." },
+                { id: "rr_minimum", label: "11. Take profit na S/D - ideálně 1:2", section: "risk", weight: 10, type: "core", required: true, hardBlocker: true, description: "TP na protilehlou supply/demand zónu, ideálně RRR 1:2." }
             ];
 
-            const states = Object.fromEntries(rules.map(rule => [rule.id, "empty"]));
-            const manuallyChangedRules = new Set();
-            const sessionWindows = [
-                {
-                    name: "Frankfurt open",
-                    start: "08:00",
-                    end: "09:30",
-                    strength: "valid",
-                    detail: "Validní ranní okno. Hledej jasný HTF kontext, liquidity a návrat do zóny."
+            const strategyProfiles = {
+                mucka: {
+                    name: "Petr Můčka",
+                    rules: muckaRules,
+                    sectionTitles: { context: "Kontext", zone: "Zóna / konfluence", entry: "Entry model", tp: "Take Profit", risk: "Stop Loss / Risk" },
+                    emptyText: "Vyhodnoť povinné položky. Nepoužité konfluence nech prázdné.",
+                    sessionText: "Vyhodnotím, jestli čas spadá do Frankfurt, London nebo NY killzone podle strategie.",
+                    rrrMinimum: 2,
+                    conflicts: [
+                        { id: "daily_and_h4_against", penalty: 12, message: "Daily bias i 4H struktura jsou proti tradu.", condition: states => states.daily_bias === "no" && states.h4_swing_ms === "no" },
+                        { id: "entry_without_zone", penalty: 15, message: "Entry model je označený jako validní, ale chybí kvalitní vstupní zóna.", condition: states => states.entry_model === "yes" && states.entry_zone_quality !== "yes" },
+                        { id: "shift_without_liq_or_zone", penalty: 10, message: "Structure shift existuje, ale chybí likvidita i kvalitní zóna.", condition: states => states.structure_shift === "yes" && states.liquidity === "no" && states.entry_zone_quality === "no" },
+                        { id: "tp_without_confluence", penalty: 8, message: "TP je označený jako jasný, ale není podložený žádnou TP konfluencí.", condition: states => states.clear_tp_target === "yes" && states.tp_local_liquidity !== "yes" && states.tp_asia_high_low !== "yes" && states.tp_session_liquidity !== "yes" && states.tp_npoc_poc !== "yes" && states.tp_close_vwap !== "yes" && states.tp_dopen !== "yes" && states.tp_sd_target !== "yes" && states.tp_previous_day_hl !== "yes" },
+                        { id: "rr_valid_but_sl_invalid", penalty: 10, message: "RRR vychází, ale stop loss není logicky umístěný.", condition: states => states.rr_minimum === "yes" && states.valid_stop_loss === "no" }
+                    ]
                 },
-                {
-                    name: "London open",
-                    start: "09:00",
-                    end: "11:00",
-                    strength: "valid",
-                    detail: "Hlavní evropské okno. Dobré pro EUR/USD, GBP/USD i zlato, pokud sedí bias a news."
-                },
-                {
-                    name: "NY precision window",
-                    start: "15:40",
-                    end: "16:10",
-                    strength: "prime",
-                    detail: "Nejpřesnější US okno. Po úvodní volatilitě hledej potvrzený shift a návrat do validní zóny."
-                },
-                {
-                    name: "NY open",
-                    start: "15:30",
-                    end: "17:00",
-                    strength: "valid",
-                    detail: "Silné US okno. Pozor na news a první impuls po otevření trhu."
-                },
-                {
-                    name: "NY continuation",
-                    start: "20:00",
-                    end: "21:00",
-                    strength: "conditional",
-                    detail: "Pouze selektivně. Obchoduj jen jasný continuation/retest, ne náhodný pozdní impulse."
+                corex: {
+                    name: "CoreX S/D",
+                    rules: corexRules,
+                    sectionTitles: { context: "DAILY - Bias & klíčové zóny", zone: "4H - Struktura & kontext", entry: "PŘÍPRAVA - Čas & M15 zóny", tp: "Take Profit", risk: "M5 - Exekuce & risk" },
+                    emptyText: "CoreX má 11 povinných kroků. Dokud některý krok není vyhodnocený, setup není kompletní.",
+                    sessionText: "CoreX kontroluje čas, den, session a news. Tento krok musí být splněný.",
+                    rrrMinimum: 2,
+                    conflicts: []
                 }
+            };
+
+            let activeProfileKey = "mucka";
+            let rules = strategyProfiles[activeProfileKey].rules;
+            let conflictPenalties = strategyProfiles[activeProfileKey].conflicts;
+            let states = Object.fromEntries(rules.map(rule => [rule.id, "empty"]));
+            let manuallyChangedRules = new Set();
+
+            const sessionWindows = [
+                { name: "Frankfurt open", start: "08:00", end: "09:30", strength: "valid", detail: "Validní ranní okno. Hledej jasný HTF kontext, liquidity a návrat do zóny." },
+                { name: "London open", start: "09:00", end: "11:00", strength: "valid", detail: "Hlavní evropské okno. Dobrý čas pro připravené levely, pokud sedí bias a nejsou nebezpečné news." },
+                { name: "NY precision window", start: "15:40", end: "16:10", strength: "prime", detail: "Nejpřesnější US okno. Po úvodní volatilitě hledej potvrzený shift a návrat do validní zóny." },
+                { name: "NY open", start: "15:30", end: "17:00", strength: "valid", detail: "Silné US okno. Pozor na news a první impuls po otevření trhu." },
+                { name: "NY continuation", start: "20:00", end: "21:00", strength: "conditional", detail: "Pouze selektivně. Obchoduj jen jasný continuation/retest, ne náhodný pozdní impulse." }
             ];
+
             const sectionTargets = {
                 context: document.getElementById("rules-context"),
                 zone: document.getElementById("rules-zone"),
                 entry: document.getElementById("rules-entry"),
                 tp: document.getElementById("rules-tp"),
                 risk: document.getElementById("rules-risk")
+            };
+            const sectionTitles = {
+                context: document.getElementById("sectionTitleContext"),
+                zone: document.getElementById("sectionTitleZone"),
+                entry: document.getElementById("sectionTitleEntry"),
+                tp: document.getElementById("sectionTitleTp"),
+                risk: document.getElementById("sectionTitleRisk")
             };
             const output = {
                 ring: document.getElementById("qualityScoreRing"),
@@ -304,7 +285,9 @@
                 blockers: document.getElementById("qualityBlockers"),
                 conflicts: document.getElementById("qualityConflicts")
             };
+            const board = document.getElementById("tradeQualityBoard");
             const inputs = {
+                profile: document.getElementById("strategyProfile"),
                 instrument: document.getElementById("instrument"),
                 direction: document.getElementById("direction"),
                 tradeTime: document.getElementById("tradeTime"),
@@ -331,11 +314,9 @@
             function toMinutes(time) {
                 const match = /^(\d{1,2}):(\d{2})$/.exec(String(time || ""));
                 if (!match) return null;
-
                 const hours = Number(match[1]);
                 const minutes = Number(match[2]);
                 if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-
                 return (hours * 60) + minutes;
             }
 
@@ -343,57 +324,42 @@
                 const minutes = toMinutes(value);
                 const start = toMinutes(window.start);
                 const end = toMinutes(window.end);
-
                 if (minutes === null || start === null || end === null) return false;
                 if (start <= end) return minutes >= start && minutes <= end;
-
                 return minutes >= start || minutes <= end;
             }
 
             function evaluateSessionWindow() {
+                const profile = strategyProfiles[activeProfileKey];
                 const value = inputs.tradeTime.value;
                 if (!value) {
-                    return {
-                        state: "empty",
-                        title: "Zadej čas vstupu",
-                        detail: "Vyhodnotím, jestli čas spadá do Frankfurt, London nebo NY killzone podle strategie."
-                    };
+                    return { state: "empty", title: "Zadej čas vstupu", detail: profile.sessionText };
                 }
 
                 const matchedWindow = sessionWindows
                     .filter(window => isWithinWindow(value, window))
-                    .sort((first, second) => {
-                        const firstDuration = Math.abs(toMinutes(first.end) - toMinutes(first.start));
-                        const secondDuration = Math.abs(toMinutes(second.end) - toMinutes(second.start));
-                        return firstDuration - secondDuration;
-                    })[0];
+                    .sort((first, second) => Math.abs(toMinutes(first.end) - toMinutes(first.start)) - Math.abs(toMinutes(second.end) - toMinutes(second.start)))[0];
+
                 if (!matchedWindow) {
-                    return {
-                        state: "no",
-                        title: `${value} není validní vstupní okno`,
-                        detail: "Mimo hlavní plán. Bez extrémně silného kontextu raději NO TRADE."
-                    };
+                    return { state: "no", title: `${value} není validní vstupní okno`, detail: "Mimo hlavní plán. Bez extrémně silného kontextu raději NO TRADE." };
                 }
 
                 const prefix = matchedWindow.strength === "prime" ? "Prime okno" : matchedWindow.strength === "conditional" ? "Podmíněně validní" : "Validní okno";
-                return {
-                    state: matchedWindow.strength === "conditional" ? "yes" : "yes",
-                    title: `${prefix}: ${matchedWindow.name} ${matchedWindow.start}-${matchedWindow.end}`,
-                    detail: matchedWindow.detail
-                };
+                return { state: "yes", title: `${prefix}: ${matchedWindow.name} ${matchedWindow.start}-${matchedWindow.end}`, detail: matchedWindow.detail };
+            }
+
+            function hasRule(ruleId) {
+                return Boolean(rules.find(rule => rule.id === ruleId));
             }
 
             function syncSessionRule() {
                 const session = evaluateSessionWindow();
-
                 sessionResult.classList.toggle("is-empty", session.state === "empty");
                 sessionResult.classList.toggle("is-valid", session.state === "yes");
                 sessionResult.classList.toggle("is-invalid", session.state === "no");
                 sessionResult.querySelector("strong").textContent = session.title;
                 sessionResult.querySelector("p").textContent = session.detail;
-
-                if (manuallyChangedRules.has("market_open_time")) return;
-
+                if (!hasRule("market_open_time") || manuallyChangedRules.has("market_open_time")) return;
                 states.market_open_time = session.state;
                 syncRuleElement("market_open_time");
             }
@@ -432,12 +398,10 @@
                 if (result.grade === "NEVYHODNOCENO") {
                     return "Setup zatím nelze vyhodnotit. Chybí povinné položky: " + result.missingRequired.join(", ");
                 }
-
                 if (result.grade === "NO TRADE") {
                     const reasons = result.blockers.length > 0 ? result.blockers : ["setup nemá dostatečnou kvalitu"];
                     return "NO TRADE. Setup má nesplněné kritické podmínky: " + reasons.join(", ");
                 }
-
                 if (result.grade === "A+") return "A+ setup. Velmi kvalitní konfluence. Lze obchodovat podle plného risk plánu.";
                 if (result.grade === "A") return "A setup. Kvalitní obchodní příležitost. Většina důležitých faktorů je v souladu.";
                 if (result.grade === "B") return "B setup. Obchodovatelný setup, ale ne ideální. Doporučeno snížit risk nebo čekat na lepší potvrzení.";
@@ -449,18 +413,10 @@
                 const entry = parseDecimal(inputs.entry.value);
                 const stop = parseDecimal(inputs.stop.value);
                 const take = parseDecimal(inputs.take.value);
-
-                if (entry <= 0 || stop <= 0 || take <= 0) {
-                    return null;
-                }
-
+                if (entry <= 0 || stop <= 0 || take <= 0) return null;
                 const risk = inputs.direction.value === "long" ? entry - stop : stop - entry;
                 const reward = inputs.direction.value === "long" ? take - entry : entry - take;
-
-                if (risk <= 0 || reward <= 0) {
-                    return 0;
-                }
-
+                if (risk <= 0 || reward <= 0) return 0;
                 return reward / risk;
             }
 
@@ -474,7 +430,6 @@
                     "6E": { type: "futures", suffix: "kontr.", label: "Futures 6E", tickSize: 0.00005, tickValue: 6.25 },
                     "Other": { type: "generic", suffix: "jedn.", label: "Obecný výpočet" }
                 };
-
                 return specs[inputs.instrument.value] || specs.Other;
             }
 
@@ -483,18 +438,12 @@
                 const riskPercent = parseDecimal(inputs.standardRisk.value);
                 const entry = parseDecimal(inputs.entry.value);
                 const stop = parseDecimal(inputs.stop.value);
-
-                if (accountSize <= 0 || riskPercent <= 0 || entry <= 0 || stop <= 0) {
-                    return null;
-                }
-
+                if (accountSize <= 0 || riskPercent <= 0 || entry <= 0 || stop <= 0) return null;
                 const distance = Math.abs(entry - stop);
                 if (distance <= 0) return null;
-
                 const riskAmount = accountSize * (riskPercent / 100);
                 const spec = getInstrumentSpec();
                 let riskPerUnit = distance;
-
                 if (spec.type === "cfd" && spec.pipSize && spec.pipValuePerLot) {
                     riskPerUnit = (distance / spec.pipSize) * spec.pipValuePerLot;
                 } else if (spec.type === "cfd" && spec.contractSize) {
@@ -502,34 +451,25 @@
                 } else if (spec.type === "futures") {
                     riskPerUnit = (distance / spec.tickSize) * spec.tickValue;
                 }
-
                 if (!Number.isFinite(riskPerUnit) || riskPerUnit <= 0) return null;
-
-                return {
-                    riskAmount,
-                    size: riskAmount / riskPerUnit,
-                    suffix: spec.suffix,
-                    label: spec.label
-                };
+                return { riskAmount, size: riskAmount / riskPerUnit, suffix: spec.suffix, label: spec.label };
             }
 
             function syncRrrRule() {
-                if (manuallyChangedRules.has("rr_minimum")) return;
-
+                if (!hasRule("rr_minimum") || manuallyChangedRules.has("rr_minimum")) return;
                 const rrr = calculateRrr();
-                const nextState = rrr === null ? "empty" : rrr >= 2 ? "yes" : "no";
+                const nextState = rrr === null ? "empty" : rrr >= strategyProfiles[activeProfileKey].rrrMinimum ? "yes" : "no";
                 states.rr_minimum = nextState;
                 syncRuleElement("rr_minimum");
             }
 
             function syncPositionSizeRule() {
-                if (manuallyChangedRules.has("position_size_defined")) return;
-
+                if (!hasRule("position_size_defined") || manuallyChangedRules.has("position_size_defined")) return;
                 states.position_size_defined = calculatePositionSize() ? "yes" : "empty";
                 syncRuleElement("position_size_defined");
             }
 
-            function calculateSetupQuality(rules, states, conflictPenalties, standardRiskPercent) {
+            function calculateSetupQuality(activeRules, activeStates, activeConflicts, standardRiskPercent) {
                 let proScore = 0;
                 let contraScore = 0;
                 let proCount = 0;
@@ -539,30 +479,23 @@
                 const missingRequired = [];
                 const conflictMessages = [];
 
-                for (const rule of rules) {
-                    const state = states[rule.id];
-
+                for (const rule of activeRules) {
+                    const state = activeStates[rule.id];
                     if (state === "yes") {
                         proScore += rule.weight;
                         proCount += 1;
                     } else if (state === "no") {
                         contraScore += rule.weight;
                         contraCount += 1;
-
-                        if (rule.hardBlocker) {
-                            blockers.push(rule.label);
-                        }
+                        if (rule.hardBlocker) blockers.push(rule.label);
                     } else {
                         emptyCount += 1;
-
-                        if (rule.required) {
-                            missingRequired.push(rule.label);
-                        }
+                        if (rule.required) missingRequired.push(rule.label);
                     }
                 }
 
-                for (const conflict of conflictPenalties) {
-                    if (conflict.condition(states)) {
+                for (const conflict of activeConflicts) {
+                    if (conflict.condition(activeStates)) {
                         contraScore += conflict.penalty;
                         conflictMessages.push(conflict.message);
                     }
@@ -571,10 +504,7 @@
                 const totalScore = proScore + contraScore;
                 const qualityPercent = totalScore > 0 ? clamp((proScore / totalScore) * 100, 0, 100) : 0;
                 let grade = totalScore === 0 || missingRequired.length > 0 ? "NEVYHODNOCENO" : getGrade(qualityPercent);
-
-                if (blockers.length > 0) {
-                    grade = "NO TRADE";
-                }
+                if (blockers.length > 0) grade = "NO TRADE";
 
                 const result = {
                     qualityPercent: Number(qualityPercent.toFixed(2)),
@@ -589,14 +519,29 @@
                     conflictMessages,
                     suggestedRiskPercent: getSuggestedRisk(grade, standardRiskPercent)
                 };
-
                 result.recommendation = getRecommendation(result);
                 return result;
             }
 
+            function applyProfile(profileKey) {
+                activeProfileKey = profileKey;
+                const profile = strategyProfiles[activeProfileKey];
+                rules = profile.rules;
+                conflictPenalties = profile.conflicts;
+                states = Object.fromEntries(rules.map(rule => [rule.id, "empty"]));
+                manuallyChangedRules = new Set();
+                Object.entries(profile.sectionTitles).forEach(([section, title]) => {
+                    sectionTitles[section].textContent = title;
+                });
+                board.classList.toggle("is-corex-profile", activeProfileKey === "corex");
+                document.body.classList.toggle("quality-corex-mode", activeProfileKey === "corex");
+                output.recommendation.textContent = profile.emptyText;
+                renderRules();
+                update();
+            }
+
             function renderRules() {
                 Object.values(sectionTargets).forEach(target => target.innerHTML = "");
-
                 for (const rule of rules) {
                     const element = document.createElement("button");
                     element.type = "button";
@@ -605,30 +550,46 @@
                     element.dataset.state = "empty";
                     element.title = rule.description || rule.label;
                     element.setAttribute("aria-label", `${rule.label}. Kliknutím přepínáš empty, ano, ne.`);
-                    element.innerHTML = `
-                        <span class="quality-rule-icon" aria-hidden="true"></span>
-                        <span class="quality-rule-label">${rule.label}</span>
-                        ${rule.required ? '<span class="quality-rule-note">required</span>' : ''}
-                    `;
+                    if (activeProfileKey === "corex") {
+                        const match = rule.label.match(/^(\d+)\.\s*(.*)$/);
+                        const number = match ? match[1] : "";
+                        const title = match ? match[2] : rule.label;
+                        element.classList.add("quality-corex-step");
+                        element.innerHTML = `
+                            <span class="quality-corex-number" aria-hidden="true">${number}</span>
+                            <span class="quality-corex-copy">
+                                <strong>${title}</strong>
+                                <span>${rule.description || ""}</span>
+                            </span>
+                            <span class="quality-rule-icon" aria-hidden="true"></span>
+                        `;
+                    } else {
+                        element.innerHTML = `
+                            <span class="quality-rule-icon" aria-hidden="true"></span>
+                            <span class="quality-rule-label">${rule.label}</span>
+                            ${rule.required ? '<span class="quality-rule-note">required</span>' : ''}
+                        `;
+                    }
                     element.addEventListener("click", () => {
                         const current = states[rule.id] || "empty";
                         const nextState = current === "empty" ? "yes" : current === "yes" ? "no" : "empty";
                         manuallyChangedRules.add(rule.id);
                         setRuleState(rule.id, nextState);
                     });
-
                     sectionTargets[rule.section].appendChild(element);
                     syncRuleElement(rule.id);
                 }
+                Object.values(sectionTargets).forEach(target => {
+                    const section = target.closest(".quality-box");
+                    if (section) section.hidden = target.children.length === 0;
+                });
             }
 
             function syncRuleElement(ruleId) {
                 const state = states[ruleId];
                 const element = document.querySelector(`[data-rule-id="${ruleId}"]`);
                 const rule = rules.find(item => item.id === ruleId);
-
                 if (!element || !rule) return;
-
                 element.classList.toggle("is-empty", state === "empty");
                 element.classList.toggle("is-yes", state === "yes");
                 element.classList.toggle("is-no", state === "no");
@@ -640,10 +601,10 @@
                 element.classList.toggle("is-blocker-failed", Boolean(rule.hardBlocker && state === "no"));
                 element.dataset.state = state;
                 element.setAttribute("aria-pressed", state !== "empty" ? "true" : "false");
-
                 const icon = element.querySelector(".quality-rule-icon");
                 if (icon) {
-                    icon.innerHTML = state === "yes" ? "&#10003;" : state === "no" ? "&times;" : "";
+                    const emptyIcon = element.classList.contains("quality-corex-step") ? "&#9675;" : "";
+                    icon.innerHTML = state === "yes" ? "&#10003;" : state === "no" ? "&times;" : emptyIcon;
                 }
             }
 
@@ -695,7 +656,6 @@
                     ? `Riskuješ ${formatMoney(position.riskAmount)} při stopu ${Math.abs(parseDecimal(inputs.entry.value) - parseDecimal(inputs.stop.value)).toLocaleString("cs-CZ", { maximumFractionDigits: 5 })}.`
                     : "Zadej velikost účtu, risk %, Entry a SL.";
                 output.positionCard.classList.toggle("is-ready", Boolean(position));
-
                 renderText(output.missingRequired, "Missing required", result.missingRequired, "žádné");
                 renderText(output.blockers, "Hard blockers", result.blockers, "žádné");
                 renderText(output.conflicts, "Conflict penalties", result.conflictMessages, "žádné");
@@ -703,14 +663,9 @@
             }
 
             reset.addEventListener("click", () => {
-                manuallyChangedRules.clear();
                 inputs.tradeTime.value = "";
                 inputs.accountSize.value = "";
-                rules.forEach(rule => {
-                    states[rule.id] = "empty";
-                    syncRuleElement(rule.id);
-                });
-                update();
+                applyProfile(activeProfileKey);
             });
 
             useCurrentTime.addEventListener("click", () => {
@@ -720,13 +675,13 @@
                 update();
             });
 
+            inputs.profile.addEventListener("change", () => applyProfile(inputs.profile.value));
             [inputs.instrument, inputs.direction, inputs.tradeTime, inputs.accountSize, inputs.entry, inputs.stop, inputs.take, inputs.standardRisk].forEach(input => {
                 input.addEventListener("input", update);
                 input.addEventListener("change", update);
             });
 
-            renderRules();
-            update();
+            applyProfile(activeProfileKey);
         })();
     </script>
 }

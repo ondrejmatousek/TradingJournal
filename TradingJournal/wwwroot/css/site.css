@@ -4109,6 +4109,10 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   white-space: nowrap;
 }
 
+.quality-strategy-select {
+  min-width: 150px;
+}
+
 .quality-strategy-board #qualityGrade {
   display: block;
   font-size: clamp(0.68rem, 0.68vw, 0.78rem);
@@ -4172,6 +4176,325 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
 .quality-summary-issues {
   grid-template-columns: 1fr;
+}
+
+body.quality-corex-mode .trade-quality-page {
+  padding: 0.5rem 0.85rem;
+}
+
+body.quality-corex-mode .trade-quality-wrap {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1420px;
+}
+
+body.quality-corex-mode .trade-quality-topbar {
+  gap: 0.65rem;
+  margin-bottom: 0.45rem;
+}
+
+body.quality-corex-mode .trade-quality-title h1 {
+  font-size: clamp(1.45rem, 2vw, 2rem);
+}
+
+body.quality-corex-mode .trade-quality-controls {
+  gap: 0.42rem;
+}
+
+body.quality-corex-mode .trade-quality-controls .form-select,
+body.quality-corex-mode .quality-risk-field,
+body.quality-corex-mode .quality-now-button {
+  min-height: 34px;
+}
+
+body.quality-corex-mode .trade-quality-controls .form-select {
+  min-width: 132px;
+  padding-bottom: 0.36rem;
+  padding-top: 0.36rem;
+}
+
+body.quality-corex-mode .quality-risk-field {
+  padding: 0.18rem 0.35rem 0.18rem 0.62rem;
+}
+
+body.quality-corex-mode .quality-risk-field input {
+  min-height: 26px;
+  padding-bottom: 0.12rem;
+  padding-top: 0.12rem;
+}
+
+body.quality-corex-mode .quality-position-card,
+body.quality-corex-mode .quality-session-card {
+  border-radius: 14px;
+  margin-bottom: 0.42rem;
+  padding: 0.48rem 0.72rem;
+}
+
+body.quality-corex-mode .quality-position-card strong {
+  font-size: clamp(1rem, 1.15vw, 1.2rem);
+}
+
+body.quality-corex-mode .quality-position-card p,
+body.quality-corex-mode .quality-session-card p {
+  font-size: 0.72rem;
+}
+
+body.quality-corex-mode .quality-session-card strong {
+  font-size: 0.84rem;
+}
+
+body.quality-corex-mode .quality-position-stats div {
+  border-radius: 10px;
+  min-height: 38px;
+}
+
+.quality-strategy-board.is-corex-profile {
+  gap: 0.5rem;
+  grid-template-areas:
+    "context"
+    "zone"
+    "side"
+    "summary";
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.quality-strategy-board.is-corex-profile .quality-side-stack {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.quality-strategy-board.is-corex-profile .quality-box {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.quality-strategy-board.is-corex-profile .quality-box h2 {
+  border-radius: 0;
+  color: #fff;
+  font-size: clamp(0.78rem, 0.92vw, 0.96rem);
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1;
+  margin: 0 0 0.42rem;
+  padding: 0.45rem 0.78rem;
+  text-align: left;
+  text-transform: none;
+}
+
+.quality-strategy-board.is-corex-profile .quality-context-box h2 {
+  background: #477be7;
+}
+
+.quality-strategy-board.is-corex-profile .quality-zone-box h2 {
+  background: #a95be5;
+}
+
+.quality-strategy-board.is-corex-profile .quality-side-stack section:nth-child(1) h2 {
+  background: #f39b1f;
+}
+
+.quality-strategy-board.is-corex-profile .quality-side-stack section:nth-child(3) h2 {
+  background: #27c49a;
+}
+
+.quality-strategy-board.is-corex-profile .quality-factor-grid {
+  display: grid;
+  gap: 0.28rem;
+  grid-template-columns: 1fr;
+}
+
+.quality-corex-step.quality-rule-tile {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  min-height: 0;
+  padding: 0.08rem 0.58rem;
+}
+
+.quality-corex-step.quality-rule-tile:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.quality-corex-number {
+  align-items: center;
+  color: #fff;
+  display: inline-flex;
+  font-size: clamp(0.84rem, 0.9vw, 1rem);
+  font-weight: 950;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+
+.quality-context-box .quality-corex-number {
+  background: #477be7;
+}
+
+.quality-zone-box .quality-corex-number {
+  background: #a95be5;
+}
+
+.quality-side-stack section:nth-child(1) .quality-corex-number {
+  background: #f39b1f;
+}
+
+.quality-side-stack section:nth-child(3) .quality-corex-number {
+  background: #27c49a;
+}
+
+.quality-corex-copy {
+  color: var(--tj-text);
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  padding-top: 0;
+}
+
+.quality-corex-copy strong {
+  color: #fff;
+  font-size: clamp(0.78rem, 0.9vw, 0.94rem);
+  font-weight: 950;
+  line-height: 1.04;
+}
+
+.quality-corex-copy span {
+  color: rgba(255, 255, 255, 0.82);
+  display: block;
+  font-size: clamp(0.62rem, 0.72vw, 0.78rem);
+  line-height: 1.08;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quality-corex-step .quality-rule-icon {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.64);
+  display: inline-flex;
+  font-size: 0.95rem;
+  font-weight: 950;
+  height: 26px;
+  justify-content: center;
+  justify-self: end;
+  margin-top: 0;
+  width: 26px;
+}
+
+.quality-corex-step.is-yes .quality-rule-icon {
+  background: rgba(32, 199, 185, 0.2);
+  border-color: rgba(126, 242, 231, 0.74);
+  color: #7ef2e7;
+}
+
+.quality-corex-step.is-no .quality-rule-icon {
+  background: rgba(224, 61, 102, 0.22);
+  border-color: rgba(255, 146, 172, 0.78);
+  color: #ff92ac;
+}
+
+.quality-corex-step.is-empty.is-required-missing {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.quality-corex-step.is-empty.is-required-missing::after,
+.quality-corex-step.is-blocker-failed::after {
+  content: none;
+}
+
+.quality-corex-step.is-empty.is-required-missing .quality-corex-copy strong {
+  color: #ffe7a0;
+}
+
+.quality-corex-step.is-blocker-failed {
+  background: rgba(224, 61, 102, 0.12);
+  border: 0;
+  box-shadow: inset 4px 0 0 rgba(224, 61, 102, 0.85);
+}
+
+.strategy-switcher {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+}
+
+.strategy-switcher button {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: var(--tj-muted);
+  font-size: 0.86rem;
+  font-weight: 900;
+  padding: 0.62rem 0.95rem;
+}
+
+.strategy-switcher button.active {
+  background: linear-gradient(135deg, var(--tj-teal), #7568ff);
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(32, 199, 185, 0.16);
+}
+
+.strategy-panel[hidden] {
+  display: none;
+}
+
+.strategy-score-table,
+.strategy-workflow-grid {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.strategy-score-table span,
+.strategy-workflow-grid div {
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.75rem;
+}
+
+.strategy-score-table strong {
+  color: #ffd659;
+  float: right;
+}
+
+.strategy-corex-workflow {
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035));
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 18px;
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+.strategy-workflow-grid div {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.strategy-workflow-grid strong {
+  color: #7ef2e7;
+  font-size: 0.92rem;
+}
+
+.strategy-workflow-grid span {
+  color: var(--tj-muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
 }
 
 @media (max-width: 1500px) {
