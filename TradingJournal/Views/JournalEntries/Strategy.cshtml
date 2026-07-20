@@ -24,6 +24,8 @@
             </div>
         </div>
 
+        @Html.AntiForgeryToken()
+
         <div class="strategy-workspace">
             <div class="strategy-content-stack">
         <section class="strategy-panel active" id="strategy-panel-mucka" data-strategy-panel="mucka">
@@ -275,7 +277,7 @@
                         <h2>Poznámky ke strategii</h2>
                         <p id="strategyNotesStrategy">Petr MĹŻÄŤka</p>
                     </div>
-                    <span id="strategyNotesStatus" class="strategy-notes-status">UloĹľeno lokĂˇlnÄ›</span>
+                    <span id="strategyNotesStatus" class="strategy-notes-status">UloĹľeno</span>
                 </div>
 
                 <div class="strategy-notes-toolbar" role="toolbar" aria-label="FormĂˇtovĂˇnĂ­ poznĂˇmek">
@@ -290,8 +292,7 @@
                      class="strategy-notes-editor"
                      contenteditable="true"
                      spellcheck="true"
-                     data-placeholder="PiĹˇ sem svoje postĹ™ehy, pravidla, screenshot odkazy nebo konkrĂ©tnĂ­ checklist poznĂˇmky pro aktuĂˇlnĂ­ strategii.">
-                </div>
+                     data-placeholder="PiĹˇ sem svoje postĹ™ehy, pravidla, screenshot odkazy nebo konkrĂ©tnĂ­ checklist poznĂˇmky pro aktuĂˇlnĂ­ strategii."></div>
             </aside>
         </div>
     </div>
@@ -309,8 +310,12 @@
                 mucka: "Petr MĹŻÄŤka",
                 corex: "CoreX S/D"
             };
+            const loadUrl = "@Url.Action("StrategyNote", "JournalEntries")";
+            const saveUrl = "@Url.Action("SaveStrategyNote", "JournalEntries")";
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? "";
             let activeKey = document.querySelector("[data-strategy-tab].active")?.dataset.strategyTab ?? "mucka";
             let saveTimer = null;
+            let loadVersion = 0;
 
             const storageKey = key => `edgedesk.strategyNotes.${key}`;
 
@@ -324,13 +329,38 @@
                 window.setTimeout(() => notesStatus.classList.remove("is-fresh"), 900);
             };
 
-            const saveNotes = () => {
+            const saveNotes = async (strategyKey = activeKey) => {
                 if (!notesEditor) {
                     return;
                 }
 
-                localStorage.setItem(storageKey(activeKey), notesEditor.innerHTML);
-                setStatus("UloĹľeno");
+                const contentHtml = notesEditor.innerHTML;
+                setStatus("UklĂˇdĂˇm");
+
+                try {
+                    const response = await fetch(saveUrl, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "RequestVerificationToken": token,
+                            "X-Requested-With": "XMLHttpRequest"
+                        },
+                        body: JSON.stringify({
+                            strategyKey,
+                            contentHtml
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("Save failed");
+                    }
+
+                    localStorage.removeItem(storageKey(strategyKey));
+                    setStatus("UloĹľeno");
+                } catch {
+                    localStorage.setItem(storageKey(strategyKey), contentHtml);
+                    setStatus("NeuloĹľeno v DB");
+                }
             };
 
             const scheduleSave = () => {
@@ -338,17 +368,50 @@
                 saveTimer = window.setTimeout(saveNotes, 350);
             };
 
-            const loadNotes = key => {
+            const loadNotes = async key => {
                 if (!notesEditor) {
                     return;
                 }
 
-                notesEditor.innerHTML = localStorage.getItem(storageKey(key)) ?? "";
+                const currentLoad = ++loadVersion;
+                notesEditor.innerHTML = "";
                 if (notesStrategy) {
                     notesStrategy.textContent = labels[key] ?? key;
                 }
 
-                setStatus("NaÄŤteno");
+                setStatus("NaÄŤĂ­tĂˇm");
+
+                try {
+                    const response = await fetch(`${loadUrl}?strategyKey=${encodeURIComponent(key)}`, {
+                        headers: {
+                            "X-Requested-With": "XMLHttpRequest"
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("Load failed");
+                    }
+
+                    const data = await response.json();
+                    if (currentLoad !== loadVersion) {
+                        return;
+                    }
+
+                    const legacyLocalNote = localStorage.getItem(storageKey(key));
+                    notesEditor.innerHTML = data.contentHtml || legacyLocalNote || "";
+                    setStatus("NaÄŤteno");
+
+                    if (!data.contentHtml && legacyLocalNote) {
+                        await saveNotes(key);
+                    }
+                } catch {
+                    if (currentLoad !== loadVersion) {
+                        return;
+                    }
+
+                    notesEditor.innerHTML = localStorage.getItem(storageKey(key)) ?? "";
+                    setStatus("Offline reĹľim");
+                }
             };
 
             const activateStrategy = key => {
@@ -372,10 +435,10 @@
                         return;
                     }
 
-                    saveNotes();
+                    void saveNotes(activeKey);
                     activeKey = key;
                     activateStrategy(key);
-                    loadNotes(key);
+                    void loadNotes(key);
                 });
             });
 
@@ -383,7 +446,7 @@
                 button.addEventListener("click", () => {
                     notesEditor?.focus();
                     document.execCommand(button.dataset.notesCommand, false);
-                    saveNotes();
+                    void saveNotes();
                 });
             });
 
@@ -393,13 +456,17 @@
                 }
 
                 notesEditor.innerHTML = "";
-                saveNotes();
+                void saveNotes();
             });
 
             notesEditor?.addEventListener("input", scheduleSave);
-            window.addEventListener("beforeunload", saveNotes);
+            window.addEventListener("beforeunload", () => {
+                if (notesEditor) {
+                    localStorage.setItem(storageKey(activeKey), notesEditor.innerHTML);
+                }
+            });
             activateStrategy(activeKey);
-            loadNotes(activeKey);
+            void loadNotes(activeKey);
         })();
     </script>
 }

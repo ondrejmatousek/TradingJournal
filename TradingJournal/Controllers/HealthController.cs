@@ -113,7 +113,8 @@ namespace TradingJournal.Controllers
                 "InvoiceCompanies",
                 "Invoices",
                 "InvoiceItems",
-                "MarketBiases"
+                "MarketBiases",
+                "StrategyNotes"
             };
 
             foreach (var table in requiredTables)
@@ -150,7 +151,11 @@ namespace TradingJournal.Controllers
                 ("MarketBiases", "Direction"),
                 ("MarketBiases", "SignalScore"),
                 ("MarketBiases", "ConfidenceStars"),
-                ("MarketBiases", "BulletJson")
+                ("MarketBiases", "BulletJson"),
+                ("StrategyNotes", "UserId"),
+                ("StrategyNotes", "StrategyKey"),
+                ("StrategyNotes", "ContentHtml"),
+                ("StrategyNotes", "UpdatedAt")
             };
 
             foreach (var (table, column) in requiredColumns)

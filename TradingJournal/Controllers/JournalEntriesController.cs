@@ -14,6 +14,11 @@ namespace TradingJournal.Controllers
     public class JournalEntriesController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private static readonly HashSet<string> StrategyNoteKeys = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "mucka",
+            "corex"
+        };
 
         public JournalEntriesController(ApplicationDbContext context)
         {
@@ -33,6 +38,92 @@ namespace TradingJournal.Controllers
         public IActionResult Strategy()
         {
             return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> StrategyNote(string strategyKey, CancellationToken cancellationToken)
+        {
+            if (!IsValidStrategyNoteKey(strategyKey))
+            {
+                return BadRequest();
+            }
+
+            var userId = CurrentUserId;
+            var note = await _context.StrategyNotes
+                .AsNoTracking()
+                .Where(n => n.UserId == userId && n.StrategyKey == strategyKey)
+                .Select(n => new
+                {
+                    n.ContentHtml,
+                    n.UpdatedAt
+                })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            return Json(new
+            {
+                contentHtml = note?.ContentHtml ?? string.Empty,
+                updatedAt = note?.UpdatedAt
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveStrategyNote([FromBody] StrategyNoteSaveRequest request, CancellationToken cancellationToken)
+        {
+            if (!IsValidStrategyNoteKey(request.StrategyKey))
+            {
+                return BadRequest();
+            }
+
+            var userId = CurrentUserId;
+            var now = DateTimeOffset.UtcNow;
+            var content = request.ContentHtml?.Trim() ?? string.Empty;
+
+            if (content.Length > 200_000)
+            {
+                return BadRequest(new { message = "Poznámka je příliš dlouhá." });
+            }
+
+            var note = await _context.StrategyNotes
+                .FirstOrDefaultAsync(n => n.UserId == userId && n.StrategyKey == request.StrategyKey, cancellationToken);
+
+            if (note is null)
+            {
+                note = new StrategyNote
+                {
+                    UserId = userId,
+                    StrategyKey = request.StrategyKey,
+                    ContentHtml = content,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+
+                _context.StrategyNotes.Add(note);
+            }
+            else
+            {
+                note.ContentHtml = content;
+                note.UpdatedAt = now;
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return Json(new
+            {
+                updatedAt = note.UpdatedAt
+            });
+        }
+
+        private static bool IsValidStrategyNoteKey(string? strategyKey)
+        {
+            return !string.IsNullOrWhiteSpace(strategyKey) && StrategyNoteKeys.Contains(strategyKey);
+        }
+
+        public sealed class StrategyNoteSaveRequest
+        {
+            public string StrategyKey { get; set; } = string.Empty;
+
+            public string? ContentHtml { get; set; }
         }
 
         // GET: JournalEntries/Analysis

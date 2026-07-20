@@ -12,6 +12,7 @@ namespace TradingJournal.Data
         public DbSet<Invoice> Invoices => Set<Invoice>();
         public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
         public DbSet<MarketBias> MarketBiases => Set<MarketBias>();
+        public DbSet<StrategyNote> StrategyNotes => Set<StrategyNote>();
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -119,6 +120,18 @@ namespace TradingJournal.Data
             builder.Entity<MarketBias>()
                 .Property(b => b.Ma50)
                 .HasPrecision(18, 8);
+
+            builder.Entity<StrategyNote>()
+                .HasIndex(n => new { n.UserId, n.StrategyKey })
+                .IsUnique();
+
+            builder.Entity<StrategyNote>()
+                .Property(n => n.StrategyKey)
+                .HasMaxLength(64);
+
+            builder.Entity<StrategyNote>()
+                .Property(n => n.ContentHtml)
+                .HasColumnType("nvarchar(max)");
         }
     }
 }
