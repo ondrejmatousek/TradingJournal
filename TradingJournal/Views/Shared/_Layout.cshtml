@@ -8,7 +8,8 @@
     var action = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
     var isTradingSection = controller == "JournalEntries";
     var isProgrammingSection = controller == "Invoices";
-    var showSidebar = SignInManager.IsSignedIn(User) && !bodyClass.Contains("marketing-shell") && !bodyClass.Contains("auth-shell") && (isTradingSection || isProgrammingSection);
+    var isInvestmentSection = controller == "Investments";
+    var showSidebar = SignInManager.IsSignedIn(User) && !bodyClass.Contains("marketing-shell") && !bodyClass.Contains("auth-shell") && (isTradingSection || isProgrammingSection || isInvestmentSection);
 }
 
 <!DOCTYPE html>
@@ -42,6 +43,9 @@
                                 <a class="nav-link @(isTradingSection ? "active" : "")" asp-controller="JournalEntries" asp-action="Index">Trading</a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link @(isInvestmentSection ? "active" : "")" asp-controller="Investments" asp-action="UnderEma200">Investování</a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link @(isProgrammingSection ? "active" : "")" asp-controller="Invoices" asp-action="Index">Programování</a>
                             </li>
                         }
@@ -69,6 +73,11 @@
                     <div class="sidebar-title">Programování</div>
                     <a class="sidebar-link @(!isCompanyAction ? "active" : "")" asp-controller="Invoices" asp-action="Index">Fakturace</a>
                     <a class="sidebar-link @(isCompanyAction ? "active" : "")" asp-controller="Invoices" asp-action="Companies">Firmy</a>
+                }
+                else if (isInvestmentSection)
+                {
+                    <div class="sidebar-title">Investování</div>
+                    <a class="sidebar-link @(action == "UnderEma200" ? "active" : "")" asp-controller="Investments" asp-action="UnderEma200">Pod 200 EMA</a>
                 }
             </aside>
         }

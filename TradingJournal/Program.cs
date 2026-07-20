@@ -5,6 +5,10 @@ using TradingJournal.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
 var connectionString =
     builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -21,6 +25,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<AppClock>();
 builder.Services.AddScoped<MarketBiasService>();
 builder.Services.AddScoped<StockRadarService>();
+builder.Services.AddScoped<UnderEma200Service>();
 builder.Services.AddScoped<HomeInsightService>();
 
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
