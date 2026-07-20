@@ -19,6 +19,9 @@ namespace TradingJournal.ViewModels
         public decimal Return5YearPercent { get; set; }
         public decimal WeeksAboveEmaSharePercent { get; set; }
         public int Score { get; set; }
+        public bool IsUnderEma200 { get; set; }
+        public bool HasRisingEma200 { get; set; }
+        public bool MatchesTrendPullback { get; set; }
         public DateTime LastPriceDate { get; set; }
         public string Rationale { get; set; } = string.Empty;
         public string DataSource { get; set; } = string.Empty;

@@ -20,7 +20,7 @@
             <div>
                 <span>Nalezeno</span>
                 <strong id="emaCount">-</strong>
-                <small>tickeru ve filtru</small>
+                <small>tickeru v seznamu</small>
             </div>
             <div>
                 <span>Prumerna sleva</span>
@@ -29,13 +29,13 @@
             </div>
             <div>
                 <span>Zdroj</span>
-                <strong>Stooq EOD</strong>
+                <strong>Stooq / Alpha</strong>
                 <small id="emaUpdatedAt">nacitam</small>
             </div>
             <div>
                 <span>Filtr</span>
                 <strong>Trend + pullback</strong>
-                <small>rostouci EMA200, cena pod ni</small>
+                <small>jen cena pod rostouci EMA200</small>
             </div>
         </section>
 
@@ -63,7 +63,7 @@
 
         <section class="investment-empty app-card" id="emaEmpty" hidden>
             <h2>Zatim nic ve filtru</h2>
-            <p>Bud data nejsou dostupna, nebo zadna firma z watchlistu aktualne nesplnuje podminku cena pod rising weekly EMA200.</p>
+            <p>Bud data nejsou dostupna, nebo zadna firma z watchlistu aktualne neni pod rostouci weekly EMA200.</p>
         </section>
 
         <section class="investment-table app-card" id="emaTableWrap" hidden>
@@ -255,6 +255,29 @@
         min-width: 58px;
     }
 
+    .investment-status {
+        align-items: center;
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 900;
+        margin-top: 0.7rem;
+        padding: 0.38rem 0.65rem;
+        width: fit-content;
+    }
+
+    .investment-status.match {
+        background: rgba(32, 199, 185, 0.17);
+        border: 1px solid rgba(32, 199, 185, 0.42);
+        color: #63fff1;
+    }
+
+    .investment-status.watch {
+        background: rgba(245, 193, 75, 0.14);
+        border: 1px solid rgba(245, 193, 75, 0.42);
+        color: #ffdd7a;
+    }
+
     .investment-card-meta {
         display: grid;
         gap: 0.6rem;
@@ -416,6 +439,7 @@
                             <div>
                                 <h2>${escapeHtml(item.symbol)}</h2>
                                 <p>${escapeHtml(item.name)}</p>
+                                <span class="investment-status ${item.matchesTrendPullback ? 'match' : 'watch'}">${item.matchesTrendPullback ? 'Pod rising EMA200' : 'Watchlist kandidat'}</span>
                             </div>
                             <span class="investment-score">${item.score}/100</span>
                         </div>
@@ -430,7 +454,7 @@
                             </div>
                             <div>
                                 <span>Pod EMA</span>
-                                <strong>${formatPercent(item.discountToEmaPercent)}</strong>
+                                <strong>${item.discountToEmaPercent <= 0 ? formatPercent(item.discountToEmaPercent) : `+${formatPercent(item.discountToEmaPercent)}`}</strong>
                             </div>
                         </div>
                         <div class="investment-card-meta">
@@ -457,9 +481,9 @@
                         <td>${escapeHtml(item.name)}</td>
                         <td>${formatPrice(item.price)}</td>
                         <td>${formatPrice(item.weeklyEma200)}</td>
-                        <td>${formatPercent(item.discountToEmaPercent)}</td>
-                        <td>+${formatPercent(item.emaSlope52WeekPercent)}</td>
-                        <td>+${formatPercent(item.return5YearPercent)}</td>
+                        <td>${item.discountToEmaPercent <= 0 ? formatPercent(item.discountToEmaPercent) : `+${formatPercent(item.discountToEmaPercent)}`}</td>
+                        <td>${item.emaSlope52WeekPercent >= 0 ? '+' : ''}${formatPercent(item.emaSlope52WeekPercent)}</td>
+                        <td>${item.return5YearPercent >= 0 ? '+' : ''}${formatPercent(item.return5YearPercent)}</td>
                         <td><strong>${item.score}/100</strong></td>
                     </tr>
                 `).join('');

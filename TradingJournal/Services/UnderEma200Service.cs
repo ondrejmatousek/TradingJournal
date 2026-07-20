@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using TradingJournal.ViewModels;
 
 namespace TradingJournal.Services
@@ -41,11 +42,16 @@ namespace TradingJournal.Services
         ];
 
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _configuration;
         private readonly ILogger<UnderEma200Service> _logger;
 
-        public UnderEma200Service(IHttpClientFactory httpClientFactory, ILogger<UnderEma200Service> logger)
+        public UnderEma200Service(
+            IHttpClientFactory httpClientFactory,
+            IConfiguration configuration,
+            ILogger<UnderEma200Service> logger)
         {
             _httpClientFactory = httpClientFactory;
+            _configuration = configuration;
             _logger = logger;
         }
 
@@ -68,25 +74,47 @@ namespace TradingJournal.Services
                 client.Timeout = TimeSpan.FromSeconds(20);
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("EdgeDesk/1.0");
 
-                var tasks = Candidates.Select(candidate => AnalyzeCandidateAsync(client, candidate, cancellationToken));
-                var cards = (await Task.WhenAll(tasks))
+                using var throttle = new SemaphoreSlim(5, 5);
+                var tasks = Candidates.Select(async candidate =>
+                {
+                    await throttle.WaitAsync(cancellationToken);
+                    try
+                    {
+                        return await AnalyzeCandidateAsync(client, candidate, cancellationToken);
+                    }
+                    finally
+                    {
+                        throttle.Release();
+                    }
+                });
+
+                var analyzedCards = (await Task.WhenAll(tasks))
                     .Where(card => card is not null)
                     .Select(card => card!)
+                    .ToList();
+
+                var strictCards = analyzedCards
+                    .Where(card => card.MatchesTrendPullback)
                     .OrderByDescending(card => card.Score)
                     .ThenBy(card => card.DiscountToEmaPercent)
                     .ToList();
+
+                var cards = strictCards;
 
                 var result = new UnderEma200Result
                 {
                     UpdatedAt = DateTimeOffset.UtcNow,
                     Items = cards,
-                    Message = cards.Count == 0
-                        ? "Nenalezeny zadne akcie z watchlistu, ktere jsou pod weekly EMA200 a zaroven maji rostouci dlouhodoby trend."
-                        : "Screening hleda rustove weekly grafy, kde je cena aktualne pod EMA200."
+                    Message = strictCards.Count > 0
+                        ? $"Nalezeno {strictCards.Count} akcii z watchlistu pod rostouci weekly EMA200."
+                        : analyzedCards.Count > 0
+                            ? "Z watchlistu ted zadna akcie nesplnuje podminku: cena je pod rostouci weekly EMA200 a dlouhodoby trend zustava rustovy."
+                            : "Nepodarilo se nacist cenova data z provideru Stooq EOD."
                 };
 
                 CachedResult = result;
                 CachedAt = DateTimeOffset.UtcNow;
+
                 return result;
             }
             finally
@@ -99,18 +127,31 @@ namespace TradingJournal.Services
         {
             try
             {
-                var csv = await client.GetStringAsync($"https://stooq.com/q/d/l/?s={candidate.Symbol.ToLowerInvariant()}.us&i=d", cancellationToken);
-                var candles = ParseDailyCandles(csv);
+                var dataSource = "Stooq EOD";
+                var candles = await FetchStooqDailyCandlesAsync(client, candidate.Symbol, cancellationToken);
+
                 if (candles.Count < 1100)
+                {
+                    var alphaCandles = await FetchAlphaVantageWeeklyCandlesAsync(client, candidate.Symbol, cancellationToken);
+                    if (alphaCandles.Count > 0)
+                    {
+                        candles = alphaCandles;
+                        dataSource = "Alpha Vantage weekly";
+                    }
+                }
+
+                if (candles.Count < EmaPeriod + 60)
                 {
                     return null;
                 }
 
-                var weeklyCloses = candles
-                    .GroupBy(candle => $"{ISOWeek.GetYear(candle.Date)}-{ISOWeek.GetWeekOfYear(candle.Date):00}")
-                    .Select(group => group.OrderBy(candle => candle.Date).Last())
-                    .OrderBy(candle => candle.Date)
-                    .ToList();
+                var weeklyCloses = candles.Count >= 900
+                    ? candles
+                        .GroupBy(candle => $"{ISOWeek.GetYear(candle.Date)}-{ISOWeek.GetWeekOfYear(candle.Date):00}")
+                        .Select(group => group.OrderBy(candle => candle.Date).Last())
+                        .OrderBy(candle => candle.Date)
+                        .ToList()
+                    : candles.OrderBy(candle => candle.Date).ToList();
 
                 if (weeklyCloses.Count < EmaPeriod + 60)
                 {
@@ -133,10 +174,10 @@ namespace TradingJournal.Services
                 var return5Year = (latest.Close - closeFiveYearsAgo) / closeFiveYearsAgo * 100m;
                 var aboveEmaShare = GetAboveEmaShare(weeklyCloses, ema, 104);
 
-                if (discountToEma >= 0 || emaSlope52 <= 0 || return5Year < 20)
-                {
-                    return null;
-                }
+                var isUnderEma = discountToEma < 0;
+                var hasRisingEma = emaSlope52 > 0;
+                var hasLongTermUptrend = return5Year > 0 || aboveEmaShare >= 55;
+                var matchesTrendPullback = isUnderEma && hasRisingEma && hasLongTermUptrend;
 
                 var score = Score(discountToEma, emaSlope52, return5Year, aboveEmaShare);
 
@@ -152,8 +193,11 @@ namespace TradingJournal.Services
                     Return5YearPercent = return5Year,
                     WeeksAboveEmaSharePercent = aboveEmaShare,
                     Score = score,
+                    IsUnderEma200 = isUnderEma,
+                    HasRisingEma200 = hasRisingEma,
+                    MatchesTrendPullback = matchesTrendPullback,
                     LastPriceDate = latest.Date,
-                    DataSource = "Stooq EOD",
+                    DataSource = dataSource,
                     ChartUrl = $"https://www.tradingview.com/chart/?symbol={candidate.Symbol}",
                     Rationale = BuildRationale(discountToEma, emaSlope52, return5Year, aboveEmaShare)
                 };
@@ -163,6 +207,54 @@ namespace TradingJournal.Services
                 _logger.LogWarning(ex, "Could not analyze {Symbol} for weekly EMA200 screen.", candidate.Symbol);
                 return null;
             }
+        }
+
+        private static async Task<List<DailyCandle>> FetchStooqDailyCandlesAsync(HttpClient client, string symbol, CancellationToken cancellationToken)
+        {
+            var csv = await client.GetStringAsync($"https://stooq.com/q/d/l/?s={symbol.ToLowerInvariant()}.us&i=d", cancellationToken);
+            return ParseDailyCandles(csv);
+        }
+
+        private async Task<List<DailyCandle>> FetchAlphaVantageWeeklyCandlesAsync(HttpClient client, string symbol, CancellationToken cancellationToken)
+        {
+            var apiKey = _configuration["AlphaVantage:ApiKey"];
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                return [];
+            }
+
+            var url = $"https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY_ADJUSTED&symbol={Uri.EscapeDataString(symbol)}&apikey={Uri.EscapeDataString(apiKey)}";
+            using var response = await client.GetAsync(url, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return [];
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            if (!document.RootElement.TryGetProperty("Weekly Adjusted Time Series", out var timeSeries))
+            {
+                return [];
+            }
+
+            var candles = new List<DailyCandle>();
+            foreach (var week in timeSeries.EnumerateObject())
+            {
+                if (!DateTime.TryParseExact(week.Name, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+                {
+                    continue;
+                }
+
+                if (!TryReadAlphaDecimal(week.Value, "5. adjusted close", out var close) &&
+                    !TryReadAlphaDecimal(week.Value, "4. close", out close))
+                {
+                    continue;
+                }
+
+                candles.Add(new DailyCandle(date, close));
+            }
+
+            return candles.OrderBy(candle => candle.Date).ToList();
         }
 
         private static List<DailyCandle> ParseDailyCandles(string csv)
@@ -182,6 +274,13 @@ namespace TradingJournal.Services
             }
 
             return candles;
+        }
+
+        private static bool TryReadAlphaDecimal(JsonElement source, string propertyName, out decimal value)
+        {
+            value = 0;
+            return source.TryGetProperty(propertyName, out var property) &&
+                decimal.TryParse(property.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out value);
         }
 
         private static List<decimal> CalculateEma(IReadOnlyList<decimal> values, int period)
@@ -268,7 +367,11 @@ namespace TradingJournal.Services
 
         private static string BuildRationale(decimal discountToEma, decimal emaSlope52, decimal return5Year, decimal aboveEmaShare)
         {
-            return $"Cena je {Math.Abs(discountToEma).ToString("0.#", CultureInfo.InvariantCulture)} % pod weekly EMA200, EMA200 za 52 tydnu roste o {emaSlope52.ToString("0.#", CultureInfo.InvariantCulture)} % a 5lety vykon je {return5Year.ToString("0.#", CultureInfo.InvariantCulture)} %. Nad EMA200 byla akcie {aboveEmaShare.ToString("0.#", CultureInfo.InvariantCulture)} % poslednich 104 tydnu.";
+            var emaDistanceText = discountToEma < 0
+                ? $"Cena je {Math.Abs(discountToEma).ToString("0.#", CultureInfo.InvariantCulture)} % pod weekly EMA200"
+                : $"Cena je {discountToEma.ToString("0.#", CultureInfo.InvariantCulture)} % nad weekly EMA200";
+
+            return $"{emaDistanceText}, EMA200 za 52 tydnu roste o {emaSlope52.ToString("0.#", CultureInfo.InvariantCulture)} % a 5lety vykon je {return5Year.ToString("0.#", CultureInfo.InvariantCulture)} %. Nad EMA200 byla akcie {aboveEmaShare.ToString("0.#", CultureInfo.InvariantCulture)} % poslednich 104 tydnu.";
         }
 
         private sealed record StockCandidate(string Symbol, string Name, string Sector);
