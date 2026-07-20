@@ -27,11 +27,11 @@ namespace TradingJournal.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> UnderEma200Data(CancellationToken cancellationToken)
+        public async Task<IActionResult> UnderEma200Data(bool refresh = false, CancellationToken cancellationToken = default)
         {
             try
             {
-                var result = await _underEma200Service.GetAsync(cancellationToken);
+                var result = await _underEma200Service.GetAsync(refresh, cancellationToken);
                 return Json(new
                 {
                     updatedAt = result.UpdatedAt is null ? null : _clock.FormatShort(result.UpdatedAt.Value),

@@ -55,9 +55,9 @@ namespace TradingJournal.Services
             _logger = logger;
         }
 
-        public async Task<UnderEma200Result> GetAsync(CancellationToken cancellationToken = default)
+        public async Task<UnderEma200Result> GetAsync(bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
-            if (CachedResult is not null && DateTimeOffset.UtcNow - CachedAt < CacheLifetime)
+            if (!forceRefresh && CachedResult is not null && DateTimeOffset.UtcNow - CachedAt < CacheLifetime)
             {
                 return CachedResult;
             }
@@ -65,7 +65,7 @@ namespace TradingJournal.Services
             await CacheLock.WaitAsync(cancellationToken);
             try
             {
-                if (CachedResult is not null && DateTimeOffset.UtcNow - CachedAt < CacheLifetime)
+                if (!forceRefresh && CachedResult is not null && DateTimeOffset.UtcNow - CachedAt < CacheLifetime)
                 {
                     return CachedResult;
                 }
@@ -109,7 +109,7 @@ namespace TradingJournal.Services
                         ? $"Nalezeno {strictCards.Count} akcii z watchlistu pod rostouci weekly EMA200."
                         : analyzedCards.Count > 0
                             ? "Z watchlistu ted zadna akcie nesplnuje podminku: cena je pod rostouci weekly EMA200 a dlouhodoby trend zustava rustovy."
-                            : "Nepodarilo se nacist cenova data z provideru Stooq EOD."
+                            : "Nepodarilo se nacist cenova data. Zkontroluj AlphaVantage:ApiKey; Stooq fallback muze vratit ochrannou HTML stranku misto CSV."
                 };
 
                 CachedResult = result;
@@ -127,16 +127,15 @@ namespace TradingJournal.Services
         {
             try
             {
-                var dataSource = "Stooq EOD";
-                var candles = await FetchStooqDailyCandlesAsync(client, candidate.Symbol, cancellationToken);
+                var dataSource = "Alpha Vantage weekly";
+                var candles = await FetchAlphaVantageWeeklyCandlesAsync(client, candidate.Symbol, cancellationToken);
 
-                if (candles.Count < 1100)
+                if (candles.Count == 0)
                 {
-                    var alphaCandles = await FetchAlphaVantageWeeklyCandlesAsync(client, candidate.Symbol, cancellationToken);
-                    if (alphaCandles.Count > 0)
+                    candles = await FetchStooqDailyCandlesAsync(client, candidate.Symbol, cancellationToken);
+                    if (candles.Count > 0)
                     {
-                        candles = alphaCandles;
-                        dataSource = "Alpha Vantage weekly";
+                        dataSource = "Stooq EOD";
                     }
                 }
 
@@ -220,6 +219,11 @@ namespace TradingJournal.Services
             var apiKey = _configuration["AlphaVantage:ApiKey"];
             if (string.IsNullOrWhiteSpace(apiKey))
             {
+                apiKey = _configuration["AlphaVantage__ApiKey"];
+            }
+
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
                 return [];
             }
 
@@ -259,6 +263,12 @@ namespace TradingJournal.Services
 
         private static List<DailyCandle> ParseDailyCandles(string csv)
         {
+            if (string.IsNullOrWhiteSpace(csv) ||
+                !csv.TrimStart().StartsWith("Date,", StringComparison.OrdinalIgnoreCase))
+            {
+                return [];
+            }
+
             var candles = new List<DailyCandle>();
             foreach (var line in csv.Split('\n').Skip(1))
             {

@@ -29,7 +29,7 @@
             </div>
             <div>
                 <span>Zdroj</span>
-                <strong>Stooq / Alpha</strong>
+                <strong>Alpha / Stooq</strong>
                 <small id="emaUpdatedAt">nacitam</small>
             </div>
             <div>
@@ -489,14 +489,15 @@
                 `).join('');
             }
 
-            async function loadData() {
+            async function loadData(forceRefresh = false) {
                 elements.loading.hidden = false;
                 elements.cards.hidden = true;
                 elements.empty.hidden = true;
                 elements.refresh.disabled = true;
 
                 try {
-                    const response = await fetch(dataUrl, { headers: { 'Accept': 'application/json' } });
+                    const url = forceRefresh ? `${dataUrl}?refresh=true` : dataUrl;
+                    const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}`);
                     }
@@ -521,7 +522,7 @@
 
             elements.search.addEventListener('input', render);
             elements.sector.addEventListener('change', render);
-            elements.refresh.addEventListener('click', loadData);
+            elements.refresh.addEventListener('click', () => loadData(true));
             loadData();
         })();
     </script>
