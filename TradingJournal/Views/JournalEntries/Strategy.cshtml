@@ -24,6 +24,8 @@
             </div>
         </div>
 
+        <div class="strategy-workspace">
+            <div class="strategy-content-stack">
         <section class="strategy-panel active" id="strategy-panel-mucka" data-strategy-panel="mucka">
             <section class="strategy-principle-card">
                 <div>
@@ -264,6 +266,34 @@
                 </div>
             </section>
         </section>
+            </div>
+
+            <aside class="strategy-notes-card" aria-label="Poznámky ke strategii">
+                <div class="strategy-notes-head">
+                    <div>
+                        <span class="strategy-kicker">Moje poznámky</span>
+                        <h2>Poznámky ke strategii</h2>
+                        <p id="strategyNotesStrategy">Petr MĹŻÄŤka</p>
+                    </div>
+                    <span id="strategyNotesStatus" class="strategy-notes-status">UloĹľeno lokĂˇlnÄ›</span>
+                </div>
+
+                <div class="strategy-notes-toolbar" role="toolbar" aria-label="FormĂˇtovĂˇnĂ­ poznĂˇmek">
+                    <button type="button" data-notes-command="bold" title="TuÄŤnÄ›"><strong>B</strong></button>
+                    <button type="button" data-notes-command="italic" title="KurzĂ­va"><em>I</em></button>
+                    <button type="button" data-notes-command="insertUnorderedList" title="OdrĂˇĹľky">•</button>
+                    <button type="button" data-notes-command="insertOrderedList" title="ÄŚĂ­slovanĂ˝ seznam">1.</button>
+                    <button type="button" data-notes-clear title="VyÄŤistit poznĂˇmky">Clear</button>
+                </div>
+
+                <div id="strategyNotesEditor"
+                     class="strategy-notes-editor"
+                     contenteditable="true"
+                     spellcheck="true"
+                     data-placeholder="PiĹˇ sem svoje postĹ™ehy, pravidla, screenshot odkazy nebo konkrĂ©tnĂ­ checklist poznĂˇmky pro aktuĂˇlnĂ­ strategii.">
+                </div>
+            </aside>
+        </div>
     </div>
 </div>
 
@@ -272,23 +302,104 @@
         (() => {
             const buttons = document.querySelectorAll("[data-strategy-tab]");
             const panels = document.querySelectorAll("[data-strategy-panel]");
+            const notesEditor = document.getElementById("strategyNotesEditor");
+            const notesStrategy = document.getElementById("strategyNotesStrategy");
+            const notesStatus = document.getElementById("strategyNotesStatus");
+            const labels = {
+                mucka: "Petr MĹŻÄŤka",
+                corex: "CoreX S/D"
+            };
+            let activeKey = document.querySelector("[data-strategy-tab].active")?.dataset.strategyTab ?? "mucka";
+            let saveTimer = null;
+
+            const storageKey = key => `edgedesk.strategyNotes.${key}`;
+
+            const setStatus = text => {
+                if (!notesStatus) {
+                    return;
+                }
+
+                notesStatus.textContent = text;
+                notesStatus.classList.add("is-fresh");
+                window.setTimeout(() => notesStatus.classList.remove("is-fresh"), 900);
+            };
+
+            const saveNotes = () => {
+                if (!notesEditor) {
+                    return;
+                }
+
+                localStorage.setItem(storageKey(activeKey), notesEditor.innerHTML);
+                setStatus("UloĹľeno");
+            };
+
+            const scheduleSave = () => {
+                window.clearTimeout(saveTimer);
+                saveTimer = window.setTimeout(saveNotes, 350);
+            };
+
+            const loadNotes = key => {
+                if (!notesEditor) {
+                    return;
+                }
+
+                notesEditor.innerHTML = localStorage.getItem(storageKey(key)) ?? "";
+                if (notesStrategy) {
+                    notesStrategy.textContent = labels[key] ?? key;
+                }
+
+                setStatus("NaÄŤteno");
+            };
+
+            const activateStrategy = key => {
+                buttons.forEach(item => {
+                    const active = item.dataset.strategyTab === key;
+                    item.classList.toggle("active", active);
+                    item.setAttribute("aria-selected", active ? "true" : "false");
+                });
+
+                panels.forEach(panel => {
+                    const active = panel.dataset.strategyPanel === key;
+                    panel.classList.toggle("active", active);
+                    panel.hidden = !active;
+                });
+            };
 
             buttons.forEach(button => {
                 button.addEventListener("click", () => {
                     const key = button.dataset.strategyTab;
-                    buttons.forEach(item => {
-                        const active = item === button;
-                        item.classList.toggle("active", active);
-                        item.setAttribute("aria-selected", active ? "true" : "false");
-                    });
+                    if (key === activeKey) {
+                        return;
+                    }
 
-                    panels.forEach(panel => {
-                        const active = panel.dataset.strategyPanel === key;
-                        panel.classList.toggle("active", active);
-                        panel.hidden = !active;
-                    });
+                    saveNotes();
+                    activeKey = key;
+                    activateStrategy(key);
+                    loadNotes(key);
                 });
             });
+
+            document.querySelectorAll("[data-notes-command]").forEach(button => {
+                button.addEventListener("click", () => {
+                    notesEditor?.focus();
+                    document.execCommand(button.dataset.notesCommand, false);
+                    saveNotes();
+                });
+            });
+
+            document.querySelector("[data-notes-clear]")?.addEventListener("click", () => {
+                if (!notesEditor || !window.confirm("Opravdu chceĹˇ vyÄŤistit poznĂˇmky pro aktuĂˇlnĂ­ strategii?")) {
+                    return;
+                }
+
+                notesEditor.innerHTML = "";
+                saveNotes();
+            });
+
+            notesEditor?.addEventListener("input", scheduleSave);
+            window.addEventListener("beforeunload", saveNotes);
+            activateStrategy(activeKey);
+            loadNotes(activeKey);
         })();
     </script>
 }
