@@ -21,21 +21,27 @@ namespace TradingJournal.Controllers
             _logger = logger;
         }
 
-        public IActionResult UnderEma200()
+        public async Task<IActionResult> UnderEma200(string? timeframe, CancellationToken cancellationToken)
         {
-            return View();
+            var result = await _underEma200Service.GetPersistedResultAsync(timeframe, cancellationToken);
+            return View(result);
         }
 
         [HttpGet]
-        public async Task<IActionResult> UnderEma200Data(bool refresh = false, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> UnderEma200Data(string? timeframe, bool refresh = false, CancellationToken cancellationToken = default)
         {
             try
             {
-                var result = await _underEma200Service.GetAsync(refresh, cancellationToken);
+                var result = refresh
+                    ? await _underEma200Service.RefreshAsync(timeframe, cancellationToken)
+                    : await _underEma200Service.GetPersistedResultAsync(timeframe, cancellationToken);
                 return Json(new
                 {
                     updatedAt = result.UpdatedAt is null ? null : _clock.FormatShort(result.UpdatedAt.Value),
                     result.Message,
+                    result.Timeframe,
+                    result.TimeframeLabel,
+                    result.EmaLabel,
                     result.Items
                 });
             }

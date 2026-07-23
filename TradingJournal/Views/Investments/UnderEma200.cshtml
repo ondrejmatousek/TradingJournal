@@ -1,6 +1,9 @@
+@model TradingJournal.ViewModels.UnderEma200Result
 @{
     ViewData["Title"] = "Pod 200 EMA";
     ViewData["BodyClass"] = "journal-shell";
+    var dailySelected = Model.Timeframe == "Daily" ? "selected" : null;
+    var weeklySelected = Model.Timeframe == "Weekly" ? "selected" : null;
 }
 
 <div class="journal-page investment-page">
@@ -8,34 +11,41 @@
         <div class="journal-header investment-header">
             <div>
                 <div class="eyebrow">Investment radar</div>
-                <h1>Pod 200 EMA</h1>
-                <p>Weekly screening firem, ktere jsou dlouhodobe v rustove fazi, ale aktualni cena je pod weekly EMA200.</p>
+                <h1>Pod @Model.EmaLabel</h1>
+                <p><strong>@Model.TimeframeLabel</strong> screening firem, ktere jsou pod vybranou EMA200, ale dlouhodobe porad vypadaji rustove.</p>
             </div>
             <div class="page-actions">
+                <label class="timeframe-picker" for="emaTimeframe">
+                    <span>Timeframe</span>
+                    <select id="emaTimeframe" class="form-select">
+                        <option value="Daily" selected="@dailySelected">Daily EMA 200</option>
+                        <option value="Weekly" selected="@weeklySelected">Weekly EMA 200</option>
+                    </select>
+                </label>
                 <button type="button" class="btn btn-primary" id="emaRefresh">Refresh</button>
             </div>
         </div>
 
         <section class="investment-summary app-card">
             <div>
-                <span>Nalezeno</span>
-                <strong id="emaCount">-</strong>
-                <small>tickeru v seznamu</small>
+                <span>Kandidati</span>
+                <strong id="emaQualifiedCount">-</strong>
+                <small>prosli growth filtrem</small>
             </div>
             <div>
-                <span>Prumerna sleva</span>
-                <strong id="emaAvgDiscount">-</strong>
-                <small>vuci weekly EMA200</small>
+                <span>Ulozeno</span>
+                <strong id="emaTotalCount">-</strong>
+                <small>snapshotu v databazi</small>
             </div>
             <div>
-                <span>Zdroj</span>
-                <strong>Alpha / Stooq</strong>
-                <small id="emaUpdatedAt">nacitam</small>
+                <span>Prumerna vzdalenost</span>
+                <strong id="emaAvgDistance">-</strong>
+                <small id="emaDistanceLabel">vuci @Model.EmaLabel</small>
             </div>
             <div>
-                <span>Filtr</span>
-                <strong>Trend + pullback</strong>
-                <small>jen cena pod rostouci EMA200</small>
+                <span>Posledni vypocet</span>
+                <strong id="emaUpdatedAt">-</strong>
+                <small id="emaSource">Yahoo / Alpha / Stooq</small>
             </div>
         </section>
 
@@ -50,7 +60,15 @@
                     <option value="">Vsechny sektory</option>
                 </select>
             </div>
-            <p id="emaMessage">Nacitam screening...</p>
+            <div>
+                <label for="emaSort">Seradit</label>
+                <select id="emaSort" class="form-select">
+                    <option value="score">Skore</option>
+                    <option value="distance">Vzdalenost pod EMA200</option>
+                    <option value="fiveYear">5Y vykon</option>
+                </select>
+            </div>
+            <p id="emaMessage">Nacitam ulozeny screening...</p>
         </section>
 
         <section class="investment-loading app-card" id="emaLoading" aria-label="Nacitam screening">
@@ -59,11 +77,25 @@
             <span></span>
         </section>
 
-        <section class="investment-grid" id="emaCards" hidden></section>
+        <section class="investment-section" id="qualifiedSection" hidden>
+            <div class="panel-title">
+                <span>Qualified long-term growth candidates</span>
+                <strong id="qualifiedCount">0</strong>
+            </div>
+            <div class="investment-grid" id="qualifiedCards"></div>
+        </section>
+
+        <section class="investment-section" id="failedSection" hidden>
+            <div class="panel-title">
+                <span>Pod EMA200, ale neprosly growth filtrem</span>
+                <strong id="failedCount">0</strong>
+            </div>
+            <div class="investment-grid failed-grid" id="failedCards"></div>
+        </section>
 
         <section class="investment-empty app-card" id="emaEmpty" hidden>
             <h2>Zatim nic ve filtru</h2>
-            <p>Bud data nejsou dostupna, nebo zadna firma z watchlistu aktualne neni pod rostouci weekly EMA200.</p>
+            <p>Bud nejsou dostupna data, nebo zadna firma z watchlistu aktualne neni pod vybranou EMA200.</p>
         </section>
 
         <section class="investment-table app-card" id="emaTableWrap" hidden>
@@ -78,11 +110,14 @@
                             <th>Ticker</th>
                             <th>Firma</th>
                             <th>Cena</th>
-                            <th>Weekly EMA200</th>
+                            <th id="emaTableHeader">@Model.EmaLabel</th>
                             <th>Pod EMA</th>
-                            <th>EMA 52w</th>
-                            <th>5 let</th>
+                            <th>1Y</th>
+                            <th>3Y</th>
+                            <th>5Y</th>
                             <th>Skore</th>
+                            <th>Stav</th>
+                            <th>Vypocet</th>
                         </tr>
                     </thead>
                     <tbody id="emaRows"></tbody>
@@ -112,6 +147,25 @@
         margin-bottom: 1.3rem;
     }
 
+    .page-actions {
+        align-items: end;
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .timeframe-picker {
+        min-width: 190px;
+    }
+
+    .timeframe-picker span {
+        color: var(--tj-muted);
+        display: block;
+        font-size: 0.76rem;
+        font-weight: 800;
+        margin-bottom: 0.25rem;
+        text-transform: uppercase;
+    }
+
     .investment-summary {
         display: grid;
         gap: 0;
@@ -123,7 +177,7 @@
 
     .investment-summary div {
         border-right: 1px solid rgba(255, 255, 255, 0.07);
-        padding: 1.35rem 1.55rem;
+        padding: 1.25rem 1.45rem;
     }
 
     .investment-summary div:last-child {
@@ -141,7 +195,7 @@
     .investment-summary strong {
         color: var(--tj-text);
         display: block;
-        font-size: clamp(1.5rem, 2.4vw, 2.4rem);
+        font-size: clamp(1.4rem, 2.2vw, 2.2rem);
         line-height: 1;
         margin: 0.35rem 0;
     }
@@ -154,7 +208,7 @@
         align-items: end;
         display: grid;
         gap: 1rem;
-        grid-template-columns: minmax(220px, 1fr) minmax(220px, 0.7fr) minmax(280px, 1.4fr);
+        grid-template-columns: minmax(220px, 1fr) minmax(220px, 0.7fr) minmax(220px, 0.7fr) minmax(280px, 1.2fr);
         margin-bottom: 1rem;
     }
 
@@ -195,11 +249,18 @@
         }
     }
 
+    .investment-section {
+        margin-bottom: 1rem;
+    }
+
+    .investment-section .panel-title {
+        margin: 0.9rem 0 0.65rem;
+    }
+
     .investment-grid {
         display: grid;
         gap: 1rem;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        margin-bottom: 1rem;
     }
 
     .investment-card {
@@ -212,10 +273,16 @@
         color: var(--tj-text);
         display: flex;
         flex-direction: column;
-        min-height: 285px;
+        min-height: 295px;
         padding: 1.2rem;
         text-decoration: none;
         transition: border-color 0.18s ease, transform 0.18s ease;
+    }
+
+    .investment-card.failed {
+        background:
+            radial-gradient(circle at top right, rgba(245, 193, 75, 0.09), transparent 34%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.032));
     }
 
     .investment-card:hover {
@@ -371,25 +438,38 @@
     <script>
         (() => {
             const dataUrl = '@Url.Action("UnderEma200Data", "Investments")';
-            const state = { items: [] };
+            const state = { items: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase })) };
             const currency = new Intl.NumberFormat('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const percent = new Intl.NumberFormat('cs-CZ', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
             const elements = {
-                count: document.getElementById('emaCount'),
-                avgDiscount: document.getElementById('emaAvgDiscount'),
+                qualifiedSummary: document.getElementById('emaQualifiedCount'),
+                totalSummary: document.getElementById('emaTotalCount'),
+                avgDistance: document.getElementById('emaAvgDistance'),
                 updatedAt: document.getElementById('emaUpdatedAt'),
+                source: document.getElementById('emaSource'),
                 message: document.getElementById('emaMessage'),
                 loading: document.getElementById('emaLoading'),
-                cards: document.getElementById('emaCards'),
+                qualifiedSection: document.getElementById('qualifiedSection'),
+                failedSection: document.getElementById('failedSection'),
+                qualifiedCards: document.getElementById('qualifiedCards'),
+                failedCards: document.getElementById('failedCards'),
+                qualifiedCount: document.getElementById('qualifiedCount'),
+                failedCount: document.getElementById('failedCount'),
                 empty: document.getElementById('emaEmpty'),
                 rows: document.getElementById('emaRows'),
                 tableWrap: document.getElementById('emaTableWrap'),
                 tableCount: document.getElementById('emaTableCount'),
                 search: document.getElementById('emaSearch'),
                 sector: document.getElementById('emaSector'),
+                sort: document.getElementById('emaSort'),
                 refresh: document.getElementById('emaRefresh')
             };
+            elements.timeframe = document.getElementById('emaTimeframe');
+            elements.tableHeader = document.getElementById('emaTableHeader');
+            elements.distanceLabel = document.getElementById('emaDistanceLabel');
+            const getTimeframe = () => elements.timeframe.value || 'Daily';
+            const getEmaLabel = () => getTimeframe() === 'Weekly' ? 'Weekly EMA200' : 'Daily EMA200';
 
             const escapeHtml = (value) => String(value ?? '')
                 .replaceAll('&', '&amp;')
@@ -400,103 +480,140 @@
 
             const formatPrice = (value) => value == null ? '-' : currency.format(value);
             const formatPercent = (value) => value == null ? '-' : `${percent.format(value)} %`;
+            const withSign = (value) => value > 0 ? `+${formatPercent(value)}` : formatPercent(value);
 
             function filteredItems() {
                 const query = elements.search.value.trim().toLowerCase();
                 const sector = elements.sector.value;
-                return state.items.filter(item => {
+                const sort = elements.sort.value;
+
+                const items = state.items.filter(item => {
                     const matchesQuery = !query ||
                         item.symbol.toLowerCase().includes(query) ||
                         item.name.toLowerCase().includes(query);
                     const matchesSector = !sector || item.sector === sector;
                     return matchesQuery && matchesSector;
                 });
+
+                return items.sort((a, b) => {
+                    if (sort === 'distance') {
+                        return b.distanceFromEmaPercent - a.distanceFromEmaPercent;
+                    }
+
+                    if (sort === 'fiveYear') {
+                        return b.performance5YearPercent - a.performance5YearPercent;
+                    }
+
+                    return b.score - a.score;
+                });
             }
 
             function renderSectorOptions() {
+                const selected = elements.sector.value;
                 const sectors = [...new Set(state.items.map(item => item.sector).filter(Boolean))].sort();
                 elements.sector.innerHTML = '<option value="">Vsechny sektory</option>' +
                     sectors.map(sector => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)}</option>`).join('');
+                elements.sector.value = selected;
             }
 
-            function render() {
-                const items = filteredItems();
-                const avgDiscount = items.length
-                    ? items.reduce((sum, item) => sum + item.discountToEmaPercent, 0) / items.length
-                    : null;
-
-                elements.count.textContent = items.length;
-                elements.avgDiscount.textContent = avgDiscount === null ? '-' : formatPercent(avgDiscount);
-                elements.tableCount.textContent = `${items.length} ${items.length === 1 ? 'firma' : 'firem'}`;
-
-                elements.cards.hidden = items.length === 0;
-                elements.tableWrap.hidden = items.length === 0;
-                elements.empty.hidden = items.length > 0 || elements.loading.hidden === false;
-
-                elements.cards.innerHTML = items.map(item => `
-                    <a class="investment-card" href="${escapeHtml(item.chartUrl)}" target="_blank" rel="noopener">
+            function renderCard(item) {
+                return `
+                    <a class="investment-card ${item.isQualified ? '' : 'failed'}" href="${escapeHtml(item.chartUrl)}" target="_blank" rel="noopener">
                         <div class="investment-card-head">
                             <div>
                                 <h2>${escapeHtml(item.symbol)}</h2>
                                 <p>${escapeHtml(item.name)}</p>
-                                <span class="investment-status ${item.matchesTrendPullback ? 'match' : 'watch'}">${item.matchesTrendPullback ? 'Pod rising EMA200' : 'Watchlist kandidat'}</span>
+                                <span class="investment-status ${item.isQualified ? 'match' : 'watch'}">${item.isQualified ? 'Qualified candidate' : 'Failed growth filter'}</span>
                             </div>
                             <span class="investment-score">${item.score}/100</span>
                         </div>
                         <div class="investment-card-meta">
                             <div>
                                 <span>Cena</span>
-                                <strong>${formatPrice(item.price)}</strong>
+                                <strong>${formatPrice(item.currentPrice)}</strong>
                             </div>
                             <div>
-                                <span>Weekly EMA200</span>
-                                <strong>${formatPrice(item.weeklyEma200)}</strong>
+                                <span>${escapeHtml(getEmaLabel())}</span>
+                                <strong>${formatPrice(item.ema200)}</strong>
                             </div>
                             <div>
                                 <span>Pod EMA</span>
-                                <strong>${item.discountToEmaPercent <= 0 ? formatPercent(item.discountToEmaPercent) : `+${formatPercent(item.discountToEmaPercent)}`}</strong>
+                                <strong>${formatPercent(item.distanceFromEmaPercent)}</strong>
                             </div>
                         </div>
                         <div class="investment-card-meta">
                             <div>
-                                <span>EMA 52w</span>
-                                <strong>+${formatPercent(item.emaSlope52WeekPercent)}</strong>
+                                <span>1Y</span>
+                                <strong>${withSign(item.performance1YearPercent)}</strong>
                             </div>
                             <div>
-                                <span>5 let</span>
-                                <strong>+${formatPercent(item.return5YearPercent)}</strong>
+                                <span>3Y</span>
+                                <strong>${withSign(item.performance3YearPercent)}</strong>
                             </div>
                             <div>
-                                <span>Above EMA</span>
-                                <strong>${formatPercent(item.weeksAboveEmaSharePercent)}</strong>
+                                <span>5Y</span>
+                                <strong>${withSign(item.performance5YearPercent)}</strong>
                             </div>
                         </div>
                         <p class="rationale">${escapeHtml(item.rationale)}</p>
                     </a>
-                `).join('');
+                `;
+            }
+
+            function render() {
+                const items = filteredItems();
+                const belowEma = items.filter(item => item.isBelowEma200);
+                const qualified = belowEma.filter(item => item.isQualified);
+                const failed = belowEma.filter(item => !item.isQualified);
+                const avgDistance = belowEma.length
+                    ? belowEma.reduce((sum, item) => sum + item.distanceFromEmaPercent, 0) / belowEma.length
+                    : null;
+
+                elements.qualifiedSummary.textContent = qualified.length;
+                elements.totalSummary.textContent = items.length;
+                elements.avgDistance.textContent = avgDistance === null ? '-' : formatPercent(avgDistance);
+                elements.tableCount.textContent = `${items.length} ${items.length === 1 ? 'firma' : 'firem'}`;
+                elements.qualifiedCount.textContent = qualified.length;
+                elements.failedCount.textContent = failed.length;
+
+                elements.qualifiedSection.hidden = qualified.length === 0;
+                elements.failedSection.hidden = failed.length === 0;
+                elements.tableWrap.hidden = items.length === 0;
+                elements.empty.hidden = items.length > 0 || elements.loading.hidden === false;
+
+                elements.qualifiedCards.innerHTML = qualified.map(renderCard).join('');
+                elements.failedCards.innerHTML = failed.map(renderCard).join('');
 
                 elements.rows.innerHTML = items.map(item => `
                     <tr>
                         <td><strong>${escapeHtml(item.symbol)}</strong></td>
                         <td>${escapeHtml(item.name)}</td>
-                        <td>${formatPrice(item.price)}</td>
-                        <td>${formatPrice(item.weeklyEma200)}</td>
-                        <td>${item.discountToEmaPercent <= 0 ? formatPercent(item.discountToEmaPercent) : `+${formatPercent(item.discountToEmaPercent)}`}</td>
-                        <td>${item.emaSlope52WeekPercent >= 0 ? '+' : ''}${formatPercent(item.emaSlope52WeekPercent)}</td>
-                        <td>${item.return5YearPercent >= 0 ? '+' : ''}${formatPercent(item.return5YearPercent)}</td>
+                        <td>${formatPrice(item.currentPrice)}</td>
+                        <td>${formatPrice(item.ema200)}</td>
+                        <td>${formatPercent(item.distanceFromEmaPercent)}</td>
+                        <td>${withSign(item.performance1YearPercent)}</td>
+                        <td>${withSign(item.performance3YearPercent)}</td>
+                        <td>${withSign(item.performance5YearPercent)}</td>
                         <td><strong>${item.score}/100</strong></td>
+                        <td>${escapeHtml(item.isQualified ? 'Qualified' : (item.rejectionReason || item.failureReasons || '-'))}</td>
+                        <td>${item.calculationDate ? new Date(item.calculationDate).toLocaleDateString('cs-CZ') : '-'}</td>
                     </tr>
                 `).join('');
             }
 
             async function loadData(forceRefresh = false) {
                 elements.loading.hidden = false;
-                elements.cards.hidden = true;
+                elements.qualifiedSection.hidden = true;
+                elements.failedSection.hidden = true;
                 elements.empty.hidden = true;
                 elements.refresh.disabled = true;
 
                 try {
-                    const url = forceRefresh ? `${dataUrl}?refresh=true` : dataUrl;
+                    const params = new URLSearchParams({ timeframe: getTimeframe() });
+                    if (forceRefresh) {
+                        params.set('refresh', 'true');
+                    }
+                    const url = `${dataUrl}?${params.toString()}`;
                     const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}`);
@@ -504,14 +621,22 @@
 
                     const data = await response.json();
                     state.items = data.items || [];
-                    elements.updatedAt.textContent = data.updatedAt || 'bez casu';
+                    if (data.timeframe) {
+                        elements.timeframe.value = data.timeframe;
+                    }
+                    elements.tableHeader.textContent = data.emaLabel || getEmaLabel();
+                    elements.distanceLabel.textContent = `vuci ${data.emaLabel || getEmaLabel()}`;
+                    elements.updatedAt.textContent = data.updatedAt || '-';
+                    elements.source.textContent = state.items.length
+                        ? [...new Set(state.items.map(item => item.dataSource).filter(Boolean))].join(' / ')
+                        : 'Yahoo / Alpha / Stooq';
                     elements.message.textContent = data.message || 'Screening dokoncen.';
                     renderSectorOptions();
                     render();
                 } catch {
                     state.items = [];
                     elements.updatedAt.textContent = 'chyba';
-                    elements.message.textContent = 'Live screening se ted nepodarilo nacist.';
+                    elements.message.textContent = 'Screening se ted nepodarilo nacist.';
                     render();
                 } finally {
                     elements.loading.hidden = true;
@@ -522,8 +647,35 @@
 
             elements.search.addEventListener('input', render);
             elements.sector.addEventListener('change', render);
+            elements.sort.addEventListener('change', () => {
+                const url = new URL(window.location.href);
+                url.searchParams.set('timeframe', getTimeframe());
+                url.searchParams.set('sort', elements.sort.value);
+                window.history.replaceState({}, '', url);
+                render();
+            });
+            elements.timeframe.addEventListener('change', () => {
+                const url = new URL(window.location.href);
+                url.searchParams.set('timeframe', getTimeframe());
+                if (elements.sort.value) {
+                    url.searchParams.set('sort', elements.sort.value);
+                }
+                window.location.href = url.toString();
+            });
             elements.refresh.addEventListener('click', () => loadData(true));
-            loadData();
+            const initialParams = new URLSearchParams(window.location.search);
+            const initialSort = initialParams.get('sort');
+            if (initialSort && [...elements.sort.options].some(option => option.value === initialSort)) {
+                elements.sort.value = initialSort;
+            }
+            renderSectorOptions();
+            elements.updatedAt.textContent = '@(Model.UpdatedAt is null ? "-" : Model.UpdatedAt.Value.ToString("dd.MM. HH:mm"))';
+            elements.message.textContent = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Message));
+            elements.source.textContent = state.items.length
+                ? [...new Set(state.items.map(item => item.dataSource).filter(Boolean))].join(' / ')
+                : 'Yahoo / Alpha / Stooq';
+            elements.loading.hidden = true;
+            render();
         })();
     </script>
 }

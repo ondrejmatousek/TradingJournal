@@ -13,6 +13,7 @@ namespace TradingJournal.Data
         public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
         public DbSet<MarketBias> MarketBiases => Set<MarketBias>();
         public DbSet<StrategyNote> StrategyNotes => Set<StrategyNote>();
+        public DbSet<InvestmentEma200Snapshot> InvestmentEma200Snapshots => Set<InvestmentEma200Snapshot>();
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -132,6 +133,54 @@ namespace TradingJournal.Data
             builder.Entity<StrategyNote>()
                 .Property(n => n.ContentHtml)
                 .HasColumnType("nvarchar(max)");
+
+            builder.Entity<InvestmentEma200Snapshot>()
+                .HasIndex(s => s.Symbol)
+                .IsUnique();
+
+            builder.Entity<InvestmentEma200Snapshot>()
+                .Property(s => s.Symbol)
+                .HasMaxLength(16);
+
+            builder.Entity<InvestmentEma200Snapshot>()
+                .Property(s => s.Name)
+                .HasMaxLength(160);
+
+            builder.Entity<InvestmentEma200Snapshot>()
+                .Property(s => s.Sector)
+                .HasMaxLength(80);
+
+            builder.Entity<InvestmentEma200Snapshot>()
+                .Property(s => s.CurrentPrice)
+                .HasPrecision(18, 4);
+
+            builder.Entity<InvestmentEma200Snapshot>()
+                .Property(s => s.Ema200Daily)
+                .HasPrecision(18, 4);
+
+            builder.Entity<InvestmentEma200Snapshot>()
+                .Property(s => s.Ema200Weekly)
+                .HasPrecision(18, 4);
+
+            builder.Entity<InvestmentEma200Snapshot>()
+                .Property(s => s.Performance1YearPercent)
+                .HasPrecision(9, 4);
+
+            builder.Entity<InvestmentEma200Snapshot>()
+                .Property(s => s.Performance3YearPercent)
+                .HasPrecision(9, 4);
+
+            builder.Entity<InvestmentEma200Snapshot>()
+                .Property(s => s.Performance5YearPercent)
+                .HasPrecision(9, 4);
+
+            builder.Entity<InvestmentEma200Snapshot>()
+                .Property(s => s.ErrorMessage)
+                .HasMaxLength(1000);
+
+            builder.Entity<InvestmentEma200Snapshot>()
+                .Property(s => s.DataSource)
+                .HasMaxLength(80);
         }
     }
 }

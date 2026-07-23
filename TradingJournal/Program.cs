@@ -25,6 +25,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<AppClock>();
 builder.Services.AddScoped<MarketBiasService>();
 builder.Services.AddScoped<StockRadarService>();
+builder.Services.AddScoped<IUnderEma200HistoryProvider, UnderEma200HistoryProvider>();
 builder.Services.AddScoped<UnderEma200Service>();
 builder.Services.AddScoped<HomeInsightService>();
 
