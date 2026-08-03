@@ -91,12 +91,12 @@ namespace TradingJournal.Services
 
         public Task<UnderEma200Result> GetAsync(bool forceRefresh, CancellationToken cancellationToken = default)
         {
-            return GetAsync(EmaTimeframe.Daily.ToString(), forceRefresh, cancellationToken);
+            return GetAsync(EmaTimeframeParser.Default.ToString(), forceRefresh, cancellationToken);
         }
 
         public Task<UnderEma200Result> GetPersistedResultAsync(CancellationToken cancellationToken)
         {
-            return GetPersistedResultAsync(EmaTimeframe.Daily, cancellationToken);
+            return GetPersistedResultAsync(EmaTimeframeParser.Default, cancellationToken);
         }
 
         public Task<UnderEma200Result> GetPersistedResultAsync(string? timeframeValue, CancellationToken cancellationToken = default)
@@ -104,7 +104,7 @@ namespace TradingJournal.Services
             return GetPersistedResultAsync(EmaTimeframeParser.Parse(timeframeValue), cancellationToken);
         }
 
-        public async Task<UnderEma200Result> GetPersistedResultAsync(EmaTimeframe timeframe = EmaTimeframe.Daily, CancellationToken cancellationToken = default)
+        public async Task<UnderEma200Result> GetPersistedResultAsync(EmaTimeframe timeframe = EmaTimeframe.Weekly, CancellationToken cancellationToken = default)
         {
             var snapshots = await LoadSnapshotsAsync(timeframe, cancellationToken);
             return BuildResult(timeframe, snapshots, snapshots.Count > 0
@@ -119,10 +119,10 @@ namespace TradingJournal.Services
 
         public Task<UnderEma200Result> RefreshAsync(CancellationToken cancellationToken)
         {
-            return RefreshAsync(EmaTimeframe.Daily, cancellationToken);
+            return RefreshAsync(EmaTimeframeParser.Default, cancellationToken);
         }
 
-        public async Task<UnderEma200Result> RefreshAsync(EmaTimeframe timeframe = EmaTimeframe.Daily, CancellationToken cancellationToken = default)
+        public async Task<UnderEma200Result> RefreshAsync(EmaTimeframe timeframe = EmaTimeframe.Weekly, CancellationToken cancellationToken = default)
         {
             var connection = _context.Database.GetDbConnection();
             _logger.LogInformation(

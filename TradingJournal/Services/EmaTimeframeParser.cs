@@ -4,11 +4,13 @@ namespace TradingJournal.Services
 {
     public static class EmaTimeframeParser
     {
+        public const EmaTimeframe Default = EmaTimeframe.Weekly;
+
         public static EmaTimeframe Parse(string? value)
         {
             return Enum.TryParse<EmaTimeframe>(value, ignoreCase: true, out var timeframe)
                 ? timeframe
-                : EmaTimeframe.Daily;
+                : Default;
         }
 
         public static string ToLabel(EmaTimeframe timeframe)

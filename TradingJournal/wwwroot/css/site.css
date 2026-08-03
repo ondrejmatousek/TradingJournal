@@ -392,7 +392,7 @@ body.app-section-shell {
   display: grid;
   gap: 1rem;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   height: min(720px, calc(100dvh - 104px));
   max-height: calc(100dvh - 104px);
   min-height: 0;
@@ -403,12 +403,151 @@ body.app-section-shell {
 .calendar-panel,
 .terminal-panel,
 .trade-ticket,
+.daily-opportunities-panel,
 .daily-bias-panel,
 .stock-radar-panel,
 .auth-side-card {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
   border: 1px solid var(--tj-border);
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.46);
+}
+
+.daily-opportunities-panel {
+  border-radius: 24px;
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.8rem;
+  position: relative;
+  width: 100%;
+  z-index: 4;
+}
+
+.daily-opportunities-head {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.daily-opportunities-head span,
+.daily-opportunities-head small,
+.daily-opportunity-title span,
+.daily-opportunity-card p,
+.daily-opportunity-card small,
+.daily-opportunities-empty,
+.daily-opportunities-note {
+  color: var(--tj-muted);
+}
+
+.daily-opportunities-head strong {
+  color: var(--tj-text);
+  display: block;
+  font-size: 1rem;
+}
+
+.daily-opportunities-list,
+.opportunities-loading {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.daily-opportunity-card {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  color: inherit;
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 96px;
+  overflow: hidden;
+  padding: 0.65rem;
+  text-decoration: none;
+  transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+
+.daily-opportunity-link:hover,
+.daily-opportunity-link:focus-visible {
+  background: rgba(45, 211, 199, 0.08);
+  border-color: rgba(45, 211, 199, 0.35);
+  color: inherit;
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.daily-opportunity-title strong,
+.daily-opportunity-title span {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daily-opportunity-title strong {
+  color: var(--tj-text);
+  font-size: 1rem;
+}
+
+.daily-opportunity-card em {
+  align-self: start;
+  background: rgba(255, 205, 85, 0.16);
+  border: 1px solid rgba(255, 205, 85, 0.35);
+  border-radius: 999px;
+  color: #ffdc73;
+  font-style: normal;
+  font-weight: 850;
+  padding: 0.25rem 0.5rem;
+}
+
+.daily-opportunity-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  grid-column: 1 / -1;
+}
+
+.daily-opportunity-metrics span {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: var(--tj-muted);
+  font-size: 0.72rem;
+  padding: 0.24rem 0.45rem;
+}
+
+.daily-opportunity-card p {
+  display: -webkit-box;
+  font-size: 0.74rem;
+  grid-column: 1 / -1;
+  line-height: 1.25;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.daily-opportunity-card small {
+  font-size: 0.68rem;
+  grid-column: 1 / -1;
+}
+
+.daily-opportunities-note {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.72rem;
+  margin: 0;
+  padding-top: 0.5rem;
+}
+
+.daily-opportunities-empty {
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  padding: 0.75rem;
+}
+
+.opportunities-loading span {
+  border-radius: 16px;
+  min-height: 96px;
 }
 
 .daily-bias-panel {
@@ -1045,8 +1184,10 @@ body.app-section-shell {
 }
 
 .bias-card-grid[hidden],
+.daily-opportunities-list[hidden],
 .stock-idea-list[hidden],
 .bias-empty[hidden],
+.daily-opportunities-empty[hidden],
 .stock-radar-empty[hidden],
 .widget-loading[hidden] {
   display: none !important;
@@ -3094,6 +3235,11 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   }
 
   .home-insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-opportunities-list,
+  .opportunities-loading {
     grid-template-columns: 1fr;
   }
 

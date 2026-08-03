@@ -4,9 +4,9 @@ namespace TradingJournal.ViewModels
     {
         public DateTimeOffset? UpdatedAt { get; set; }
         public string Message { get; set; } = string.Empty;
-        public string Timeframe { get; set; } = "Daily";
-        public string TimeframeLabel { get; set; } = "Daily EMA 200";
-        public string EmaLabel { get; set; } = "Daily EMA200";
+        public string Timeframe { get; set; } = "Weekly";
+        public string TimeframeLabel { get; set; } = "Weekly EMA 200";
+        public string EmaLabel { get; set; } = "Weekly EMA200";
         public IReadOnlyList<UnderEma200StockCard> Items { get; set; } = [];
         public int QualifiedCount => Items.Count(item => item.IsQualified);
         public int BelowEmaCount => Items.Count(item => item.IsBelowEma200);
@@ -18,7 +18,7 @@ namespace TradingJournal.ViewModels
         public string Symbol { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string Sector { get; set; } = string.Empty;
-        public string Timeframe { get; set; } = "Daily";
+        public string Timeframe { get; set; } = "Weekly";
         public decimal CurrentPrice { get; set; }
         public decimal Ema200 { get; set; }
         public decimal DistanceFromEmaPercent { get; set; }

@@ -49,81 +49,112 @@
             </div>
         </section>
 
-        <section class="investment-toolbar app-card">
-            <div>
-                <label for="emaSearch">Hledat</label>
-                <input id="emaSearch" class="form-control" type="search" placeholder="Ticker nebo firma" autocomplete="off" />
-            </div>
-            <div>
-                <label for="emaSector">Sektor</label>
-                <select id="emaSector" class="form-select">
-                    <option value="">Vsechny sektory</option>
-                </select>
-            </div>
-            <div>
-                <label for="emaSort">Seradit</label>
-                <select id="emaSort" class="form-select">
-                    <option value="score">Skore</option>
-                    <option value="distance">Vzdalenost pod EMA200</option>
-                    <option value="fiveYear">5Y vykon</option>
-                </select>
-            </div>
-            <p id="emaMessage">Nacitam ulozeny screening...</p>
-        </section>
+        <div class="investment-content">
+            <main class="investment-main">
+                <section class="investment-toolbar app-card">
+                    <div>
+                        <label for="emaSearch">Hledat</label>
+                        <input id="emaSearch" class="form-control" type="search" placeholder="Ticker nebo firma" autocomplete="off" />
+                    </div>
+                    <div>
+                        <label for="emaSector">Sektor</label>
+                        <select id="emaSector" class="form-select">
+                            <option value="">Vsechny sektory</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="emaSort">Seradit</label>
+                        <select id="emaSort" class="form-select">
+                            <option value="score">Skore</option>
+                            <option value="distance">Vzdalenost pod EMA200</option>
+                            <option value="fiveYear">5Y vykon</option>
+                        </select>
+                    </div>
+                    <p id="emaMessage">Nacitam ulozeny screening...</p>
+                </section>
 
-        <section class="investment-loading app-card" id="emaLoading" aria-label="Nacitam screening">
-            <span></span>
-            <span></span>
-            <span></span>
-        </section>
+                <section class="investment-loading app-card" id="emaLoading" aria-label="Nacitam screening">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </section>
 
-        <section class="investment-section" id="qualifiedSection" hidden>
-            <div class="panel-title">
-                <span>Qualified long-term growth candidates</span>
-                <strong id="qualifiedCount">0</strong>
-            </div>
-            <div class="investment-grid" id="qualifiedCards"></div>
-        </section>
+                <section class="investment-section" id="qualifiedSection" hidden>
+                    <div class="panel-title">
+                        <span>Opravdu pod @Model.EmaLabel a splnuji growth filtr</span>
+                        <strong id="qualifiedCount">0</strong>
+                    </div>
+                    <div class="investment-grid" id="qualifiedCards"></div>
+                </section>
 
-        <section class="investment-section" id="failedSection" hidden>
-            <div class="panel-title">
-                <span>Pod EMA200, ale neprosly growth filtrem</span>
-                <strong id="failedCount">0</strong>
-            </div>
-            <div class="investment-grid failed-grid" id="failedCards"></div>
-        </section>
+                <section class="investment-section" id="failedSection" hidden>
+                    <div class="panel-title">
+                        <span>Pod @Model.EmaLabel, ale neprosly growth filtrem</span>
+                        <strong id="failedCount">0</strong>
+                    </div>
+                    <div class="investment-grid failed-grid" id="failedCards"></div>
+                </section>
 
-        <section class="investment-empty app-card" id="emaEmpty" hidden>
-            <h2>Zatim nic ve filtru</h2>
-            <p>Bud nejsou dostupna data, nebo zadna firma z watchlistu aktualne neni pod vybranou EMA200.</p>
-        </section>
+                <section class="investment-empty app-card" id="emaEmpty" hidden>
+                    <h2>Zatim nic ve filtru</h2>
+                    <p>Bud nejsou dostupna data, nebo zadna firma z watchlistu aktualne neni pod vybranou EMA200.</p>
+                </section>
 
-        <section class="investment-table app-card" id="emaTableWrap" hidden>
-            <div class="panel-title">
-                <span>Detail screeningu</span>
-                <strong id="emaTableCount">0 firem</strong>
-            </div>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Ticker</th>
-                            <th>Firma</th>
-                            <th>Cena</th>
-                            <th id="emaTableHeader">@Model.EmaLabel</th>
-                            <th>Pod EMA</th>
-                            <th>1Y</th>
-                            <th>3Y</th>
-                            <th>5Y</th>
-                            <th>Skore</th>
-                            <th>Stav</th>
-                            <th>Vypocet</th>
-                        </tr>
-                    </thead>
-                    <tbody id="emaRows"></tbody>
-                </table>
-            </div>
-        </section>
+                <section class="investment-table app-card" id="emaTableWrap" hidden>
+                    <div class="panel-title">
+                        <span>Detail screeningu</span>
+                        <strong id="emaTableCount">0 firem</strong>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Ticker</th>
+                                    <th>Firma</th>
+                                    <th>Cena</th>
+                                    <th id="emaTableHeader">@Model.EmaLabel</th>
+                                    <th>Pod EMA</th>
+                                    <th>1Y</th>
+                                    <th>3Y</th>
+                                    <th>5Y</th>
+                                    <th>Skore</th>
+                                    <th>Stav</th>
+                                    <th>Vypocet</th>
+                                </tr>
+                            </thead>
+                            <tbody id="emaRows"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
+
+            <aside class="investment-side">
+                <section class="investment-rules app-card">
+                    <div>
+                        <span class="eyebrow">Jak se seznam sklada</span>
+                        <h2>Trend + pullback pod @Model.EmaLabel</h2>
+                        <p>
+                            Screening bere watchlist kvalitnich rustovych firem, prepocita vybranou EMA200 a rozdeli firmy na ty,
+                            ktere jsou opravdu pod ni, a na zbytek watchlistu pro kontrolu.
+                        </p>
+                    </div>
+                    <div class="rules-grid">
+                        <div>
+                            <strong>Qualified</strong>
+                            <span>Cena je pod @Model.EmaLabel, 5Y vykon alespon +20 %, 3Y vykon kladny a sleva od EMA neni hlubsi nez 35 %.</span>
+                        </div>
+                        <div>
+                            <strong>Pod EMA, ale slabsi filtr</strong>
+                            <span>Akcie je pod @Model.EmaLabel, ale neprosla rustovym filtrem nebo je prilis hluboko pod EMA.</span>
+                        </div>
+                        <div>
+                            <strong>Radim podle</strong>
+                            <span>Vychozi razeni je skore. Prepnout jde na vzdalenost pod EMA200 nebo 5Y vykon.</span>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+        </div>
 
         <p class="investment-disclaimer">Technicky screening pro watchlist. Neni to investicni doporuceni ani signal k nakupu.</p>
     </div>
@@ -136,7 +167,7 @@
 
     .investment-wrap {
         margin: 0 auto;
-        max-width: 1480px;
+        max-width: 1360px;
     }
 
     .investment-header {
@@ -204,16 +235,76 @@
         color: var(--tj-muted);
     }
 
+    .investment-content {
+        align-items: start;
+        display: grid;
+        gap: 1.25rem;
+        grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+    }
+
+    .investment-main {
+        min-width: 0;
+    }
+
+    .investment-side {
+        min-width: 0;
+        position: sticky;
+        top: 5rem;
+    }
+
+    .investment-rules {
+        display: block;
+        margin-bottom: 0;
+        padding: 0.85rem;
+    }
+
+    .investment-rules h2 {
+        font-size: 1.08rem;
+        line-height: 1.15;
+        margin: 0.1rem 0 0.35rem;
+    }
+
+    .investment-rules p,
+    .rules-grid span {
+        color: var(--tj-muted);
+        font-size: 0.78rem;
+        line-height: 1.35;
+        margin: 0;
+    }
+
+    .rules-grid {
+        display: grid;
+        gap: 0.55rem;
+        grid-template-columns: 1fr;
+        margin-top: 0.75rem;
+    }
+
+    .rules-grid div {
+        background: rgba(0, 0, 0, 0.16);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        min-height: auto;
+        padding: 0.58rem;
+    }
+
+    .rules-grid strong {
+        color: var(--tj-text);
+        display: block;
+        font-size: 0.82rem;
+        margin-bottom: 0.35rem;
+    }
+
     .investment-toolbar {
         align-items: end;
         display: grid;
-        gap: 1rem;
-        grid-template-columns: minmax(220px, 1fr) minmax(220px, 0.7fr) minmax(220px, 0.7fr) minmax(280px, 1.2fr);
+        gap: 0.75rem;
+        grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.72fr) minmax(160px, 0.72fr);
         margin-bottom: 1rem;
     }
 
     .investment-toolbar p {
         color: var(--tj-muted);
+        grid-column: 1 / -1;
         margin: 0;
     }
 
@@ -259,7 +350,7 @@
 
     .investment-grid {
         display: grid;
-        gap: 1rem;
+        gap: 0.7rem;
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
@@ -268,13 +359,13 @@
             radial-gradient(circle at top right, rgba(32, 199, 185, 0.16), transparent 38%),
             linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035));
         border: 1px solid var(--tj-border);
-        border-radius: 22px;
-        box-shadow: 0 22px 55px rgba(0, 0, 0, 0.26);
+        border-radius: 14px;
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
         color: var(--tj-text);
         display: flex;
         flex-direction: column;
-        min-height: 295px;
-        padding: 1.2rem;
+        min-height: 196px;
+        padding: 0.72rem;
         text-decoration: none;
         transition: border-color 0.18s ease, transform 0.18s ease;
     }
@@ -283,6 +374,10 @@
         background:
             radial-gradient(circle at top right, rgba(245, 193, 75, 0.09), transparent 34%),
             linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.032));
+    }
+
+    .failed-grid .investment-card {
+        min-height: 188px;
     }
 
     .investment-card:hover {
@@ -295,16 +390,17 @@
         align-items: flex-start;
         display: flex;
         justify-content: space-between;
-        gap: 1rem;
+        gap: 0.75rem;
     }
 
     .investment-card h2 {
-        font-size: 2rem;
+        font-size: 1.18rem;
         margin: 0;
     }
 
     .investment-card p {
         color: var(--tj-muted);
+        font-size: 0.8rem;
         margin: 0.15rem 0 0;
     }
 
@@ -315,21 +411,21 @@
         border-radius: 999px;
         color: #ffdd7a;
         display: inline-flex;
-        font-size: 1.1rem;
+        font-size: 0.82rem;
         font-weight: 900;
-        height: 58px;
+        height: 38px;
         justify-content: center;
-        min-width: 58px;
+        min-width: 38px;
     }
 
     .investment-status {
         align-items: center;
         border-radius: 999px;
         display: inline-flex;
-        font-size: 0.78rem;
+        font-size: 0.66rem;
         font-weight: 900;
-        margin-top: 0.7rem;
-        padding: 0.38rem 0.65rem;
+        margin-top: 0.45rem;
+        padding: 0.25rem 0.48rem;
         width: fit-content;
     }
 
@@ -347,49 +443,100 @@
 
     .investment-card-meta {
         display: grid;
-        gap: 0.6rem;
+        gap: 0.38rem;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        margin: 1rem 0;
+        margin: 0.55rem 0;
     }
 
     .investment-card-meta div {
         background: rgba(0, 0, 0, 0.18);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 0.7rem;
+        border-radius: 9px;
+        padding: 0.42rem;
     }
 
     .investment-card-meta strong {
         display: block;
-        font-size: 1rem;
+        font-size: 0.78rem;
         margin-top: 0.2rem;
     }
 
     .investment-card .rationale {
         color: rgba(238, 242, 247, 0.82);
-        font-size: 0.92rem;
-        line-height: 1.45;
+        font-size: 0.76rem;
+        line-height: 1.35;
         margin-top: auto;
     }
 
     .investment-table {
         margin-top: 1rem;
+        padding: 1.15rem 1.2rem 1.25rem;
+    }
+
+    .investment-table .panel-title {
+        margin: 0 0 0.7rem;
+    }
+
+    .investment-table .table-responsive {
+        min-width: 0;
+        overflow-x: hidden;
+        width: 100%;
     }
 
     .investment-table table {
         border-collapse: collapse;
+        table-layout: fixed;
         width: 100%;
     }
 
     .investment-table th,
     .investment-table td {
         border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-        padding: 0.9rem 0.75rem;
-        white-space: nowrap;
+        font-size: 0.78rem;
+        line-height: 1.35;
+        padding: 0.72rem 0.4rem;
+        vertical-align: middle;
+        white-space: normal;
+        word-break: normal;
     }
 
+    .investment-table th:nth-child(1),
+    .investment-table td:nth-child(1) {
+        width: 5%;
+    }
+
+    .investment-table th:nth-child(2),
     .investment-table td:nth-child(2) {
-        white-space: normal;
+        width: 13%;
+    }
+
+    .investment-table th:nth-child(3),
+    .investment-table td:nth-child(3),
+    .investment-table th:nth-child(4),
+    .investment-table td:nth-child(4),
+    .investment-table th:nth-child(5),
+    .investment-table td:nth-child(5),
+    .investment-table th:nth-child(6),
+    .investment-table td:nth-child(6),
+    .investment-table th:nth-child(7),
+    .investment-table td:nth-child(7),
+    .investment-table th:nth-child(8),
+    .investment-table td:nth-child(8),
+    .investment-table th:nth-child(9),
+    .investment-table td:nth-child(9) {
+        width: 6.5%;
+    }
+
+    .investment-table th:nth-child(10),
+    .investment-table td:nth-child(10) {
+        width: 27%;
+    }
+
+    .investment-table th:nth-child(11),
+    .investment-table td:nth-child(11) {
+        text-align: right;
+        width: 9.5%;
+        word-break: break-word;
     }
 
     .investment-empty {
@@ -407,7 +554,33 @@
         margin: 1rem 0 0;
     }
 
+    @@media (max-width: 1380px) {
+        .investment-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
     @@media (max-width: 1200px) {
+        .investment-content {
+            grid-template-columns: 1fr;
+        }
+
+        .investment-side {
+            order: -1;
+            position: static;
+        }
+
+        .investment-rules {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: minmax(220px, 0.75fr) minmax(0, 1.25fr);
+        }
+
+        .rules-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            margin-top: 0;
+        }
+
         .investment-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
@@ -429,6 +602,11 @@
 
         .investment-grid,
         .investment-summary {
+            grid-template-columns: 1fr;
+        }
+
+        .investment-rules,
+        .rules-grid {
             grid-template-columns: 1fr;
         }
     }
@@ -468,7 +646,7 @@
             elements.timeframe = document.getElementById('emaTimeframe');
             elements.tableHeader = document.getElementById('emaTableHeader');
             elements.distanceLabel = document.getElementById('emaDistanceLabel');
-            const getTimeframe = () => elements.timeframe.value || 'Daily';
+            const getTimeframe = () => elements.timeframe.value || 'Weekly';
             const getEmaLabel = () => getTimeframe() === 'Weekly' ? 'Weekly EMA200' : 'Daily EMA200';
 
             const escapeHtml = (value) => String(value ?? '')
@@ -676,6 +854,7 @@
                 : 'Yahoo / Alpha / Stooq';
             elements.loading.hidden = true;
             render();
+            loadData(true);
         })();
     </script>
 }

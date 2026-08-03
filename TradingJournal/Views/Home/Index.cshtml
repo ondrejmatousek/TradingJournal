@@ -42,6 +42,28 @@
     </div>
 
     <div class="hero-visual">
+        <div class="daily-opportunities-panel">
+            <div class="daily-opportunities-head">
+                <div>
+                    <span>Prilezitosti dne</span>
+                    <strong>Analyticky radar</strong>
+                </div>
+                <small id="dailyOpportunitiesUpdatedAt">loading</small>
+            </div>
+
+            <div class="widget-loading opportunities-loading" id="dailyOpportunitiesLoading" aria-label="Loading daily opportunities">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="daily-opportunities-list" id="dailyOpportunitiesList" hidden></div>
+            <div class="daily-opportunities-empty" id="dailyOpportunitiesError" hidden>Prilezitosti se ted nepodarilo nacist.</div>
+
+            <p class="daily-opportunities-note">
+                Vyber vychazi z dostupnych analytickych targetu a valuace. Neni to investicni doporuceni.
+            </p>
+        </div>
+
         <div class="daily-bias-panel">
             <div class="daily-bias-head">
                 <div>
@@ -156,6 +178,10 @@
                 stockLoading: document.getElementById('stockRadarLoading'),
                 stockError: document.getElementById('stockRadarError'),
                 stockUpdatedAt: document.getElementById('stockRadarUpdatedAt'),
+                opportunitiesList: document.getElementById('dailyOpportunitiesList'),
+                opportunitiesLoading: document.getElementById('dailyOpportunitiesLoading'),
+                opportunitiesError: document.getElementById('dailyOpportunitiesError'),
+                opportunitiesUpdatedAt: document.getElementById('dailyOpportunitiesUpdatedAt'),
                 regimeCard: document.getElementById('marketRegimeCard'),
                 regimeTitle: document.getElementById('marketRegimeTitle'),
                 regimeScore: document.getElementById('marketRegimeScore'),
@@ -258,10 +284,71 @@
                 setVisible(els.biasGrid, true);
             };
 
+            const renderDailyOpportunities = (data) => {
+                const items = Array.isArray(data.items) ? data.items : [];
+                setVisible(els.opportunitiesLoading, false);
+                els.opportunitiesUpdatedAt.textContent = data.updatedAt || 'offline';
+
+                const opportunities = [...items]
+                    .filter((idea) => idea && idea.symbol)
+                    .sort((a, b) => {
+                        const predictionDiff = (b.targetUpsidePercent ?? Number.NEGATIVE_INFINITY)
+                            - (a.targetUpsidePercent ?? Number.NEGATIVE_INFINITY);
+
+                        return predictionDiff !== 0
+                            ? predictionDiff
+                            : (b.score ?? 0) - (a.score ?? 0);
+                    })
+                    .slice(0, 3);
+
+                if (!opportunities.length) {
+                    els.opportunitiesError.textContent = data.message || 'Prilezitosti se ted nepodarilo nacist.';
+                    setVisible(els.opportunitiesError, true);
+                    setVisible(els.opportunitiesList, false);
+                    return;
+                }
+
+                els.opportunitiesList.innerHTML = opportunities.map((idea) => {
+                    const metrics = [
+                        idea.targetUpsidePercent !== null && idea.targetUpsidePercent !== undefined
+                            ? `<span>Predikce <strong>${signedNumber(idea.targetUpsidePercent, 1)}%</strong></span>`
+                            : '',
+                        idea.discountFromAthPercent !== null && idea.discountFromAthPercent !== undefined
+                            ? `<span>Sleva od ATH <strong>-${compactNumber(idea.discountFromAthPercent, 1)}%</strong></span>`
+                            : '',
+                        idea.peRatio !== null && idea.peRatio !== undefined
+                            ? `<span>P/E <strong>${compactNumber(idea.peRatio)}</strong></span>`
+                            : ''
+                    ].filter(Boolean).join('');
+
+                    const reason = Array.isArray(idea.reasons) && idea.reasons.length
+                        ? escapeHtml(idea.reasons[0])
+                        : 'Akcie je ve watchlistu stock radaru.';
+
+                    const analysisUrl = `https://finance.yahoo.com/quote/${encodeURIComponent(idea.symbol)}/analysis/`;
+
+                    return `
+                        <a class="daily-opportunity-card daily-opportunity-link" href="${analysisUrl}" target="_blank" rel="noopener noreferrer" title="Otevrit analyzu ${escapeHtml(idea.symbol || '')}">
+                            <div class="daily-opportunity-title">
+                                <strong>${escapeHtml(idea.symbol || '')}</strong>
+                                <span>${escapeHtml(idea.name || '')}</span>
+                            </div>
+                            <em>${escapeHtml(String(idea.score ?? '-'))}/7</em>
+                            <div class="daily-opportunity-metrics">${metrics}</div>
+                            <p>${reason}</p>
+                            <small>Analyza: Yahoo Finance / Alpha Vantage</small>
+                        </a>`;
+                }).join('');
+
+                setVisible(els.opportunitiesError, false);
+                setVisible(els.opportunitiesList, true);
+            };
+
             const renderStockRadar = (data) => {
                 const items = Array.isArray(data.items) ? data.items : [];
                 setVisible(els.stockLoading, false);
                 els.stockUpdatedAt.textContent = data.updatedAt || 'offline';
+                renderDailyOpportunities(data);
 
                 if (!items.length) {
                     els.stockError.textContent = data.message || 'Stock radar se ted nepodarilo nacist.';
@@ -387,6 +474,9 @@
             const loadStockRadar = async () => {
                 setVisible(els.stockLoading, true);
                 setVisible(els.stockError, false);
+                setVisible(els.opportunitiesLoading, true);
+                setVisible(els.opportunitiesError, false);
+                setVisible(els.opportunitiesList, false);
 
                 try {
                     const response = await fetch(endpoints.stockRadar);

@@ -49,11 +49,11 @@ public class UnderEma200CalculatorTests
     }
 
     [Fact]
-    public void ParseTimeframe_DefaultsToDaily_WhenValueIsMissingOrInvalid()
+    public void ParseTimeframe_DefaultsToWeekly_WhenValueIsMissingOrInvalid()
     {
-        Assert.Equal(EmaTimeframe.Daily, EmaTimeframeParser.Parse(null));
-        Assert.Equal(EmaTimeframe.Daily, EmaTimeframeParser.Parse(""));
-        Assert.Equal(EmaTimeframe.Daily, EmaTimeframeParser.Parse("nonsense"));
+        Assert.Equal(EmaTimeframe.Weekly, EmaTimeframeParser.Parse(null));
+        Assert.Equal(EmaTimeframe.Weekly, EmaTimeframeParser.Parse(""));
+        Assert.Equal(EmaTimeframe.Weekly, EmaTimeframeParser.Parse("nonsense"));
         Assert.Equal(EmaTimeframe.Weekly, EmaTimeframeParser.Parse("Weekly"));
         Assert.Equal(EmaTimeframe.Daily, EmaTimeframeParser.Parse("daily"));
     }
