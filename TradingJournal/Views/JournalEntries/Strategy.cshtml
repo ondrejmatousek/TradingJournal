@@ -269,30 +269,29 @@
             </section>
         </section>
             </div>
-
-            <aside class="strategy-notes-card" aria-label="Poznámky ke strategii">
+            <aside class="strategy-notes-card" aria-label="Pozn&aacute;mky ke strategii">
                 <div class="strategy-notes-head">
                     <div>
-                        <span class="strategy-kicker">Moje poznámky</span>
-                        <h2>Poznámky ke strategii</h2>
-                        <p id="strategyNotesStrategy">Petr MĹŻÄŤka</p>
+                        <span class="strategy-kicker">Moje pozn&aacute;mky</span>
+                        <h2>Pozn&aacute;mky ke strategii</h2>
+                        <p id="strategyNotesStrategy">Petr M&#367;&#269;ka</p>
                     </div>
-                    <span id="strategyNotesStatus" class="strategy-notes-status">UloĹľeno</span>
+                    <span id="strategyNotesStatus" class="strategy-notes-status">Ulo&#382;eno</span>
                 </div>
 
-                <div class="strategy-notes-toolbar" role="toolbar" aria-label="FormĂˇtovĂˇnĂ­ poznĂˇmek">
-                    <button type="button" data-notes-command="bold" title="TuÄŤnÄ›"><strong>B</strong></button>
-                    <button type="button" data-notes-command="italic" title="KurzĂ­va"><em>I</em></button>
-                    <button type="button" data-notes-command="insertUnorderedList" title="OdrĂˇĹľky">•</button>
-                    <button type="button" data-notes-command="insertOrderedList" title="ÄŚĂ­slovanĂ˝ seznam">1.</button>
-                    <button type="button" data-notes-clear title="VyÄŤistit poznĂˇmky">Clear</button>
+                <div class="strategy-notes-toolbar" role="toolbar" aria-label="Form&aacute;tov&aacute;n&iacute; pozn&aacute;mek">
+                    <button type="button" data-notes-command="bold" title="Tu&#269;n&#283;"><strong>B</strong></button>
+                    <button type="button" data-notes-command="italic" title="Kurz&iacute;va"><em>I</em></button>
+                    <button type="button" data-notes-command="insertUnorderedList" title="Odr&aacute;&#382;ky">&bull;</button>
+                    <button type="button" data-notes-command="insertOrderedList" title="&#268;&iacute;slovan&yacute; seznam">1.</button>
+                    <button type="button" data-notes-clear title="Vy&#269;istit pozn&aacute;mky">Clear</button>
                 </div>
 
                 <div id="strategyNotesEditor"
                      class="strategy-notes-editor"
                      contenteditable="true"
                      spellcheck="true"
-                     data-placeholder="PiĹˇ sem svoje postĹ™ehy, pravidla, screenshot odkazy nebo konkrĂ©tnĂ­ checklist poznĂˇmky pro aktuĂˇlnĂ­ strategii."></div>
+                     data-placeholder="Pi&scaron; sem svoje post&#345;ehy, pravidla, screenshot odkazy nebo konkr&eacute;tn&iacute; checklist pozn&aacute;mky pro aktu&aacute;ln&iacute; strategii."></div>
             </aside>
         </div>
     </div>
@@ -307,7 +306,7 @@
             const notesStrategy = document.getElementById("strategyNotesStrategy");
             const notesStatus = document.getElementById("strategyNotesStatus");
             const labels = {
-                mucka: "Petr MĹŻÄŤka",
+                mucka: "Petr M\u016f\u010dka",
                 corex: "CoreX S/D"
             };
             const loadUrl = "@Url.Action("StrategyNote", "JournalEntries")";
@@ -335,7 +334,7 @@
                 }
 
                 const contentHtml = notesEditor.innerHTML;
-                setStatus("UklĂˇdĂˇm");
+                setStatus("Ukl\u00e1d\u00e1m");
 
                 try {
                     const response = await fetch(saveUrl, {
@@ -356,10 +355,10 @@
                     }
 
                     localStorage.removeItem(storageKey(strategyKey));
-                    setStatus("UloĹľeno");
+                    setStatus("Ulo\u017eeno");
                 } catch {
                     localStorage.setItem(storageKey(strategyKey), contentHtml);
-                    setStatus("NeuloĹľeno v DB");
+                    setStatus("Neulo\u017eeno v DB");
                 }
             };
 
@@ -379,7 +378,7 @@
                     notesStrategy.textContent = labels[key] ?? key;
                 }
 
-                setStatus("NaÄŤĂ­tĂˇm");
+                setStatus("Na\u010d\u00edt\u00e1m");
 
                 try {
                     const response = await fetch(`${loadUrl}?strategyKey=${encodeURIComponent(key)}`, {
@@ -399,7 +398,7 @@
 
                     const legacyLocalNote = localStorage.getItem(storageKey(key));
                     notesEditor.innerHTML = data.contentHtml || legacyLocalNote || "";
-                    setStatus("NaÄŤteno");
+                    setStatus("Na\u010dteno");
 
                     if (!data.contentHtml && legacyLocalNote) {
                         await saveNotes(key);
@@ -410,7 +409,7 @@
                     }
 
                     notesEditor.innerHTML = localStorage.getItem(storageKey(key)) ?? "";
-                    setStatus("Offline reĹľim");
+                    setStatus("Offline re\u017eim");
                 }
             };
 
@@ -451,7 +450,7 @@
             });
 
             document.querySelector("[data-notes-clear]")?.addEventListener("click", () => {
-                if (!notesEditor || !window.confirm("Opravdu chceĹˇ vyÄŤistit poznĂˇmky pro aktuĂˇlnĂ­ strategii?")) {
+                if (!notesEditor || !window.confirm("Opravdu chce\u0161 vy\u010distit pozn\u00e1mky pro aktu\u00e1ln\u00ed strategii?")) {
                     return;
                 }
 
