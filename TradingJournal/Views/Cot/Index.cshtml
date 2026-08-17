@@ -1,0 +1,158 @@
+@model TradingJournal.ViewModels.CotDashboardViewModel
+@using System.Globalization
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "COT Dashboard";
+    ViewData["BodyClass"] = "journal-shell";
+    var culture = new CultureInfo("cs-CZ");
+}
+
+<div class="journal-page cot-page">
+    <div class="journal-wrap cot-wrap">
+        <header class="cot-header">
+            <div>
+                <p class="cot-eyebrow">Weekly makro filtr</p>
+                <h1>COT Dashboard</h1>
+                <p>CFTC Commitments of Traders jako kontext pro weekly bias. COT není intradenní vstupní signál.</p>
+            </div>
+            <form asp-action="Update" method="post">
+                @Html.AntiForgeryToken()
+                <button class="btn btn-primary" type="submit">Aktualizovat COT data</button>
+            </form>
+        </header>
+
+        @if (TempData["CotMessage"] is string message)
+        {
+            <div class="cot-notice">@message</div>
+        }
+
+        <div class="cot-meta">
+            <span>Zdroj: CFTC Public Reporting Environment</span>
+            <span>Automatická kontrola: každých 6 hodin, import nejdříve po 20 hodinách</span>
+            <span>Poslední úspěšná aktualizace: @(Model.LastSuccessfulImport?.ToLocalTime().ToString("dd.MM.yyyy HH:mm", culture) ?? "zatím žádná")</span>
+        </div>
+
+        <section class="cot-grid" aria-label="COT trhy">
+            @foreach (var item in Model.Items)
+            {
+                var report = item.Latest;
+                var biasClass = report?.Bias.ToLowerInvariant() ?? "neutral";
+                <article class="cot-card">
+                    <div class="cot-card-head">
+                        <div>
+                            <span class="cot-symbol">@item.SymbolKey</span>
+                            <h2>@item.DisplayName</h2>
+                        </div>
+                        <span class="cot-bias @biasClass">@(report?.Bias ?? "Bez dat")</span>
+                    </div>
+
+                    @if (report is null)
+                    {
+                        <p class="cot-empty">Pro tento trh zatím nejsou v DB žádná COT data.</p>
+                    }
+                    else
+                    {
+                        <div class="cot-report-date">Report date: @report.ReportDate.ToString("dd.MM.yyyy", culture)</div>
+                        @if (item.History.Count > 1)
+                        {
+                            var chartData = item.History.Select(point => new
+                            {
+                                date = point.ReportDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                                longPosition = point.LongPosition,
+                                shortPosition = point.ShortPosition,
+                                netPosition = point.NetPosition,
+                                cotIndex = point.CotIndex52,
+                                commercialsNet = point.CommercialsNetPosition,
+                                retailersNet = point.RetailersNetPosition
+                            });
+                            <div class="cot-chart" data-cot-chart='@Html.Raw(JsonSerializer.Serialize(chartData))' aria-label="Historie COT dat">
+                                <div class="cot-chart-head">
+                                    <div>
+                                        <span class="cot-chart-title">Historie pozic</span>
+                                        <span class="cot-chart-subtitle">@item.History.Count reportů</span>
+                                    </div>
+                                    <div class="cot-chart-controls" role="group" aria-label="Období grafu">
+                                        <button type="button" class="cot-range is-active" data-range="26">6M</button>
+                                        <button type="button" class="cot-range" data-range="52">12M</button>
+                                        <button type="button" class="cot-range" data-range="156">3Y</button>
+                                    </div>
+                                </div>
+                                <div class="cot-chart-toolbar" role="group" aria-label="Metrika grafu">
+                                    <button type="button" class="cot-series is-active" data-series="net">Net pozice</button>
+                                    <button type="button" class="cot-series" data-series="longShort">Long / Short</button>
+                                    <button type="button" class="cot-series" data-series="participants">Commercials / Retailers*</button>
+                                    <button type="button" class="cot-series" data-series="index">52W COT index</button>
+                                </div>
+                                <div class="cot-chart-note">* Retailers = CFTC skupina Non-reportable</div>
+                                <div class="cot-participant-legend" aria-label="Legenda účastnických skupin">
+                                    <span><i class="cot-legend-commercials"></i>Commercials</span>
+                                    <span><i class="cot-legend-retailers"></i>Retailers</span>
+                                </div>
+                                <div class="cot-chart-stage">
+                                    <canvas class="cot-chart-canvas"></canvas>
+                                    <div class="cot-chart-tooltip" hidden></div>
+                                </div>
+                                <div class="cot-chart-dates"><span></span><span></span></div>
+                            </div>
+                        }
+                        <section class="cot-narrative" aria-label="Automatické COT shrnutí">
+                            <div class="cot-narrative-head">
+                                <span class="cot-narrative-kicker">Automatický komentář</span>
+                                <h3>@item.Narrative.Headline</h3>
+                            </div>
+                            <p class="cot-narrative-overview">@item.Narrative.Overview</p>
+                            <div class="cot-narrative-columns">
+                                <div>
+                                    <strong>Bullish argumenty</strong>
+                                    <ul>
+                                        @foreach (var argument in item.Narrative.BullishArguments)
+                                        {
+                                            <li>@argument</li>
+                                        }
+                                    </ul>
+                                </div>
+                                <div>
+                                    <strong>Varování / rozpory</strong>
+                                    <ul>
+                                        @foreach (var warning in item.Narrative.WarningArguments)
+                                        {
+                                            <li>@warning</li>
+                                        }
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="cot-narrative-practical">
+                                <strong>Praktické použití</strong>
+                                <p>@item.Narrative.PracticalUse</p>
+                            </div>
+                        </section>
+                        <div class="cot-metrics">
+                            <div><span>Long</span><strong>@report.LongPosition.ToString("N0", culture)</strong></div>
+                            <div><span>Short</span><strong>@report.ShortPosition.ToString("N0", culture)</strong></div>
+                            <div><span>Net pozice</span><strong>@report.NetPosition.ToString("N0", culture)</strong></div>
+                            <div><span>Týdenní změna</span><strong>@(report.WeeklyNetChange?.ToString("+#,##0;-#,##0;0", culture) ?? "-")</strong></div>
+                            <div><span>26W index</span><strong>@(report.CotIndex26?.ToString("0", culture) ?? "-") %</strong></div>
+                            <div><span>52W index</span><strong>@(report.CotIndex52?.ToString("0", culture) ?? "-") %</strong></div>
+                            <div><span>52W percentile</span><strong>@(report.Percentile52?.ToString("0", culture) ?? "-") %</strong></div>
+                            <div><span>Z-score</span><strong>@(report.ZScore?.ToString("0.00", culture) ?? "-")</strong></div>
+                            <div><span>Open interest</span><strong>@report.OpenInterest.ToString("N0", culture)</strong></div>
+                        </div>
+                        <p class="cot-summary">@report.Summary</p>
+                        <div class="cot-card-footer">
+                            <span>Kategorie: @item.TraderCategory</span>
+                            @if (report.ExtremeLong || report.ExtremeShort)
+                            {
+                                <span class="cot-warning">@(report.ExtremeLong ? "Extrémně long" : "Extrémně short")</span>
+                            }
+                            @if (item.IsStale)
+                            {
+                                <span class="cot-warning">@item.StaleMessage</span>
+                            }
+                        </div>
+                    }
+                </article>
+            }
+        </section>
+    </div>
+</div>

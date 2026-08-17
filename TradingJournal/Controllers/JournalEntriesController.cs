@@ -6,7 +6,9 @@ using System.Globalization;
 using System.Security.Claims;
 using TradingJournal.Data;
 using TradingJournal.Models;
+using TradingJournal.Services;
 using TradingJournal.ViewModels;
+using System.Text.Json;
 
 namespace TradingJournal.Controllers
 {
@@ -14,15 +16,29 @@ namespace TradingJournal.Controllers
     public class JournalEntriesController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly MuckaRubricProvider _muckaRubricProvider;
+        private readonly CotDataService _cotDataService;
         private static readonly HashSet<string> StrategyNoteKeys = new(StringComparer.OrdinalIgnoreCase)
         {
             "mucka",
             "corex"
         };
 
-        public JournalEntriesController(ApplicationDbContext context)
+        private static readonly HashSet<string> SetupReviewOutcomes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "1",
+            "2",
+            "3"
+        };
+
+        public JournalEntriesController(
+            ApplicationDbContext context,
+            MuckaRubricProvider muckaRubricProvider,
+            CotDataService cotDataService)
         {
             _context = context;
+            _muckaRubricProvider = muckaRubricProvider;
+            _cotDataService = cotDataService;
         }
 
         private string CurrentUserId =>
@@ -32,6 +48,264 @@ namespace TradingJournal.Controllers
         public IActionResult TradeQuality()
         {
             return View();
+        }
+
+        // GET: JournalEntries/SetupReview
+        public async Task<IActionResult> SetupReview()
+        {
+            var userId = CurrentUserId;
+            var reviews = await _context.TradeSetupReviews
+                .AsNoTracking()
+                .Include(r => r.Images)
+                .Where(r => r.UserId == userId)
+                .OrderByDescending(r => r.TradeDate)
+                .ThenByDescending(r => r.TradeTimeText)
+                .ThenByDescending(r => r.CreatedAt)
+                .ToListAsync();
+
+            return View(BuildSetupReviewViewModel(reviews));
+        }
+
+        // POST: JournalEntries/SetupReview
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetupReview(TradeSetupReview form, IReadOnlyList<IFormFile>? imageFiles)
+        {
+            var userId = CurrentUserId;
+            var now = DateTimeOffset.UtcNow;
+
+            form.UserId = userId;
+            form.CreatedAt = now;
+            form.UpdatedAt = now;
+            form.StrategyKey = NormalizeSetupReviewText(form.StrategyKey, "mucka", 64) ?? "mucka";
+            form.TradeTimeText = NormalizeSetupReviewTime(form.TradeTimeText);
+            form.Market = NormalizeSetupReviewText(form.Market, string.Empty, 120) ?? string.Empty;
+            form.Direction = NormalizeSetupReviewText(form.Direction, "SHORT", 16) ?? "SHORT";
+            form.Session = null;
+            form.Status = "Nevyhodnoceno";
+            form.Verdict = "Nevyhodnoceno";
+            form.Outcome = NormalizeSetupReviewOutcome(form.Outcome);
+            form.RMultiple = null;
+            form.IsValid = null;
+            form.Entry = null;
+            form.StopLoss = null;
+            form.TakeProfit = null;
+            form.PlannedRr = null;
+            form.HtfContextScore = null;
+            form.ZoneScore = null;
+            form.LocalStructureScore = null;
+            form.EntryConfirmationScore = null;
+            form.TimingScore = null;
+            form.RiskRewardScore = null;
+            form.SessionScore = null;
+            form.ManagementScore = null;
+            form.SetupRating = null;
+            form.ProcessScore = null;
+            form.MissingInfo = string.Empty;
+            form.Notes = NormalizeSetupReviewText(form.Notes, string.Empty, 4000) ?? string.Empty;
+            form.Aligned = string.Empty;
+            form.Issues = string.Empty;
+            form.NoTradeBlockers = string.Empty;
+            form.AiReviewJson = null;
+            form.ReviewedAt = null;
+
+            if (string.IsNullOrWhiteSpace(form.StrategyKey) || !StrategyNoteKeys.Contains(form.StrategyKey))
+                ModelState.AddModelError(nameof(TradeSetupReview.StrategyKey), "Vyber strategii.");
+
+            if (form.TradeDate == default)
+                ModelState.AddModelError(nameof(TradeSetupReview.TradeDate), "Doplň datum tradu.");
+
+            if (string.IsNullOrWhiteSpace(form.Market))
+                ModelState.AddModelError(nameof(TradeSetupReview.Market), "Doplň trh nebo symbol.");
+
+            if (form.Direction is not ("LONG" or "SHORT"))
+                ModelState.AddModelError(nameof(TradeSetupReview.Direction), "Vyber směr tradu.");
+
+            if (string.IsNullOrWhiteSpace(form.TradeTimeText))
+                ModelState.AddModelError(nameof(TradeSetupReview.TradeTimeText), "Doplň čas tradu.");
+            else if (!TimeOnly.TryParse(form.TradeTimeText, CultureInfo.InvariantCulture, out _))
+                ModelState.AddModelError(nameof(TradeSetupReview.TradeTimeText), "Čas tradu není platný.");
+
+            if (string.IsNullOrWhiteSpace(form.Outcome) || !SetupReviewOutcomes.Contains(form.Outcome))
+                ModelState.AddModelError(nameof(TradeSetupReview.Outcome), "Vyber výsledek tradu.");
+
+            await ApplySetupReviewImagesAsync(form, imageFiles);
+
+            if (!ModelState.IsValid)
+            {
+                var reviews = await _context.TradeSetupReviews
+                    .AsNoTracking()
+                    .Include(r => r.Images)
+                    .Where(r => r.UserId == userId)
+                    .OrderByDescending(r => r.TradeDate)
+                    .ThenByDescending(r => r.TradeTimeText)
+                    .ThenByDescending(r => r.CreatedAt)
+                    .ToListAsync();
+
+                return View(BuildSetupReviewViewModel(reviews, form));
+            }
+
+            _context.TradeSetupReviews.Add(form);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(SetupReview));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SetupReviewImage(int id)
+        {
+            var userId = CurrentUserId;
+            var image = await _context.TradeSetupReviewImages
+                .AsNoTracking()
+                .Where(i => i.Id == id && i.TradeSetupReview.UserId == userId)
+                .Select(i => new { i.ImageData, i.ImageContentType })
+                .FirstOrDefaultAsync();
+
+            if (image?.ImageData == null || string.IsNullOrWhiteSpace(image.ImageContentType))
+                return NotFound();
+
+            return File(image.ImageData, image.ImageContentType);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SetupReviewEditPayload(int id)
+        {
+            var review = await _context.TradeSetupReviews
+                .AsNoTracking()
+                .Where(r => r.Id == id && r.UserId == CurrentUserId)
+                .FirstOrDefaultAsync();
+
+            if (review is null)
+                return NotFound();
+
+            return Json(new
+            {
+                review.Id,
+                strategyKey = review.StrategyKey,
+                date = review.TradeDate.ToString("yyyy-MM-dd"),
+                time = review.TradeTimeText,
+                market = review.Market,
+                direction = review.Direction,
+                outcome = review.Outcome,
+                outcomeLabel = FormatSetupReviewOutcome(review.Outcome),
+                missingInfo = review.MissingInfo,
+                issues = review.Issues,
+                notes = review.Notes
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateSetupReview(int id, [FromForm] SetupReviewEditRequest request)
+        {
+            var review = await _context.TradeSetupReviews
+                .FirstOrDefaultAsync(r => r.Id == id && r.UserId == CurrentUserId);
+
+            if (review is null)
+                return NotFound();
+
+            var strategyKey = NormalizeSetupReviewText(request.StrategyKey, null, 64);
+            var direction = NormalizeSetupReviewText(request.Direction, null, 16)?.ToUpperInvariant();
+            var market = NormalizeSetupReviewText(request.Market, string.Empty, 120) ?? string.Empty;
+            var outcome = NormalizeSetupReviewOutcome(request.Outcome);
+            var missingInfo = NormalizeSetupReviewText(request.MissingInfo, string.Empty, 4000) ?? string.Empty;
+            var issues = NormalizeSetupReviewText(request.Issues, string.Empty, 4000) ?? string.Empty;
+            var notes = NormalizeSetupReviewText(request.Notes, string.Empty, 4000) ?? string.Empty;
+
+            if (strategyKey is null || !StrategyNoteKeys.Contains(strategyKey))
+                ModelState.AddModelError(nameof(request.StrategyKey), "Vyber strategii.");
+
+            if (!DateOnly.TryParseExact(request.TradeDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var tradeDate))
+                ModelState.AddModelError(nameof(request.TradeDate), "Datum není platné.");
+
+            if (!TimeOnly.TryParseExact(request.TradeTimeText, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var tradeTime))
+                ModelState.AddModelError(nameof(request.TradeTimeText), "Čas není platný.");
+
+            if (direction is not ("LONG" or "SHORT"))
+                ModelState.AddModelError(nameof(request.Direction), "Vyber směr tradu.");
+
+            if (string.IsNullOrWhiteSpace(market))
+                ModelState.AddModelError(nameof(request.Market), "Doplň trh nebo symbol.");
+
+            if (outcome is null)
+                ModelState.AddModelError(nameof(request.Outcome), "Vyber výsledek tradu.");
+
+            if (!ModelState.IsValid)
+                return ValidationProblem(ModelState);
+
+            review.StrategyKey = strategyKey!;
+            review.TradeDate = tradeDate;
+            review.TradeTimeText = tradeTime.ToString("HH:mm", CultureInfo.InvariantCulture);
+            review.Market = market;
+            review.Direction = direction!;
+            review.Outcome = outcome!;
+            review.MissingInfo = missingInfo;
+            review.Issues = issues;
+            review.Notes = notes;
+            review.UpdatedAt = DateTimeOffset.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Json(new
+            {
+                review.Id,
+                strategyKey = review.StrategyKey,
+                date = review.TradeDate.ToString("yyyy-MM-dd"),
+                time = review.TradeTimeText,
+                market = review.Market,
+                direction = review.Direction,
+                outcome = review.Outcome,
+                outcomeLabel = FormatSetupReviewOutcome(review.Outcome),
+                missingInfo = review.MissingInfo,
+                issues = review.Issues,
+                notes = review.Notes
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SetupReviewAnalysisPayload(int id)
+        {
+            var userId = CurrentUserId;
+            var review = await _context.TradeSetupReviews
+                .AsNoTracking()
+                .Include(r => r.Images)
+                .FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId);
+
+            if (review is null)
+                return NotFound();
+
+            return Json(BuildSetupReviewAnalysisPayload(review));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SetupReviewUnreviewedPayload()
+        {
+            var userId = CurrentUserId;
+            var reviews = await _context.TradeSetupReviews
+                .AsNoTracking()
+                .Include(r => r.Images)
+                .Where(r => r.UserId == userId && r.Status == "Nevyhodnoceno")
+                .OrderBy(r => r.TradeDate)
+                .ThenBy(r => r.CreatedAt)
+                .ToListAsync();
+
+            return Json(reviews.Select(BuildSetupReviewAnalysisPayload).ToList());
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SetupReviewAllAnalysisPayload()
+        {
+            var userId = CurrentUserId;
+            var reviews = await _context.TradeSetupReviews
+                .AsNoTracking()
+                .Include(r => r.Images)
+                .Where(r => r.UserId == userId)
+                .OrderBy(r => r.TradeDate)
+                .ThenBy(r => r.TradeTimeText)
+                .ThenBy(r => r.CreatedAt)
+                .ToListAsync();
+
+            return Json(reviews.Select(BuildSetupReviewAnalysisPayload).ToList());
         }
 
         // GET: JournalEntries/Strategy
@@ -124,6 +398,326 @@ namespace TradingJournal.Controllers
             public string StrategyKey { get; set; } = string.Empty;
 
             public string? ContentHtml { get; set; }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SetupReviewRawJson(int id, CancellationToken cancellationToken)
+        {
+            var rawJson = await _context.TradeSetupReviews
+                .AsNoTracking()
+                .Where(r => r.Id == id && r.UserId == CurrentUserId)
+                .Select(r => r.AiReviewJson)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            return string.IsNullOrWhiteSpace(rawJson)
+                ? NotFound()
+                : Content(rawJson, "application/json", System.Text.Encoding.UTF8);
+        }
+
+        private static string GetStrategyCode(string? strategyKey)
+        {
+            return strategyKey?.Trim().ToLowerInvariant() switch
+            {
+                "mucka" or "petr můčka" or "petr mucka" or "petr můčka s/d" or "corex" or "corex s/d" => "MUCKA",
+                _ => strategyKey?.Trim().ToUpperInvariant() ?? string.Empty
+            };
+        }
+
+        private static SetupReviewViewModel BuildSetupReviewViewModel(
+            IReadOnlyList<TradeSetupReview> reviews,
+            TradeSetupReview? form = null)
+        {
+            var completed = reviews
+                .Where(r => r.RMultiple.HasValue)
+                .ToList();
+            var validKnown = reviews
+                .Where(r => r.IsValid.HasValue)
+                .ToList();
+            var processScores = reviews
+                .Select(review => review.ProcessScore ?? CalculateSetupReviewProcessScore(review))
+                .Where(score => score.HasValue)
+                .Select(score => score!.Value)
+                .ToList();
+            var wins = completed.Count(r => r.RMultiple > 0);
+            var totalR = completed.Sum(r => r.RMultiple ?? 0);
+
+            return new SetupReviewViewModel
+            {
+                Reviews = reviews,
+                Form = form ?? new TradeSetupReview
+                {
+                    TradeDate = DateOnly.FromDateTime(DateTime.Today),
+                    StrategyKey = "mucka",
+                    Direction = "SHORT",
+                    Status = "Nevyhodnoceno",
+                    Verdict = "Nevyhodnoceno"
+                },
+                Stats = new SetupReviewStats
+                {
+                    TotalSetups = reviews.Count,
+                    ReviewedSetups = reviews.Count(r => r.Status != "Nevyhodnoceno"),
+                    CompletedSetups = completed.Count,
+                    Wins = wins,
+                    Losses = completed.Count - wins,
+                    WinRate = completed.Count == 0 ? 0 : wins * 100m / completed.Count,
+                    AverageR = completed.Count == 0 ? null : totalR / completed.Count,
+                    TotalR = totalR,
+                    ValidKnownSetups = validKnown.Count,
+                    ValidSetups = validKnown.Count(r => r.IsValid == true),
+                    ValidRate = validKnown.Count == 0 ? 0 : validKnown.Count(r => r.IsValid == true) * 100m / validKnown.Count,
+                    AverageProcessScore = processScores.Count == 0 ? null : processScores.Average()
+                }
+            };
+        }
+
+        private static decimal? CalculateSetupReviewProcessScore(TradeSetupReview review)
+        {
+            var scores = new[]
+            {
+                review.HtfContextScore,
+                review.ZoneScore,
+                review.LocalStructureScore,
+                review.EntryConfirmationScore,
+                review.TimingScore,
+                review.RiskRewardScore,
+                review.SessionScore,
+                review.ManagementScore
+            }
+            .Where(score => score.HasValue)
+            .Select(score => score!.Value)
+            .ToList();
+
+            if (scores.Count == 0)
+                return null;
+
+            return Math.Round(scores.Average() * 100m, 0);
+        }
+
+        private object BuildSetupReviewAnalysisPayload(TradeSetupReview review)
+        {
+            return new
+            {
+                review.Id,
+                strategy = review.StrategyKey,
+                date = review.TradeDate.ToString("yyyy-MM-dd"),
+                time = review.TradeTimeText,
+                market = review.Market,
+                direction = review.Direction,
+                review.Session,
+                review.Status,
+                review.Verdict,
+                setupRating = review.SetupRating,
+                processScore = review.ProcessScore ?? CalculateSetupReviewProcessScore(review),
+                review.ReviewedAt,
+                review.Outcome,
+                r = review.RMultiple,
+                review.IsValid,
+                cot = BuildCotContext(review),
+                review.Entry,
+                review.StopLoss,
+                review.TakeProfit,
+                review.PlannedRr,
+                scorecard = new
+                {
+                    htfContext = review.HtfContextScore,
+                    zone = review.ZoneScore,
+                    localStructure = review.LocalStructureScore,
+                    entryConfirmation = review.EntryConfirmationScore,
+                    timing = review.TimingScore,
+                    riskReward = review.RiskRewardScore,
+                    session = review.SessionScore,
+                    management = review.ManagementScore,
+                    percent = CalculateSetupReviewProcessScore(review)
+                },
+                missingInfo = SplitSetupReviewLines(review.MissingInfo),
+                aligned = SplitSetupReviewLines(review.Aligned),
+                issues = SplitSetupReviewLines(review.Issues),
+                noTradeBlockers = SplitSetupReviewLines(review.NoTradeBlockers),
+                notes = review.Notes,
+                rubric = GetStrategyCode(review.StrategyKey) == "MUCKA"
+                    ? _muckaRubricProvider.GetRubric()
+                    : (JsonElement?)null,
+                images = review.Images.OrderBy(i => i.Id).Select(i => new
+                {
+                    i.Id,
+                    i.ImageFileName,
+                    url = Url.Action(nameof(SetupReviewImage), "JournalEntries", new { id = i.Id })
+                }).ToList()
+            };
+        }
+
+        private object? BuildCotContext(TradeSetupReview review)
+        {
+            var context = _cotDataService.GetContextForMarket(review.Market);
+            if (context is null)
+                return null;
+
+            return new
+            {
+                symbol = context.SymbolKey,
+                displayName = context.DisplayName,
+                bias = context.Bias,
+                reportDate = context.ReportDate?.ToString("yyyy-MM-dd"),
+                netPosition = context.NetPosition,
+                weeklyNetChange = context.WeeklyNetChange,
+                percentile52 = context.Percentile52,
+                zScore = context.ZScore,
+                isStale = context.IsStale,
+                summary = context.Summary,
+                directionAssessment = context.DirectionAssessment(review.Direction),
+                usage = "Weekly makro kontext, ne intradenní entry signál."
+            };
+        }
+
+        private static string? NormalizeSetupReviewText(string? value, string? fallback, int maxLength)
+        {
+            var normalized = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+
+            if (normalized is null || normalized.Length <= maxLength)
+                return normalized;
+
+            return normalized[..maxLength];
+        }
+
+        private static string? NormalizeSetupReviewTime(string? value)
+        {
+            var normalized = NormalizeSetupReviewText(value, null, 40);
+
+            if (normalized is null)
+                return null;
+
+            return TimeOnly.TryParse(normalized, CultureInfo.InvariantCulture, out var time)
+                ? time.ToString("HH:mm", CultureInfo.InvariantCulture)
+                : normalized;
+        }
+
+        private static string? NormalizeSetupReviewOutcome(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            return value.Trim().ToLowerInvariant() switch
+            {
+                "1" or "stoploss" or "stop loss" => "1",
+                "2" or "breakeven" or "break even" => "2",
+                "3" or "take profit" or "takeprofit" => "3",
+                _ => null
+            };
+        }
+
+        private static string FormatSetupReviewOutcome(string? value)
+        {
+            return value?.Trim().ToLowerInvariant() switch
+            {
+                "1" or "stoploss" or "stop loss" => "Stoploss",
+                "2" or "breakeven" or "break even" => "Breakeven",
+                "3" or "take profit" or "takeprofit" => "Take profit",
+                _ => string.IsNullOrWhiteSpace(value) ? "-" : value
+            };
+        }
+
+        private static IReadOnlyList<string> SplitSetupReviewLines(string? value)
+        {
+            return (value ?? string.Empty)
+                .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+        }
+
+        private void ApplySetupReviewDecimalFormValues(TradeSetupReview review)
+        {
+            if (TryReadDecimalFromForm(nameof(TradeSetupReview.Entry), out var entry))
+                review.Entry = entry;
+
+            if (TryReadDecimalFromForm(nameof(TradeSetupReview.StopLoss), out var stopLoss))
+                review.StopLoss = stopLoss;
+
+            if (TryReadDecimalFromForm(nameof(TradeSetupReview.TakeProfit), out var takeProfit))
+                review.TakeProfit = takeProfit;
+
+            if (TryReadDecimalFromForm(nameof(TradeSetupReview.PlannedRr), out var plannedRr))
+                review.PlannedRr = plannedRr;
+
+            if (TryReadDecimalFromForm(nameof(TradeSetupReview.RMultiple), out var rMultiple))
+                review.RMultiple = rMultiple;
+
+            if (TryReadDecimalFromForm(nameof(TradeSetupReview.HtfContextScore), out var htfContext))
+                review.HtfContextScore = ClampSetupReviewScore(htfContext);
+
+            if (TryReadDecimalFromForm(nameof(TradeSetupReview.ZoneScore), out var zone))
+                review.ZoneScore = ClampSetupReviewScore(zone);
+
+            if (TryReadDecimalFromForm(nameof(TradeSetupReview.LocalStructureScore), out var localStructure))
+                review.LocalStructureScore = ClampSetupReviewScore(localStructure);
+
+            if (TryReadDecimalFromForm(nameof(TradeSetupReview.EntryConfirmationScore), out var entryConfirmation))
+                review.EntryConfirmationScore = ClampSetupReviewScore(entryConfirmation);
+
+            if (TryReadDecimalFromForm(nameof(TradeSetupReview.TimingScore), out var timing))
+                review.TimingScore = ClampSetupReviewScore(timing);
+
+            if (TryReadDecimalFromForm(nameof(TradeSetupReview.RiskRewardScore), out var riskReward))
+                review.RiskRewardScore = ClampSetupReviewScore(riskReward);
+
+            if (TryReadDecimalFromForm(nameof(TradeSetupReview.SessionScore), out var session))
+                review.SessionScore = ClampSetupReviewScore(session);
+
+            if (TryReadDecimalFromForm(nameof(TradeSetupReview.ManagementScore), out var management))
+                review.ManagementScore = ClampSetupReviewScore(management);
+        }
+
+        private static decimal? ClampSetupReviewScore(decimal? value)
+        {
+            if (!value.HasValue)
+                return null;
+
+            return Math.Clamp(value.Value, 0m, 1m);
+        }
+
+        private async Task ApplySetupReviewImagesAsync(TradeSetupReview review, IReadOnlyList<IFormFile>? imageFiles)
+        {
+            var files = imageFiles?
+                .Where(file => file.Length > 0)
+                .ToList() ?? [];
+
+            if (files.Count == 0)
+            {
+                ModelState.AddModelError("imageFiles", "Přidej alespoň jednu fotku setupu.");
+                return;
+            }
+
+            if (files.Count > 12)
+            {
+                ModelState.AddModelError("", "Nahraj maximálně 12 obrázků k jednomu setup review.");
+                return;
+            }
+
+            const long maxBytes = 8 * 1024 * 1024;
+            foreach (var imageFile in files)
+            {
+                if (imageFile.Length > maxBytes)
+                {
+                    ModelState.AddModelError("", $"Obrázek {imageFile.FileName} je příliš velký (max 8 MB).");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(imageFile.ContentType) || !imageFile.ContentType.StartsWith("image/"))
+                {
+                    ModelState.AddModelError("", $"Soubor {imageFile.FileName} musí být obrázek.");
+                    continue;
+                }
+
+                using var ms = new MemoryStream();
+                await imageFile.CopyToAsync(ms);
+
+                review.Images.Add(new TradeSetupReviewImage
+                {
+                    ImageData = ms.ToArray(),
+                    ImageContentType = imageFile.ContentType,
+                    ImageFileName = Path.GetFileName(imageFile.FileName),
+                    Label = Path.GetFileNameWithoutExtension(imageFile.FileName),
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+            }
         }
 
         // GET: JournalEntries/Analysis

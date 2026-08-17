@@ -14,6 +14,10 @@ namespace TradingJournal.Data
         public DbSet<MarketBias> MarketBiases => Set<MarketBias>();
         public DbSet<StrategyNote> StrategyNotes => Set<StrategyNote>();
         public DbSet<InvestmentEma200Snapshot> InvestmentEma200Snapshots => Set<InvestmentEma200Snapshot>();
+        public DbSet<TradeSetupReview> TradeSetupReviews => Set<TradeSetupReview>();
+        public DbSet<TradeSetupReviewImage> TradeSetupReviewImages => Set<TradeSetupReviewImage>();
+        public DbSet<CotReport> CotReports => Set<CotReport>();
+        public DbSet<CotImportRun> CotImportRuns => Set<CotImportRun>();
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -133,6 +137,154 @@ namespace TradingJournal.Data
             builder.Entity<StrategyNote>()
                 .Property(n => n.ContentHtml)
                 .HasColumnType("nvarchar(max)");
+
+            builder.Entity<TradeSetupReview>()
+                .HasIndex(r => new { r.UserId, r.TradeDate });
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.StrategyKey)
+                .HasMaxLength(64);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.Market)
+                .HasMaxLength(120);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.Direction)
+                .HasMaxLength(16);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.Session)
+                .HasMaxLength(120);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.Status)
+                .HasMaxLength(40);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.Verdict)
+                .HasMaxLength(80);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.SetupRating)
+                .HasMaxLength(20);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.ProcessScore)
+                .HasPrecision(5, 2);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.AiReviewJson)
+                .HasColumnType("nvarchar(max)");
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.Outcome)
+                .HasMaxLength(120);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.Entry)
+                .HasPrecision(18, 8);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.StopLoss)
+                .HasPrecision(18, 8);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.TakeProfit)
+                .HasPrecision(18, 8);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.PlannedRr)
+                .HasPrecision(9, 4);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.RMultiple)
+                .HasPrecision(9, 4);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.HtfContextScore)
+                .HasPrecision(3, 2);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.ZoneScore)
+                .HasPrecision(3, 2);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.LocalStructureScore)
+                .HasPrecision(3, 2);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.EntryConfirmationScore)
+                .HasPrecision(3, 2);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.TimingScore)
+                .HasPrecision(3, 2);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.RiskRewardScore)
+                .HasPrecision(3, 2);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.SessionScore)
+                .HasPrecision(3, 2);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.ManagementScore)
+                .HasPrecision(3, 2);
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.MissingInfo)
+                .HasColumnType("nvarchar(max)");
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.Notes)
+                .HasColumnType("nvarchar(max)");
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.Aligned)
+                .HasColumnType("nvarchar(max)");
+
+            builder.Entity<TradeSetupReview>()
+                .Property(r => r.Issues)
+                .HasColumnType("nvarchar(max)");
+
+            builder.Entity<TradeSetupReviewImage>()
+                .HasOne(i => i.TradeSetupReview)
+                .WithMany(r => r.Images)
+                .HasForeignKey(i => i.TradeSetupReviewId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<TradeSetupReviewImage>()
+                .Property(i => i.ImageData)
+                .HasColumnType("varbinary(max)");
+
+            builder.Entity<TradeSetupReviewImage>()
+                .Property(i => i.Label)
+                .HasMaxLength(80);
+
+            builder.Entity<CotReport>()
+                .HasIndex(r => new { r.SymbolKey, r.ReportDate, r.SourceDataset, r.TraderCategory })
+                .IsUnique();
+
+            builder.Entity<CotReport>()
+                .HasIndex(r => new { r.SymbolKey, r.ReportDate });
+
+            builder.Entity<CotReport>()
+                .Property(r => r.CotIndex26)
+                .HasPrecision(7, 3);
+
+            builder.Entity<CotReport>()
+                .Property(r => r.CotIndex52)
+                .HasPrecision(7, 3);
+
+            builder.Entity<CotReport>()
+                .Property(r => r.Percentile52)
+                .HasPrecision(7, 3);
+
+            builder.Entity<CotReport>()
+                .Property(r => r.ZScore)
+                .HasPrecision(9, 4);
 
             builder.Entity<InvestmentEma200Snapshot>()
                 .HasIndex(s => s.Symbol)

@@ -1,0 +1,770 @@
+@model TradingJournal.ViewModels.SetupReviewViewModel
+@using TradingJournal.Models
+@using System.Globalization
+
+@{
+    ViewData["Title"] = "Setup Review";
+    ViewData["BodyClass"] = "journal-shell";
+    var czechCulture = new CultureInfo("cs-CZ");
+    var scoreNames = new (string Label, string Name, decimal? Value)[]
+    {
+        ("HTF kontext", nameof(TradeSetupReview.HtfContextScore), Model.Form.HtfContextScore),
+        ("S/D zóna", nameof(TradeSetupReview.ZoneScore), Model.Form.ZoneScore),
+        ("Lokální struktura", nameof(TradeSetupReview.LocalStructureScore), Model.Form.LocalStructureScore),
+        ("Potvrzení vstupu", nameof(TradeSetupReview.EntryConfirmationScore), Model.Form.EntryConfirmationScore),
+        ("Timing", nameof(TradeSetupReview.TimingScore), Model.Form.TimingScore),
+        ("Risk a R:R", nameof(TradeSetupReview.RiskRewardScore), Model.Form.RiskRewardScore),
+        ("Seance", nameof(TradeSetupReview.SessionScore), Model.Form.SessionScore),
+        ("Management", nameof(TradeSetupReview.ManagementScore), Model.Form.ManagementScore)
+    };
+
+    string FormatR(decimal? value)
+    {
+        if (!value.HasValue)
+            return "-";
+
+        var prefix = value > 0 ? "+" : string.Empty;
+        return $"{prefix}{value.Value.ToString("0.##", czechCulture)}R";
+    }
+
+    string FormatOutcome(string? value)
+    {
+        return value?.Trim().ToLowerInvariant() switch
+        {
+            "1" or "stoploss" or "stop loss" or "stop-loss" => "Stop-loss",
+            "2" or "breakeven" or "break even" or "break-even" => "Break-even",
+            "3" or "take profit" or "takeprofit" or "take-profit" => "Take-profit",
+            _ => string.IsNullOrWhiteSpace(value) ? "-" : value
+        };
+    }
+
+    string FormatDirection(string? value)
+    {
+        return value?.Trim().ToUpperInvariant() switch
+        {
+            "LONG" => "Long",
+            "SHORT" => "Short",
+            _ => string.IsNullOrWhiteSpace(value) ? "-" : value
+        };
+    }
+
+    string FormatStrategy(string? value)
+    {
+        return value?.Trim().ToLowerInvariant() switch
+        {
+            "mucka" or "petr můčka" or "petr mucka" => "Petr Můčka",
+            "corex" or "corex s/d" => "CoreX S/D",
+            _ => string.IsNullOrWhiteSpace(value) ? "-" : value
+        };
+    }
+
+    string FormatPercent(decimal? value)
+    {
+        return value.HasValue ? $"{value.Value.ToString("0", czechCulture)} %" : "-";
+    }
+
+    decimal? ProcessScore(TradeSetupReview review)
+    {
+        var scores = new[]
+        {
+            review.HtfContextScore,
+            review.ZoneScore,
+            review.LocalStructureScore,
+            review.EntryConfirmationScore,
+            review.TimingScore,
+            review.RiskRewardScore,
+            review.SessionScore,
+            review.ManagementScore
+        }
+        .Where(score => score.HasValue)
+        .Select(score => score!.Value)
+        .ToList();
+
+        return scores.Count == 0 ? null : Math.Round(scores.Average() * 100m, 0);
+    }
+
+    IReadOnlyList<string> Lines(string? value)
+    {
+        return (value ?? string.Empty)
+            .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+    }
+
+    string VerdictClass(string verdict)
+    {
+        var lower = verdict.ToLowerInvariant();
+        if (lower.Contains("nevalid"))
+            return "invalid";
+        if (lower.Contains("valid"))
+            return "valid";
+        return "pending";
+    }
+
+    var reviewedReviews = Model.Reviews.Where(review => review.Status != "Nevyhodnoceno").ToList();
+    var recurringIssues = reviewedReviews
+        .SelectMany(review => Lines(review.Issues))
+        .Where(issue => !string.IsNullOrWhiteSpace(issue))
+        .GroupBy(issue => issue, StringComparer.OrdinalIgnoreCase)
+        .OrderByDescending(group => group.Count())
+        .ThenBy(group => group.Key)
+        .Take(5)
+        .ToList();
+}
+
+<div class="journal-page setup-review-page">
+    <div class="journal-wrap setup-review-wrap">
+        <header class="setup-review-dashboard-head">
+            <div>
+                <p class="setup-review-eyebrow">Setup review</p>
+                <h1>Přehled obchodů a setupů</h1>
+                <p>Ulož fotky, strategii, datum, čas a směr. Vyhodnocení doplním podle pravidel obchodního plánu.</p>
+            </div>
+            <div class="setup-review-actions">
+                <a class="btn btn-outline-secondary" asp-controller="JournalEntries" asp-action="Strategy">Obchodní strategie</a>
+                <button class="btn btn-outline-secondary" type="button" id="copyUnreviewed">Kopírovat nevyhodnocené</button>
+                <a class="btn btn-primary" href="#newSetup">Přidat setup</a>
+            </div>
+        </header>
+
+        <nav class="setup-review-tabs" aria-label="Pohled Setup Reviewu">
+            <button type="button" class="setup-review-tab is-active" data-review-tab="trades">Obchody a setupy</button>
+            <button type="button" class="setup-review-tab" data-review-tab="analysis">Hloubková analýza</button>
+        </nav>
+
+        <section class="setup-review-stat-grid" aria-label="Souhrnné statistiky">
+            <article class="setup-review-stat">
+                <span>Setupy</span>
+                <strong>@Model.Stats.TotalSetups</strong>
+                <em>@Model.Stats.ReviewedSetups vyhodnoceno</em>
+            </article>
+            <article class="setup-review-stat">
+                <span>Úspěšnost</span>
+                <strong>@Model.Stats.WinRate.ToString("0", czechCulture) %</strong>
+                <em>@Model.Stats.Wins W / @Model.Stats.Losses L</em>
+            </article>
+            <article class="setup-review-stat">
+                <span>Průměrné R</span>
+                <strong class="@(Model.Stats.AverageR > 0 ? "positive" : Model.Stats.AverageR < 0 ? "negative" : "")">@FormatR(Model.Stats.AverageR)</strong>
+                <em>@Model.Stats.CompletedSetups uzavřeno</em>
+            </article>
+            <article class="setup-review-stat">
+                <span>Celkem R</span>
+                <strong class="@(Model.Stats.TotalR > 0 ? "positive" : Model.Stats.TotalR < 0 ? "negative" : "")">@FormatR(Model.Stats.CompletedSetups == 0 ? null : Model.Stats.TotalR)</strong>
+                <em>jen známé výsledky</em>
+            </article>
+            <article class="setup-review-stat">
+                <span>Validní podle plánu</span>
+                <strong>@Model.Stats.ValidRate.ToString("0", czechCulture) %</strong>
+                <em>@Model.Stats.ValidSetups z @Model.Stats.ValidKnownSetups</em>
+            </article>
+            <article class="setup-review-stat">
+                <span>Procesní skóre</span>
+                <strong>@FormatPercent(Model.Stats.AverageProcessScore)</strong>
+                <em>průměr skóre procesu</em>
+            </article>
+        </section>
+
+        <section class="setup-review-panel setup-review-analysis-panel" data-review-tab-panel="analysis" hidden>
+            <div class="setup-review-section-head">
+                <span class="setup-review-kicker">Kompletní obraz</span>
+                <h2>Hloubková analýza obchodů</h2>
+            </div>
+            <div class="setup-review-analysis-grid">
+                <div>
+                    <span>Vyhodnocené obchody</span>
+                    <strong>@reviewedReviews.Count</strong>
+                </div>
+                <div>
+                    <span>Validní podle plánu</span>
+                    <strong>@reviewedReviews.Count(review => review.IsValid == true)</strong>
+                </div>
+                <div>
+                    <span>Nevalidní</span>
+                    <strong>@reviewedReviews.Count(review => review.IsValid == false)</strong>
+                </div>
+                <div>
+                    <span>Výsledek v R</span>
+                    <strong>@reviewedReviews.Count(review => review.RMultiple.HasValue)</strong>
+                </div>
+            </div>
+            <div class="setup-review-analysis-columns">
+                <div>
+                    <h3>Nejčastější problémy</h3>
+                    @if (recurringIssues.Any())
+                    {
+                        <ol>
+                            @foreach (var issue in recurringIssues)
+                            {
+                                <li><span>@issue.Key</span><strong>@issue.Count()</strong></li>
+                            }
+                        </ol>
+                    }
+                    else
+                    {
+                        <p class="setup-review-analysis-muted">Po vyhodnocení se zde zobrazí opakující se problémy.</p>
+                    }
+                </div>
+                <div class="setup-review-analysis-callout">
+                    <h3>Podklad pro celkovou analýzu</h3>
+                    <p>Připraví obchody, strategie, skóre, fotky, verdikty a výsledky pro hlubší vyhodnocení v chatu.</p>
+                    <button class="btn btn-primary" type="button" id="copyDeepAnalysis" data-analysis-url="@Url.Action("SetupReviewAllAnalysisPayload", "JournalEntries")">Kopírovat podklad analýzy</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="setup-review-panel setup-review-table-panel" data-review-tab-panel="trades">
+            <div class="setup-review-section-head">
+                <span class="setup-review-kicker">Obchody a setupy</span>
+                <h2>Záznamy setupů</h2>
+            </div>
+
+            @if (!Model.Reviews.Any())
+            {
+                <div class="setup-review-empty">Zatím tu není žádný setup. Přidej první záznam dole ve formuláři.</div>
+            }
+            else
+            {
+                <div class="setup-review-table-scroll">
+                    <table class="setup-review-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Datum tradu</th>
+                                <th>Čas</th>
+                                <th>Trh</th>
+                                <th>Směr</th>
+                                <th>Strategie</th>
+                                <th>Stav</th>
+                                <th>Skóre procesu</th>
+                                <th>Verdikt</th>
+                                <th>Výsledek</th>
+                                <th>Chybějící informace</th>
+                                <th>Problémy / poznámka</th>
+                                <th>Screenshoty</th>
+                                <th>Analýza</th>
+                                <th>Upravit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var review in Model.Reviews)
+                            {
+                                var score = review.ProcessScore ?? ProcessScore(review);
+                                var missing = Lines(review.MissingInfo);
+                                var issues = Lines(review.Issues);
+                                var aligned = Lines(review.Aligned);
+                                var blockers = Lines(review.NoTradeBlockers);
+
+                                <tr data-review-row="@review.Id">
+                                    <td>#@review.Id</td>
+                                    <td data-review-cell="date">@review.TradeDate.ToString("dd.MM.yyyy")</td>
+                                    <td data-review-cell="time">@(review.TradeTimeText ?? "-")</td>
+                                    <td data-review-cell="market">@review.Market</td>
+                                    <td data-review-cell="direction">@FormatDirection(review.Direction)</td>
+                                    <td data-review-cell="strategy">@FormatStrategy(review.StrategyKey)</td>
+                                    <td><span class="setup-review-badge pending">@review.Status</span></td>
+                                    <td>@FormatPercent(score)</td>
+                                    <td>
+                                        <span class="setup-review-badge @VerdictClass(review.Verdict)">@review.Verdict</span>
+                                        @if (!string.IsNullOrWhiteSpace(review.SetupRating))
+                                        {
+                                            <small class="setup-review-rating">@review.SetupRating</small>
+                                        }
+                                    </td>
+                                    <td data-review-cell="outcome">
+                                        @if (!string.IsNullOrWhiteSpace(review.Outcome))
+                                        {
+                                            <strong>@FormatOutcome(review.Outcome)</strong>
+                                        }
+                                        else
+                                        {
+                                            <strong class="@(review.RMultiple > 0 ? "positive" : review.RMultiple < 0 ? "negative" : "")">@FormatR(review.RMultiple)</strong>
+                                        }
+                                        @if (review.RMultiple.HasValue)
+                                        {
+                                            <small class="setup-review-result-r">@FormatR(review.RMultiple)</small>
+                                        }
+                                    </td>
+                                    <td class="setup-review-list-cell" data-review-cell="missingInfo">
+                                        @if (missing.Any())
+                                        {
+                                            <ul>
+                                                @foreach (var item in missing)
+                                                {
+                                                    <li>@item</li>
+                                                }
+                                            </ul>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </td>
+                                    <td class="setup-review-list-cell" data-review-cell="issues">
+                                        @if (issues.Any() || blockers.Any())
+                                        {
+                                            <ul>
+                                                @foreach (var item in issues)
+                                                {
+                                                    <li>@item</li>
+                                                }
+                                                @foreach (var blocker in blockers)
+                                                {
+                                                    <li class="setup-review-blocker">Důvod: @blocker</li>
+                                                }
+                                            </ul>
+                                        }
+                                        else
+                                        {
+                                            <span>@(string.IsNullOrWhiteSpace(review.Notes) ? "-" : review.Notes)</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="setup-review-image-strip">
+                                            @foreach (var image in review.Images.OrderBy(i => i.Id).Take(4))
+                                            {
+                                                <a href="@Url.Action("SetupReviewImage", "JournalEntries", new { id = image.Id })" target="_blank" rel="noreferrer">
+                                                    <img src="@Url.Action("SetupReviewImage", "JournalEntries", new { id = image.Id })" alt="@image.ImageFileName" />
+                                                </a>
+                                            }
+                                            @if (review.Images.Count > 4)
+                                            {
+                                                <span>+@(review.Images.Count - 4)</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <button type="button"
+                                                class="setup-review-copy"
+                                                data-analysis-url="@Url.Action("SetupReviewAnalysisPayload", "JournalEntries", new { id = review.Id })">
+                                            Kopírovat podklad
+                                        </button>
+                                        @if (!string.IsNullOrWhiteSpace(review.AiReviewJson))
+                                        {
+                                            <button type="button"
+                                                    class="setup-review-copy setup-review-copy-raw"
+                                                    data-raw-json-url="@Url.Action("SetupReviewRawJson", "JournalEntries", new { id = review.Id })">
+                                                Kopírovat JSON
+                                            </button>
+                                        }
+                                        @if (aligned.Any() || missing.Any() || blockers.Any() || !string.IsNullOrWhiteSpace(review.Notes))
+                                        {
+                                            <details class="setup-review-row-details">
+                                                <summary>Detail vyhodnocení</summary>
+                                                @if (aligned.Any())
+                                                {
+                                                    <strong>Co sedělo</strong>
+                                                    <ul>@foreach (var item in aligned) { <li>@item</li> }</ul>
+                                                }
+                                                @if (issues.Any())
+                                                {
+                                                    <strong>Co bylo špatně</strong>
+                                                    <ul>@foreach (var item in issues) { <li>@item</li> }</ul>
+                                                }
+                                                @if (missing.Any())
+                                                {
+                                                    <strong>Co chybělo</strong>
+                                                    <ul>@foreach (var item in missing) { <li>@item</li> }</ul>
+                                                }
+                                                @if (blockers.Any())
+                                                {
+                                                    <strong>Důvody pro neobchodování</strong>
+                                                    <ul>@foreach (var item in blockers) { <li>@item</li> }</ul>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(review.Notes))
+                                                {
+                                                    <strong>Zlepšení</strong>
+                                                    <p>@review.Notes</p>
+                                                }
+                                            </details>
+                                        }
+                                    </td>
+                                    <td>
+                                        <button type="button"
+                                                class="setup-review-edit"
+                                                title="Upravit vstupní údaje"
+                                                aria-label="Upravit vstupní údaje"
+                                                data-edit-url="@Url.Action("SetupReviewEditPayload", "JournalEntries", new { id = review.Id })"
+                                                data-update-url="@Url.Action("UpdateSetupReview", "JournalEntries", new { id = review.Id })">
+                                            <span aria-hidden="true">✎</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+
+        <section class="setup-review-panel setup-review-form-panel" id="newSetup" data-review-tab-panel="trades">
+            <div class="setup-review-section-head">
+                <span class="setup-review-kicker">Nový záznam</span>
+                <h2>Přidat setup se screenshoty</h2>
+            </div>
+
+            <form asp-action="SetupReview" method="post" enctype="multipart/form-data" class="setup-review-db-form">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="setup-review-fields setup-review-required-fields">
+                    <label>
+                        <span>Strategie</span>
+                        <select name="@nameof(TradeSetupReview.StrategyKey)" required>
+                            <option value="mucka" selected="@(Model.Form.StrategyKey is "mucka" or "")">Petr Můčka</option>
+                            <option value="corex" selected="@(Model.Form.StrategyKey == "corex")">CoreX S/D</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Trh / symbol</span>
+                        <input name="@nameof(TradeSetupReview.Market)" type="text" maxlength="120" value="@Model.Form.Market" required />
+                    </label>
+                    <label>
+                        <span>Datum tradu</span>
+                        <input name="@nameof(TradeSetupReview.TradeDate)" type="date" value="@Model.Form.TradeDate.ToString("yyyy-MM-dd")" required />
+                    </label>
+                    <label>
+                        <span>Čas obchodu</span>
+                        <input name="@nameof(TradeSetupReview.TradeTimeText)" type="time" value="@Model.Form.TradeTimeText" required />
+                    </label>
+                    <label>
+                        <span>Směr</span>
+                        <select name="@nameof(TradeSetupReview.Direction)" required>
+                            <option value="LONG" selected="@(Model.Form.Direction == "LONG")">LONG</option>
+                            <option value="SHORT" selected="@(Model.Form.Direction != "LONG")">SHORT</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Výsledek tradu</span>
+                        <select name="@nameof(TradeSetupReview.Outcome)" required>
+                            <option value="" disabled selected="@(string.IsNullOrWhiteSpace(Model.Form.Outcome))">Vyber výsledek</option>
+                            <option value="1" selected="@(Model.Form.Outcome is "1" or "Stoploss")">Stoploss</option>
+                            <option value="2" selected="@(Model.Form.Outcome is "2" or "Breakeven")">Breakeven</option>
+                            <option value="3" selected="@(Model.Form.Outcome is "3" or "Take profit")">Take profit</option>
+                        </select>
+                    </label>
+                    <label class="setup-review-file-field">
+                        <span>Screenshoty setupu</span>
+                        <input name="imageFiles" type="file" accept="image/*" multiple required />
+                    </label>
+                    <label class="setup-review-note-field">
+                        <span>Poznámka (volitelné)</span>
+                        <textarea name="@nameof(TradeSetupReview.Notes)" rows="3" maxlength="4000">@Model.Form.Notes</textarea>
+                    </label>
+                </div>
+
+                <div class="setup-review-submit-row">
+                    <button class="btn btn-primary setup-review-submit-button" type="submit">
+                        <span class="setup-review-submit-label">Uložit setup do DB</span>
+                        <span class="setup-review-spinner" aria-hidden="true"></span>
+                    </button>
+                    <span>Po uložení zůstane setup ve frontě „Nevyhodnoceno“.</span>
+                </div>
+            </form>
+        </section>
+
+        <div class="setup-review-modal-backdrop" id="setupReviewEditModal" hidden>
+            <section class="setup-review-modal" role="dialog" aria-modal="true" aria-labelledby="setupReviewEditTitle">
+                <div class="setup-review-modal-head">
+                    <div>
+                        <span class="setup-review-kicker">Úprava záznamu</span>
+                        <h2 id="setupReviewEditTitle">Upravit vstupní údaje</h2>
+                    </div>
+                    <button type="button" class="setup-review-modal-close" id="closeSetupReviewModal" aria-label="Zavřít">×</button>
+                </div>
+                <form id="setupReviewEditForm" class="setup-review-edit-form">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" id="editReviewId" />
+                    <div class="setup-review-edit-fields">
+                        <label>
+                            <span>Strategie</span>
+                            <select name="StrategyKey" id="editStrategyKey" required>
+                                <option value="corex">CoreX S/D</option>
+                                <option value="mucka">Petr Můčka</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Datum tradu</span>
+                            <input name="TradeDate" id="editTradeDate" type="date" required />
+                        </label>
+                        <label>
+                            <span>Čas</span>
+                            <input name="TradeTimeText" id="editTradeTime" type="time" required />
+                        </label>
+                        <label>
+                            <span>Trh</span>
+                            <input name="Market" id="editMarket" type="text" maxlength="120" required />
+                        </label>
+                        <label>
+                            <span>Směr</span>
+                            <select name="Direction" id="editDirection" required>
+                                <option value="LONG">LONG</option>
+                                <option value="SHORT">SHORT</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Výsledek</span>
+                            <select name="Outcome" id="editOutcome" required>
+                                <option value="1">Stoploss</option>
+                                <option value="2">Breakeven</option>
+                                <option value="3">Take profit</option>
+                            </select>
+                        </label>
+                        <label class="setup-review-edit-wide-field">
+                            <span>Chybí</span>
+                            <textarea name="MissingInfo" id="editMissingInfo" rows="3" maxlength="4000"></textarea>
+                        </label>
+                        <label class="setup-review-edit-wide-field">
+                            <span>Porušení</span>
+                            <textarea name="Issues" id="editIssues" rows="3" maxlength="4000"></textarea>
+                        </label>
+                        <label class="setup-review-edit-wide-field">
+                            <span>Poznámka</span>
+                            <textarea name="Notes" id="editNotes" rows="3" maxlength="4000"></textarea>
+                        </label>
+                    </div>
+                    <div class="setup-review-modal-actions">
+                        <span class="setup-review-modal-status" id="setupReviewEditStatus" role="status"></span>
+                        <button type="button" class="btn btn-outline-secondary" id="cancelSetupReviewEdit">Zrušit</button>
+                        <button type="submit" class="btn btn-primary" id="saveSetupReviewEdit">Uložit změny</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const tabs = document.querySelectorAll("[data-review-tab]");
+            const panels = document.querySelectorAll("[data-review-tab-panel]");
+
+            tabs.forEach(tab => {
+                tab.addEventListener("click", () => {
+                    const selected = tab.dataset.reviewTab;
+                    tabs.forEach(item => item.classList.toggle("is-active", item === tab));
+                    panels.forEach(panel => panel.hidden = panel.dataset.reviewTabPanel !== selected);
+                });
+            });
+
+            async function copyAnalysisPayload(button) {
+                const response = await fetch(button.dataset.analysisUrl, {
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+
+                if (!response.ok) {
+                    button.textContent = "Chyba";
+                    return;
+                }
+
+                const payload = await response.json();
+                const text = [
+                    `Analyzuj trade podle strategie ${payload.strategy}.`,
+                    "",
+                    JSON.stringify(payload, null, 2)
+                ].join("\n");
+
+                await navigator.clipboard.writeText(text);
+                button.textContent = "Zkopírováno";
+                window.setTimeout(() => button.textContent = "Kopírovat podklad", 1400);
+            }
+
+            document.querySelectorAll("[data-analysis-url]").forEach(button => {
+                button.addEventListener("click", () => void copyAnalysisPayload(button));
+            });
+
+            async function copyRawJson(button) {
+                const response = await fetch(button.dataset.rawJsonUrl, {
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+
+                if (!response.ok) {
+                    button.textContent = "Chyba";
+                    return;
+                }
+
+                await navigator.clipboard.writeText(await response.text());
+                button.textContent = "JSON zkopírován";
+                window.setTimeout(() => button.textContent = "Kopírovat JSON", 1600);
+            }
+
+            document.querySelectorAll("[data-raw-json-url]").forEach(button => {
+                button.addEventListener("click", () => void copyRawJson(button));
+            });
+
+            document.getElementById("copyUnreviewed")?.addEventListener("click", async button => {
+                const response = await fetch('@Url.Action("SetupReviewUnreviewedPayload", "JournalEntries")');
+                if (!response.ok) {
+                    button.currentTarget.textContent = "Chyba";
+                    return;
+                }
+
+                const payload = await response.json();
+                const text = [
+                    "Zhodnoť všechny nevyhodnocené trady podle strategie uvedené u každého záznamu.",
+                    "Použij workflow a scorecard z původního Setup Revieweru. Pro každý trade vrať HTF kontext, zónu, strukturu, potvrzení vstupu, timing, risk/reward, seanci, management, verdikt, chyby, co sedělo, co chybí a závěr.",
+                    "",
+                    JSON.stringify(payload, null, 2)
+                ].join("\\n");
+
+                await navigator.clipboard.writeText(text);
+                button.currentTarget.textContent = "Zkopírováno";
+                window.setTimeout(() => button.currentTarget.textContent = "Kopírovat nevyhodnocené", 1400);
+            });
+
+            document.getElementById("copyDeepAnalysis")?.addEventListener("click", async button => {
+                const response = await fetch(button.currentTarget.dataset.analysisUrl);
+                if (!response.ok) {
+                    button.currentTarget.textContent = "Chyba";
+                    return;
+                }
+
+                const payload = await response.json();
+                const text = [
+                    "Proved kompletni hloubkovou analyzu vsech dosavadnich tradů podle strategie uvedene u kazdeho zaznamu.",
+                    "Porovnej strategie, validitu setupu, scorecard, opakujici se chyby, timing, risk/reward, management a vysledky v R. Oddel kvalitu procesu od vysledku obchodu a navrhni konkretni zlepseni obchodniho planu.",
+                    "",
+                    JSON.stringify(payload, null, 2)
+                ].join("\\n");
+
+                await navigator.clipboard.writeText(text);
+                button.currentTarget.textContent = "Podklad zkopírován";
+                window.setTimeout(() => button.currentTarget.textContent = "Kopírovat podklad analýzy", 1600);
+            });
+
+            const editModal = document.getElementById("setupReviewEditModal");
+            const editForm = document.getElementById("setupReviewEditForm");
+            const editStatus = document.getElementById("setupReviewEditStatus");
+
+            function displayDirection(value) {
+                return (value || "").toUpperCase() === "LONG" ? "Long" : (value || "").toUpperCase() === "SHORT" ? "Short" : value || "-";
+            }
+
+            function displayStrategy(value) {
+                const normalized = (value || "").toLowerCase();
+                if (["mucka", "petr můčka", "petr mucka"].includes(normalized)) return "Petr Můčka";
+                if (["corex", "corex s/d"].includes(normalized)) return "CoreX S/D";
+                return value || "-";
+            }
+
+            function closeEditModal() {
+                editModal.hidden = true;
+                editStatus.textContent = "";
+                document.body.classList.remove("setup-review-modal-open");
+            }
+
+            document.querySelectorAll(".setup-review-edit").forEach(button => {
+                button.addEventListener("click", async () => {
+                    editStatus.textContent = "Načítám...";
+                    const response = await fetch(button.dataset.editUrl, {
+                        headers: { "X-Requested-With": "XMLHttpRequest" }
+                    });
+
+                    if (!response.ok) {
+                        editStatus.textContent = "Záznam se nepodařilo načíst.";
+                        return;
+                    }
+
+                    const payload = await response.json();
+                    editModal.dataset.updateUrl = button.dataset.updateUrl;
+                    document.getElementById("editReviewId").value = payload.id;
+                    document.getElementById("editStrategyKey").value = payload.strategyKey;
+                    document.getElementById("editTradeDate").value = payload.date;
+                    document.getElementById("editTradeTime").value = payload.time || "";
+                    document.getElementById("editMarket").value = payload.market || "";
+                    document.getElementById("editDirection").value = payload.direction;
+                    document.getElementById("editOutcome").value = payload.outcome || "";
+                    document.getElementById("editMissingInfo").value = payload.missingInfo || "";
+                    document.getElementById("editIssues").value = payload.issues || "";
+                    document.getElementById("editNotes").value = payload.notes || "";
+                    editStatus.textContent = "";
+                    editModal.hidden = false;
+                    document.body.classList.add("setup-review-modal-open");
+                    document.getElementById("editStrategyKey").focus();
+                });
+            });
+
+            editForm?.addEventListener("submit", async event => {
+                event.preventDefault();
+                if (!editForm.reportValidity()) return;
+
+                const saveButton = document.getElementById("saveSetupReviewEdit");
+                saveButton.disabled = true;
+                editStatus.textContent = "Ukládám...";
+
+                try {
+                    const token = editForm.querySelector('input[name="__RequestVerificationToken"]').value;
+                    const response = await fetch(editModal.dataset.updateUrl, {
+                        method: "POST",
+                        body: new FormData(editForm),
+                        headers: {
+                            "X-Requested-With": "XMLHttpRequest",
+                            "RequestVerificationToken": token
+                        }
+                    });
+
+                    if (!response.ok) {
+                        editStatus.textContent = "Změny se nepodařilo uložit.";
+                        return;
+                    }
+
+                    const payload = await response.json();
+                    const row = document.querySelector(`[data-review-row="${payload.id}"]`);
+                    const displayDate = payload.date.split("-").reverse().join(".");
+                    const renderTextCell = (cellName, value, fallbackToNotes = false) => {
+                        const cell = row.querySelector(`[data-review-cell="${cellName}"]`);
+                        cell.replaceChildren();
+                        const text = fallbackToNotes && !value ? payload.notes : value;
+                        const lines = (text || "").split(/\r?\n/).map(item => item.trim()).filter(Boolean);
+                        if (!lines.length) {
+                            const empty = document.createElement("span");
+                            empty.textContent = "-";
+                            cell.append(empty);
+                            return;
+                        }
+
+                        const list = document.createElement("ul");
+                        lines.forEach(line => {
+                            const item = document.createElement("li");
+                            item.textContent = line;
+                            list.append(item);
+                        });
+                        cell.append(list);
+                    };
+
+                    row.querySelector('[data-review-cell="date"]').textContent = displayDate;
+                    row.querySelector('[data-review-cell="time"]').textContent = payload.time;
+                    row.querySelector('[data-review-cell="market"]').textContent = payload.market;
+                    row.querySelector('[data-review-cell="direction"]').textContent = displayDirection(payload.direction);
+                    row.querySelector('[data-review-cell="strategy"]').textContent = displayStrategy(payload.strategyKey);
+                    row.querySelector('[data-review-cell="outcome"]').querySelector("strong").textContent = payload.outcomeLabel;
+                    renderTextCell("missingInfo", payload.missingInfo);
+                    renderTextCell("issues", payload.issues, true);
+                    closeEditModal();
+                } catch {
+                    editStatus.textContent = "Změny se nepodařilo uložit.";
+                } finally {
+                    saveButton.disabled = false;
+                }
+            });
+
+            document.getElementById("closeSetupReviewModal")?.addEventListener("click", closeEditModal);
+            document.getElementById("cancelSetupReviewEdit")?.addEventListener("click", closeEditModal);
+            editModal?.addEventListener("click", event => {
+                if (event.target === editModal) closeEditModal();
+            });
+            document.addEventListener("keydown", event => {
+                if (event.key === "Escape" && !editModal.hidden) closeEditModal();
+            });
+
+            document.querySelector(".setup-review-db-form")?.addEventListener("submit", event => {
+                const form = event.currentTarget;
+                const submitButton = form.querySelector(".setup-review-submit-button");
+                if (!submitButton) return;
+
+                submitButton.disabled = true;
+                submitButton.classList.add("is-loading");
+                submitButton.querySelector(".setup-review-submit-label").textContent = "Ukládám...";
+            });
+        })();
+    </script>
+}

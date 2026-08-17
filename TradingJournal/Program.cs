@@ -22,7 +22,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<CotDataService>();
+builder.Services.AddHostedService<CotUpdateHostedService>();
 builder.Services.AddSingleton<AppClock>();
+builder.Services.AddSingleton<MuckaRubricProvider>();
 builder.Services.AddScoped<MarketBiasService>();
 builder.Services.AddScoped<StockRadarService>();
 builder.Services.AddScoped<IUnderEma200HistoryProvider, UnderEma200HistoryProvider>();

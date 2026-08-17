@@ -1,0 +1,270 @@
+{
+  "schemaVersion": "1.0",
+  "strategyKey": "mucka",
+  "strategyName": "Petr Můčka strategie",
+  "aliases": ["mucka", "MUCKA", "Petr Můčka", "Petr Mucka", "Petr Můčka S/D", "CoreX S/D"],
+  "language": "cs",
+  "sourcePolicy": "This rubric is the stable operational source for later reviews. Source PDFs are not required for each review.",
+  "sourceDocuments": [
+    "_Negativ Fibonacci Retracement.pdf",
+    "Balanční levely.pdf",
+    "Daily levely - Bias.pdf",
+    "Entry model - teorie (1).pdf",
+    "Fixed range.pdf",
+    "Forex Factory.pdf",
+    "FVG.pdf",
+    "Killzones & sessions.pdf",
+    "Korelace s DXY.pdf",
+    "Likvidita.pdf",
+    "Market Structure - praxe.pdf",
+    "Market Structure - teorie.pdf",
+    "Moje strategie.pdf",
+    "Order block.pdf",
+    "Risk to Reward.pdf",
+    "Supply & Demand.pdf",
+    "Trading plán (2).pdf",
+    "Trend - Daily, 4H a 15min.pdf",
+    "Volume Profile (Npoc).pdf",
+    "Úvod do risk management.pdf"
+  ],
+  "evaluation": {
+    "scoreRange": [0, 100],
+    "scoreMeaning": "Weighted average of observable criteria. Unknown criteria are not awarded points and are reported as missing evidence.",
+    "unknownPolicy": "Do not infer chart facts that are not visible. If essential evidence is missing, use Nelze vyhodnotit.",
+    "scoringGroups": [
+      { "id": "data_completeness", "label": "Datová úplnost", "weight": 10 },
+      { "id": "daily_bias_htf", "label": "Daily bias a HTF kontext", "weight": 15 },
+      { "id": "market_structure", "label": "Market structure", "weight": 15 },
+      { "id": "liquidity", "label": "Likvidita", "weight": 15 },
+      { "id": "confluence", "label": "S/D, OB, FVG, balanční levely a volume", "weight": 15 },
+      { "id": "entry_model", "label": "Entry model", "weight": 10 },
+      { "id": "session_news", "label": "Killzone, session a news", "weight": 10 },
+      { "id": "risk_reward", "label": "RRR a risk management", "weight": 10 }
+    ],
+    "ratingThresholds": [
+      { "rating": "A+", "minPercent": 90, "maxPercent": 100, "meaning": "Výjimečně silný setup se sladěnými konfluencemi." },
+      { "rating": "A", "minPercent": 80, "maxPercent": 89.99, "meaning": "Kvalitní setup splňující hlavní pravidla." },
+      { "rating": "B", "minPercent": 65, "maxPercent": 79.99, "meaning": "Částečně kvalitní setup s významnou slabinou." },
+      { "rating": "C", "minPercent": 50, "maxPercent": 64.99, "meaning": "Slabý setup, který vyžaduje výraznou výjimku nebo chybí konfluence." },
+      { "rating": "No trade", "minPercent": 0, "maxPercent": 49.99, "meaning": "Pravidla nebo hard blocker nedovolují obchod." }
+    ],
+    "verdictMapping": {
+      "A+": "Validní",
+      "A": "Validní",
+      "B": "Částečně validní",
+      "C": "Nevalidní",
+      "No trade": "Nevalidní",
+      "insufficientEvidence": "Nelze vyhodnotit",
+      "hardBlocker": "Nevalidní"
+    },
+    "scoreMethodNote": "Přesné hranice ratingu a váhy níže nejsou v PDF uvedeny jako číselný scorecard. Jsou to explicitně zdokumentované provozní váhy této rubriky, aby bylo hodnocení opakovatelné; nemají být vydávány za doslovné Petrovo bodování."
+  },
+  "criteria": [
+    {
+      "id": "data_completeness",
+      "label": "Datová úplnost",
+      "weight": 10,
+      "checks": [
+        "Je známý symbol/trh, datum, čas, směr a výsledek tradu.",
+        "Jsou dostupné screenshoty HTF, 15M a 5M nebo 1M entry kontextu.",
+        "Je dostupný screenshot výsledku nebo jiný důkaz výsledku, pokud se má posuzovat exekuce.",
+        "Pokud zásadní informace chybí, zapíše se do MissingInformation a nesmí se domýšlet."
+      ],
+      "evidence": "trade inputs, screenshots, user note"
+    },
+    {
+      "id": "daily_bias",
+      "label": "Daily bias",
+      "weight": 7,
+      "checks": [
+        "Ranní bias je určen před obchodováním a není během dne bez důvodu měněn.",
+        "Bias vychází z předchozích daily/weekly/monthly close, HTF, price action, supportu/rezistence, VWAP předchozího dne a relevantních zpráv.",
+        "Směr tradu je v souladu s biasem, nebo je odchylka jasně zdůvodněna."
+      ],
+      "evidence": "daily bias, předchozí close, VWAP, zprávy, direction"
+    },
+    {
+      "id": "htf_context",
+      "label": "HTF kontext a top-down",
+      "weight": 8,
+      "checks": [
+        "Denní timeframe určuje širší sentiment a pravděpodobný směr.",
+        "4H poskytuje čistší střednědobou strukturu s menším šumem.",
+        "15M zpřesňuje aktuální situaci a je propojený s daily a 4H, nehodnotí se izolovaně."
+      ],
+      "evidence": "timeframe labels, trend, HTF levels, multi-timeframe alignment"
+    },
+    {
+      "id": "market_structure",
+      "label": "Market structure",
+      "weight": 7,
+      "checks": [
+        "Struktura je čtena přes swing highs/lows a trend, ne pouze přes jednu svíčku.",
+        "Hlavní struktura má větší váhu než interní struktura; interní struktura má větší váhu než CHOCH.",
+        "15M interní struktura dává smysl pouze v kontextu vyšších timeframeů."
+      ],
+      "evidence": "swing highs/lows, trend, main/internal structure"
+    },
+    {
+      "id": "bos_and_shift",
+      "label": "BOS / CHOCH / structure shift",
+      "weight": 8,
+      "checks": [
+        "Analýza začíná identifikací BOS/I-BOS.",
+        "BOS nebo structure shift je podpořen momentum svící a objemem.",
+        "Structure shift může být průraz nejbližší supply/demand zóny.",
+        "CHOCH je pouze doplňkové zpřesnění vstupu, nikoli samostatný důvod pro trade."
+      ],
+      "evidence": "BOS, momentum, volume, structure shift, CHOCH"
+    },
+    {
+      "id": "liquidity",
+      "label": "Likvidita",
+      "weight": 15,
+      "checks": [
+        "Před vstupem byla vybraná nebo jasně identifikovaná likvidita.",
+        "Likvidita může být nad/pod highs/lows, v knotech, konsolidaci, FVG nebo na dOPEN.",
+        "Je zřejmé, zda liquidity sweep slouží jako vstupní podmínka nebo target.",
+        "Likvidita je posouzena spolu s dalšími konfluencemi, ne izolovaně."
+      ],
+      "hardBlocker": "Pro vstup podle této strategie musí být vybraná likvidita; pokud z obrázků nelze ověřit, trade neoznačuj jako validní."
+    },
+    {
+      "id": "supply_demand",
+      "label": "Supply & demand",
+      "weight": 8,
+      "checks": [
+        "Vstupní zóna je předchozí základna/oblast před impulzivním pohybem.",
+        "Zóna má smysluplnou nerovnováhu a pokud možno způsobila BOS.",
+        "Rozlišuje se supply a demand a zóna je konzistentně zakreslena přes tělo/wick.",
+        "Je zohledněn timeframe a kombinace zón napříč timeframey."
+      ],
+      "evidence": "zone type, impulse, BOS, base, timeframe"
+    },
+    {
+      "id": "order_block",
+      "label": "Order block",
+      "weight": 3,
+      "checks": [
+        "OB je poslední opačná svíčka před významným impulzivním pohybem.",
+        "OB je odlišen od obecné S/D zóny.",
+        "OB je ideálně potvrzen kombinací se S/D a dalšími timeframey."
+      ],
+      "evidence": "last opposite candle, impulse, OB/S-D confluence"
+    },
+    {
+      "id": "fvg",
+      "label": "FVG",
+      "weight": 2,
+      "checks": [
+        "FVG je chápána jako imbalance a ne jako běžný gap.",
+        "Reakční oblast pro vstup je přibližně 50 % FVG.",
+        "FVG je použita s market structure, S/D, OB, Fibonacci nebo MTF kontextem.",
+        "Na 5M je FVG preferovaná vstupní zóna; na 1M se používá méně."
+      ],
+      "hardBlocker": "FVG sama o sobě nestačí jako samostatný důvod pro vstup."
+    },
+    {
+      "id": "balance_levels",
+      "label": "Balanční levely",
+      "weight": 1,
+      "checks": [
+        "Balanční level je chápán jako protažený BOS a konfluencí pro entry.",
+        "Level může sloužit také jako target.",
+        "Reakce na balanční level je posuzována spolu s liquidity sweepem a směrem trendu."
+      ],
+      "evidence": "extended BOS, reaction, liquidity, target"
+    },
+    {
+      "id": "volume_profile",
+      "label": "Volume profile / nPOC / fixed range",
+      "weight": 1,
+      "checks": [
+        "Volume Profile je čtený podle ceny, nikoli jako běžné volume bars.",
+        "Session/composite/fixed range použití odpovídá analyzovanému rozsahu.",
+        "nPOC, VAH nebo VAL se používají jako pravděpodobnostní úrovně, zóny nebo targety.",
+        "Fixed Range pomáhá zpřesnit S/D, target nebo range, ale vždy s další konfluencí."
+      ],
+      "evidence": "VP, nPOC, VAH, VAL, fixed range, volume"
+    },
+    {
+      "id": "sessions",
+      "label": "Killzones a sessions",
+      "weight": 10,
+      "checks": [
+        "Trade vzniká v Petrových obchodních oknech 09:00-11:00 nebo 13:30-17:00.",
+        "Session kontext je čtený přes Asia 02:00-06:00, Frankfurt 08:00-09:00, London 09:00-17:00 a NY 14:00-22:00.",
+        "Je posouzena session liquidity, zejména výběr Asia high/low.",
+        "U setupu založeného na session range platí, že rozpětí nad 35 pipů už není validní."
+      ],
+      "hardBlocker": "Vstup mimo uvedené killzones je podle PDF důvodem trade nebrat; přesné časové pásmo obrázku musí být ověřitelné."
+    },
+    {
+      "id": "entry_model",
+      "label": "Entry model",
+      "weight": 10,
+      "checks": [
+        "Entry model přichází až po nalezení kvalitní zóny; sám o sobě kvalitní zónu nenahradí.",
+        "Petr preferuje kombinaci 1M a 5M, někdy 15M.",
+        "A+ zóna může použít rychlejší 1M entry; A/B setup může vyžadovat výraznější 5M structure shift.",
+        "Petr v přibližně 90 % případů používá limitní vstup lehce před zónou kvůli spreadu.",
+        "Entry má být v souladu s časem, zónou, liquidity a RRR."
+      ],
+      "evidence": "entry timeframe, order type, zone, shift, spread"
+    },
+    {
+      "id": "sl_tp_rrr",
+      "label": "SL / TP / RRR",
+      "weight": 8,
+      "checks": [
+        "Plánovaný RRR je nejméně 1:2; Petrovo průměrné RRR je uváděno kolem 1:2.5.",
+        "SL je umístěn na high/low se smysluplným pokrytím zóny.",
+        "Pro forex je uveden orientační SL 8-12 pipů podle volatility, nikdy méně než 6 pipů; neaplikuj tento údaj bez znalosti instrumentu a jednotek.",
+        "TP je předem definovaný pravděpodobnostní target: liquidity, S/D, dOPEN, Fibonacci, Asia H-L, VWAP close, nPOC nebo daily close.",
+        "Finální TP má být posouzen jako jeden plánovaný target, ne nahodilé částečné výběry."
+      ],
+      "hardBlocker": "RRR pod 1:2 je hard blocker pro validní setup, pokud je plánovaný Entry/SL/TP z obrázku spolehlivě čitelný."
+    },
+    {
+      "id": "risk_management",
+      "label": "Risk management",
+      "weight": 2,
+      "checks": [
+        "Maximální riziko na obchod je podle materiálu 0.5 % nebo 1 %; bez informace o účtu/risku se hodnotí jako neznámé, nikoli jako porušení.",
+        "Denní limit je 2 % a týdenní limit 4 %.",
+        "Risk má být mechanický a předem definovaný.",
+        "SL se neposouvá na BE před prolomením významného 15M levelu.",
+        "Outcome Breakeven sám o sobě není porušení; posuzuje se důvod a načasování posunu SL."
+      ],
+      "evidence": "risk %, daily/weekly exposure, BE timing, planned SL"
+    },
+    {
+      "id": "news_and_no_trade",
+      "label": "No-trade blockery",
+      "weight": 0,
+      "checks": [
+        "Obchod není mimo killzone.",
+        "Není porušen hard blocker likvidity, kvalitní zóny nebo minimálního RRR.",
+        "Je zohledněn Forex Factory/economic calendar; materiál výslovně doporučuje vyhnout se obchodování při nezaměstnanosti.",
+        "U CPI, PPI, NFP, úrokových sazeb, GDP, PMI, Retail Sales a PCE se zvýšená volatilita zohlední, ale PDF z ní automaticky nedělá univerzální zákaz; bez jasného pravidla se uvede nejistota.",
+        "Trade mimo trading plan nebo impulzivní trade je označen jako porušení plánu."
+      ],
+      "hardBlockers": [
+        "missing_liquidity",
+        "outside_killzone",
+        "planned_rrr_below_2",
+        "missing_quality_zone",
+        "confirmed_impulsive_trade_outside_plan"
+      ]
+    }
+  ],
+  "unclearRules": [
+    "PDF neobsahují Petrovu přesnou číselnou bodovací tabulku ani přesné hranice A+/A/B/C; váhy a prahy v této rubrice jsou provozní konvence pro opakovatelnost.",
+    "PDF neříká přesně, jak se má kombinovat více částečných konfluencí do jednoho ratingu; skóre proto nesmí nahrazovat slovní odůvodnění.",
+    "PDF obsahují jak obecné vysvětlení CHOCH, tak doporučení nespoléhat na CHOCH; rubrika ji proto používá jen jako doplňkové potvrzení.",
+    "Slide s klíčovými částmi Volume Profile je převážně obrazový; nPOC/VAH/VAL jsou zachovány jako kontrolované pojmy, ale jejich přesná vizuální definice se nemá domýšlet bez čitelného obrázku.",
+    "Časy jsou opsané jako časy strategie; při hodnocení je nutné ověřit timezone a zda screenshot zobrazuje stejnou časovou zónu.",
+    "Rozpětí 35 pipů je uvedeno u konkrétní session strategie a nemá se automaticky aplikovat na každý typ setupu.",
+    "Údaj 6-12 pipů SL je forexový orientační údaj; na XAU, indexy a futures se nemá převádět bez znalosti tick/pip jednotek."
+  ]
+}

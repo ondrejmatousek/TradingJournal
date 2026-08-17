@@ -65,7 +65,10 @@ namespace TradingJournal.Controllers
             await AddSchemaChecksAsync(checks, cancellationToken);
 
             if (checks.All(check => check.Healthy))
+            {
                 await AddJournalWriteSmokeCheckAsync(checks, cancellationToken);
+                await AddSetupReviewWriteSmokeCheckAsync(checks, cancellationToken);
+            }
 
             return ReadinessResponse(checks, stopwatch);
         }
@@ -114,7 +117,11 @@ namespace TradingJournal.Controllers
                 "Invoices",
                 "InvoiceItems",
                 "MarketBiases",
-                "StrategyNotes"
+                "StrategyNotes",
+                "TradeSetupReviews",
+                "TradeSetupReviewImages",
+                "CotReports",
+                "CotImportRuns"
             };
 
             foreach (var table in requiredTables)
@@ -155,7 +162,33 @@ namespace TradingJournal.Controllers
                 ("StrategyNotes", "UserId"),
                 ("StrategyNotes", "StrategyKey"),
                 ("StrategyNotes", "ContentHtml"),
-                ("StrategyNotes", "UpdatedAt")
+                ("StrategyNotes", "UpdatedAt"),
+                ("TradeSetupReviews", "UserId"),
+                ("TradeSetupReviews", "StrategyKey"),
+                ("TradeSetupReviews", "TradeDate"),
+                ("TradeSetupReviews", "Market"),
+                ("TradeSetupReviews", "Verdict"),
+                ("TradeSetupReviews", "SetupRating"),
+                ("TradeSetupReviews", "ProcessScore"),
+                ("TradeSetupReviews", "RMultiple"),
+                ("TradeSetupReviews", "MissingInfo"),
+                ("TradeSetupReviews", "Issues"),
+                ("TradeSetupReviews", "NoTradeBlockers"),
+                ("TradeSetupReviews", "AiReviewJson"),
+                ("TradeSetupReviews", "ReviewedAt"),
+                ("TradeSetupReviewImages", "TradeSetupReviewId"),
+                ("TradeSetupReviewImages", "ImageData"),
+                ("TradeSetupReviewImages", "ImageContentType"),
+                ("TradeSetupReviewImages", "ImageFileName"),
+                ("CotReports", "SymbolKey"),
+                ("CotReports", "ReportDate"),
+                ("CotReports", "NetPosition"),
+                ("CotReports", "CotIndex52"),
+                ("CotReports", "Percentile52"),
+                ("CotReports", "ZScore"),
+                ("CotImportRuns", "StartedAt"),
+                ("CotImportRuns", "Success"),
+                ("CotImportRuns", "RowsImported")
             };
 
             foreach (var (table, column) in requiredColumns)
@@ -226,6 +259,57 @@ namespace TradingJournal.Controllers
                 _logger.LogError(ex, "Readiness journal write smoke check failed.");
                 _context.ChangeTracker.Clear();
                 checks.Add(new ReadinessCheck("journal-write-smoke", false, ex.Message));
+            }
+        }
+
+        private async Task AddSetupReviewWriteSmokeCheckAsync(List<ReadinessCheck> checks, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var strategy = _context.Database.CreateExecutionStrategy();
+
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                    var review = new TradeSetupReview
+                    {
+                        UserId = $"__health_check__{Guid.NewGuid():N}",
+                        StrategyKey = "corex",
+                        TradeDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                        TradeTimeText = "health",
+                        Market = "MGC",
+                        Direction = "LONG",
+                        Session = "NY",
+                        Status = "Rozpracováno",
+                        Verdict = "Nelze rozhodnout",
+                        MissingInfo = "Health check rollback record",
+                        Notes = "Health check rollback record",
+                        Images =
+                        {
+                            new TradeSetupReviewImage
+                            {
+                                ImageData = new byte[] { 1, 2, 3 },
+                                ImageContentType = "image/png",
+                                ImageFileName = "setup-health-check.png",
+                                Label = "health",
+                                CreatedAt = DateTimeOffset.UtcNow
+                            }
+                        }
+                    };
+
+                    _context.TradeSetupReviews.Add(review);
+                    await _context.SaveChangesAsync(cancellationToken);
+                    await transaction.RollbackAsync(cancellationToken);
+                    _context.ChangeTracker.Clear();
+                });
+
+                checks.Add(new ReadinessCheck("setup-review-write-smoke", true, "Setup review insert with image succeeded and was rolled back."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Readiness setup review write smoke check failed.");
+                _context.ChangeTracker.Clear();
+                checks.Add(new ReadinessCheck("setup-review-write-smoke", false, ex.Message));
             }
         }
 
