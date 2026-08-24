@@ -6,7 +6,7 @@
     var isFullBleed = bodyClass.Contains("marketing-shell") || bodyClass.Contains("auth-shell") || bodyClass.Contains("journal-shell");
     var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
     var action = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
-    var isTradingSection = controller == "JournalEntries" || controller == "Cot";
+    var isTradingSection = controller == "JournalEntries" || controller == "Cot" || controller == "Seasonality";
     var isProgrammingSection = controller == "Invoices";
     var isInvestmentSection = controller == "Investments";
     var showSidebar = SignInManager.IsSignedIn(User) && !bodyClass.Contains("marketing-shell") && !bodyClass.Contains("auth-shell") && (isTradingSection || isProgrammingSection || isInvestmentSection);
@@ -66,6 +66,7 @@
                     <a class="sidebar-link @(action == "Strategy" ? "active" : "")" asp-controller="JournalEntries" asp-action="Strategy">Strategie</a>
                     <a class="sidebar-link @(action == "SetupReview" ? "active" : "")" asp-controller="JournalEntries" asp-action="SetupReview">Setup Review</a>
                     <a class="sidebar-link @(controller == "Cot" ? "active" : "")" asp-controller="Cot" asp-action="Index">COT Dashboard</a>
+                    <a class="sidebar-link @(controller == "Seasonality" ? "active" : "")" asp-controller="Seasonality" asp-action="Index">Seasonality</a>
                     <a class="sidebar-link @(action == "TradeQuality" ? "active" : "")" asp-controller="JournalEntries" asp-action="TradeQuality">Kvalita tradu</a>
                     <a class="sidebar-link @(action == "Analysis" ? "active" : "")" asp-controller="JournalEntries" asp-action="Analysis">Analýza</a>
                 }
@@ -97,6 +98,9 @@
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/cot-chart.js" asp-append-version="true"></script>
+    <script src="~/js/cot-page-refresh.js" asp-append-version="true"></script>
+    <script src="~/js/seasonality-geometry.js" asp-append-version="true"></script>
+    <script src="~/js/seasonality.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

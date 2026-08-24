@@ -810,6 +810,42 @@ namespace TradingJournal.Data.Migrations
                     b.ToTable("MarketBiases");
                 });
 
+            modelBuilder.Entity("TradingJournal.Models.SeasonalityPriceEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AssetKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<decimal>("Close")
+                        .HasPrecision(20, 8)
+                        .HasColumnType("decimal(20,8)");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssetKey", "Date")
+                        .IsUnique();
+
+                    b.ToTable("SeasonalityPrices");
+                });
+
             modelBuilder.Entity("TradingJournal.Models.StrategyNote", b =>
                 {
                     b.Property<int>("Id")

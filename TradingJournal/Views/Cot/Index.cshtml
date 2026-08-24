@@ -10,13 +10,22 @@
 
 <div class="journal-page cot-page">
     <div class="journal-wrap cot-wrap">
+        <div class="cot-loading" role="status" aria-live="polite">
+            <div class="cot-loading-head"></div>
+            <div class="cot-loading-meta"></div>
+            <div class="cot-loading-grid">
+                <div class="cot-loading-card"><span></span><span></span><span></span><span></span></div>
+                <div class="cot-loading-card"><span></span><span></span><span></span><span></span></div>
+            </div>
+            <p>Načítám aktuální COT data a aktualizuji grafy…</p>
+        </div>
         <header class="cot-header">
             <div>
                 <p class="cot-eyebrow">Weekly makro filtr</p>
                 <h1>COT Dashboard</h1>
                 <p>CFTC Commitments of Traders jako kontext pro weekly bias. COT není intradenní vstupní signál.</p>
             </div>
-            <form asp-action="Update" method="post">
+            <form id="cot-update-form" asp-action="Update" method="post">
                 @Html.AntiForgeryToken()
                 <button class="btn btn-primary" type="submit">Aktualizovat COT data</button>
             </form>
@@ -26,10 +35,14 @@
         {
             <div class="cot-notice">@message</div>
         }
+        else if (!string.IsNullOrWhiteSpace(Model.LastImportMessage))
+        {
+            <div class="cot-notice">Poslední stav importu: @Model.LastImportMessage</div>
+        }
 
         <div class="cot-meta">
             <span>Zdroj: CFTC Public Reporting Environment</span>
-            <span>Automatická kontrola: každých 6 hodin, import nejdříve po 20 hodinách</span>
+            <span>Při otevření stránky se načtou aktuální COT data; automatická kontrola běží každých 6 hodin</span>
             <span>Poslední úspěšná aktualizace: @(Model.LastSuccessfulImport?.ToLocalTime().ToString("dd.MM.yyyy HH:mm", culture) ?? "zatím žádná")</span>
         </div>
 

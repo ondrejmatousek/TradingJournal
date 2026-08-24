@@ -18,6 +18,7 @@ namespace TradingJournal.Data
         public DbSet<TradeSetupReviewImage> TradeSetupReviewImages => Set<TradeSetupReviewImage>();
         public DbSet<CotReport> CotReports => Set<CotReport>();
         public DbSet<CotImportRun> CotImportRuns => Set<CotImportRun>();
+        public DbSet<SeasonalityPriceEntity> SeasonalityPrices => Set<SeasonalityPriceEntity>();
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -333,6 +334,22 @@ namespace TradingJournal.Data
             builder.Entity<InvestmentEma200Snapshot>()
                 .Property(s => s.DataSource)
                 .HasMaxLength(80);
+
+            builder.Entity<SeasonalityPriceEntity>()
+                .HasIndex(p => new { p.AssetKey, p.Date })
+                .IsUnique();
+
+            builder.Entity<SeasonalityPriceEntity>()
+                .Property(p => p.AssetKey)
+                .HasMaxLength(32);
+
+            builder.Entity<SeasonalityPriceEntity>()
+                .Property(p => p.Source)
+                .HasMaxLength(40);
+
+            builder.Entity<SeasonalityPriceEntity>()
+                .Property(p => p.Close)
+                .HasPrecision(20, 8);
         }
     }
 }

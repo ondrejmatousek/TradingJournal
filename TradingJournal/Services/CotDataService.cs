@@ -161,7 +161,9 @@ public sealed class CotDataService
                 .Select(run => run.CompletedAt)
                 .FirstOrDefaultAsync(cancellationToken),
             LastImportMessage = lastRun?.Message,
-            IsImportInProgress = lastRun is not null && !lastRun.CompletedAt.HasValue,
+            IsImportInProgress = lastRun is not null &&
+                !lastRun.CompletedAt.HasValue &&
+                DateTimeOffset.UtcNow - lastRun.StartedAt < TimeSpan.FromMinutes(30),
             Items = MarketDefinitions.Select(definition =>
             {
                 latestBySymbol.TryGetValue(definition.SymbolKey, out var latest);

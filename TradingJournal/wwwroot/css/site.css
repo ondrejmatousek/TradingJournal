@@ -5972,9 +5972,170 @@ body.setup-review-modal-open {
   min-height: 100%;
 }
 
+.seasonality-page { min-height: 100%; }
+.seasonality-wrap { display:grid; gap:1rem; width:100%; max-width:none; margin:0; }
+.seasonality-header { display:flex; align-items:end; justify-content:space-between; gap:2rem; }
+.seasonality-eyebrow { color:var(--tj-teal); font-size:.75rem; font-weight:950; letter-spacing:.16em; margin:0 0 .45rem; }
+.seasonality-header h1 { font-size:clamp(2rem,3.5vw,3.4rem); margin:0; font-weight:950; }
+.seasonality-header p { color:var(--tj-muted); margin:.7rem 0 0; }
+.seasonality-tabs { display:flex; gap:.5rem; }
+.seasonality-tabs button { border:1px solid rgba(255,255,255,.14); border-radius:6px; background:rgba(255,255,255,.04); color:#aeb9c7; padding:.6rem .85rem; cursor:pointer; }
+.seasonality-tabs button:hover,.seasonality-tabs button.is-active { border-color:var(--tj-teal); background:rgba(36,223,207,.12); color:var(--tj-teal); }
+.seasonality-tabs + #seasonality-monthly-view + #seasonality-curve-view { display:grid; gap:1rem; }
+.seasonality-monthly-view { display:grid; gap:1rem; }
+.seasonality-monthly-toolbar,.seasonality-monthly-panel,.seasonality-monthly-table-wrap,.seasonality-monthly-summary>div { border:1px solid rgba(255,255,255,.1); border-radius:8px; background:rgba(255,255,255,.045); padding:1rem; }
+.seasonality-monthly-toolbar { display:flex; align-items:center; gap:1rem; }
+.seasonality-monthly-toolbar label { color:#dce3e9; font-weight:700; }
+.seasonality-monthly-toolbar select { margin-left:.5rem; border:1px solid rgba(255,255,255,.14); border-radius:6px; background:#252b2e; color:#e5e9ee; padding:.65rem .8rem; }
+.seasonality-monthly-toolbar span { color:#8794a4; font-size:.85rem; }
+.seasonality-monthly-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; }
+.seasonality-monthly-summary strong,.seasonality-monthly-summary span { display:block; }
+.seasonality-monthly-summary strong { color:var(--tj-teal); font-size:1.35rem; }
+.seasonality-monthly-summary span { color:#8794a4; font-size:.78rem; margin-top:.25rem; }
+#seasonality-monthly-canvas { display:block; width:100%; height:430px; }
+.seasonality-monthly-legend { display:flex; justify-content:center; gap:1.2rem; color:#8794a4; font-size:.78rem; }
+.seasonality-monthly-legend i { display:inline-block; width:.65rem; height:.65rem; border-radius:2px; margin-right:.3rem; background:#24dfcf; }
+.seasonality-monthly-legend i.is-win { background:#b99cff; }
+.seasonality-monthly-table { width:100%; border-collapse:collapse; color:#aeb9c7; font-size:.86rem; }
+.seasonality-monthly-table th,.seasonality-monthly-table td { padding:.7rem .8rem; border-bottom:1px solid rgba(255,255,255,.08); text-align:right; white-space:nowrap; }
+.seasonality-monthly-table th:first-child,.seasonality-monthly-table td:first-child { text-align:left; }
+.seasonality-monthly-table th { color:#dce3e9; font-weight:800; }
+.seasonality-monthly-table .positive { color:#24dfcf; }
+.seasonality-monthly-table .negative { color:#f28aa8; }
+.seasonality-monthly-table .muted { color:#8794a4; }
+.seasonality-select,.seasonality-filters select { border:1px solid rgba(255,255,255,.14); border-radius:6px; background:#252b2e; color:#e5e9ee; padding:.7rem .9rem; }
+.seasonality-filters,.seasonality-chart-panel,.seasonality-stats>div { border:1px solid rgba(255,255,255,.1); border-radius:8px; background:rgba(255,255,255,.045); padding:1rem; }
+.seasonality-filters { display:grid; grid-template-columns:repeat(3,max-content) minmax(0,1fr); column-gap:1.5rem; }
+.seasonality-filter-row,.seasonality-filter-group { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; margin-bottom:.8rem; }
+.seasonality-filter-row { grid-column:1 / -1; }
+.seasonality-filter-group { width:max-content; }
+.seasonality-filter-group span { color:#dce3e9; font-weight:700; margin-right:.3rem; }
+.seasonality-filter-row button,.seasonality-filter-group button,#seasonality-reset { border:1px solid rgba(255,255,255,.14); border-radius:6px; background:rgba(255,255,255,.04); color:#aeb9c7; padding:.45rem .7rem; cursor:pointer; }
+.seasonality-filter-row button:hover,.seasonality-filter-group button:hover,#seasonality-reset:hover { border-color:var(--tj-teal); color:var(--tj-teal); }
+.seasonality-filter-group button.is-active { border-color:var(--tj-teal); background:rgba(36,223,207,.14); color:var(--tj-teal); box-shadow:0 0 0 1px rgba(36,223,207,.18) inset; }
+.seasonality-years-list { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:.65rem 1rem; padding-top:.25rem; border-top:1px solid rgba(255,255,255,.08); }
+.seasonality-years-list label { color:#aeb9c7; cursor:pointer; }
+.seasonality-years-list input { accent-color:var(--tj-teal); }
+.seasonality-chart-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.seasonality-chart-head strong,.seasonality-chart-head span,.seasonality-chart-head small { display:block; }
+.seasonality-chart-head>div { flex:1; text-align:center; }
+.seasonality-chart-actions { display:flex; align-items:center; justify-content:flex-end; gap:.5rem; flex:0 0 auto !important; }
+.seasonality-chart-help { position:relative; width:28px; height:28px; border:1px solid rgba(255,255,255,.18); border-radius:50%; background:rgba(255,255,255,.04); color:#aeb9c7; cursor:help; font-weight:800; }
+.seasonality-chart-help:hover,.seasonality-chart-help:focus-visible { border-color:var(--tj-teal); color:var(--tj-teal); outline:none; }
+.seasonality-chart-help-popover { position:absolute; z-index:4; top:calc(100% + .6rem); right:0; display:none !important; width:300px; padding:.8rem; border:1px solid rgba(36,223,207,.45); border-radius:6px; background:#172426; color:#dce3e9; text-align:left; font-size:.76rem; font-weight:400; line-height:1.45; box-shadow:0 10px 24px rgba(0,0,0,.3); }
+.seasonality-chart-help-popover strong { display:block; color:var(--tj-teal); margin-bottom:.35rem; font-size:.82rem; }
+.seasonality-chart-help:hover .seasonality-chart-help-popover,.seasonality-chart-help:focus-visible .seasonality-chart-help-popover { display:block !important; }
+.seasonality-chart-head strong { font-size:1.1rem; }
+.seasonality-chart-head span { color:#8794a4; margin-top:.3rem; font-size:.8rem; }
+.seasonality-chart-head small { color:#8794a4; margin-top:.35rem; font-size:.72rem; }
+.seasonality-sync-status { min-height:1.25rem; color:var(--tj-teal); font-size:.78rem; text-align:center; }
+.seasonality-analysis-layout { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:1rem; align-items:start; }
+.seasonality-chart-wrap { position:relative; }
+.seasonality-tooltip { position:absolute; display:none; pointer-events:none; z-index:2; border:1px solid rgba(36,223,207,.5); border-radius:6px; background:#172426; color:#e5e9ee; padding:.4rem .55rem; font-size:.75rem; white-space:nowrap; box-shadow:0 8px 20px rgba(0,0,0,.25); }
+.seasonality-tooltip.is-visible { display:block; }
+.seasonality-interval-card { border:1px solid rgba(255,255,255,.1); border-radius:8px; background:rgba(255,255,255,.045); padding:1rem; }
+.seasonality-interval-card { display:block; box-sizing:border-box; min-width:0; }
+.seasonality-interval-card .seasonality-detail-title,.seasonality-interval-card>p { margin:0; }
+.seasonality-interval-card .seasonality-date-grid { grid-template-columns:1fr; margin-top:1rem; }
+.seasonality-interval-card #seasonality-apply-interval,.seasonality-interval-card #seasonality-clear-interval { margin-top:.75rem; }
+.seasonality-interval-card #seasonality-interval-label { margin-top:1rem; }
+.seasonality-interval-card p { color:#8794a4; font-size:.8rem; line-height:1.45; margin:.35rem 0 1rem; }
+.seasonality-date-grid { display:grid; gap:.7rem; }
+.seasonality-date-grid label { color:#aeb9c7; font-size:.78rem; }
+.seasonality-date-grid input { display:block; width:100%; box-sizing:border-box; margin-top:.3rem; border:1px solid rgba(255,255,255,.14); border-radius:6px; background:#252b2e; color:#e5e9ee; padding:.55rem; color-scheme:dark; }
+.seasonality-interval-card button { width:100%; margin-top:.75rem; border:1px solid var(--tj-teal); border-radius:6px; background:rgba(36,223,207,.14); color:var(--tj-teal); padding:.6rem .7rem; cursor:pointer; }
+.seasonality-interval-card .seasonality-secondary-action { border-color:rgba(255,255,255,.14); background:rgba(255,255,255,.04); color:#aeb9c7; }
+.seasonality-interval-label { border-top:1px solid rgba(255,255,255,.08); margin-top:1rem; padding-top:.8rem; color:#e5e9ee; font-weight:700; }
+.seasonality-interval-metrics { display:grid; gap:.65rem; grid-template-columns:repeat(3,1fr); margin-top:1rem; }
+.seasonality-interval-metrics strong,.seasonality-interval-metrics span { display:block; }
+.seasonality-interval-metrics strong { color:var(--tj-teal); font-size:1rem; }
+.seasonality-interval-metrics span { color:#8794a4; font-size:.68rem; margin-top:.2rem; }
+.seasonality-page.is-loading .seasonality-chart-panel,.seasonality-page.is-loading .seasonality-stats>div { animation:seasonality-pulse 1.4s ease-in-out infinite; }
+@keyframes seasonality-pulse { 0%,100%{opacity:.55;} 50%{opacity:1;} }
+#seasonality-canvas { display:block; width:100%; height:500px; margin-top:1rem; }
+.seasonality-axis { display:flex; justify-content:space-between; color:#8794a4; font-size:.75rem; }
+.seasonality-stats { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:1rem; }
+.seasonality-stats strong,.seasonality-stats span { display:block; }
+.seasonality-stats strong { font-size:1.4rem; color:var(--tj-teal); }
+.seasonality-stats span { color:#8794a4; font-size:.8rem; margin-top:.25rem; }
+.seasonality-detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.seasonality-detail-panel,.seasonality-table-panel { border:1px solid rgba(255,255,255,.1); border-radius:8px; background:rgba(255,255,255,.045); padding:1rem; }
+.seasonality-detail-title { color:#dce3e9; font-weight:800; margin-bottom:.6rem; }
+.seasonality-detail-panel canvas { display:block; width:100%; height:220px; }
+.seasonality-table-wrap { overflow-x:auto; }
+.seasonality-table-panel table { width:100%; border-collapse:collapse; color:#aeb9c7; font-size:.86rem; }
+.seasonality-table-panel th,.seasonality-table-panel td { padding:.65rem .75rem; border-bottom:1px solid rgba(255,255,255,.08); text-align:right; white-space:nowrap; }
+.seasonality-table-panel th:first-child,.seasonality-table-panel td:first-child { text-align:left; }
+.seasonality-table-panel th { color:#dce3e9; font-weight:800; }
+.seasonality-table-panel .positive { color:#24dfcf; }
+.seasonality-table-panel .negative { color:#f28aa8; }
+@media (max-width:900px) { .seasonality-analysis-layout { grid-template-columns:1fr; } .seasonality-interval-card { grid-template-columns:1fr; } .seasonality-interval-card .seasonality-date-grid,.seasonality-interval-card #seasonality-apply-interval,.seasonality-interval-card #seasonality-clear-interval,.seasonality-interval-card #seasonality-interval-label,.seasonality-interval-card #seasonality-interval-metrics { grid-column:auto; grid-row:auto; } }
+@media (max-width:1100px) { .seasonality-filters { grid-template-columns:1fr; } .seasonality-filter-row,.seasonality-filter-group { grid-column:1; width:auto; } }
+@media (max-width:700px) { #seasonality-canvas { height:360px; } }
+@media (max-width:700px) { .seasonality-header,.seasonality-chart-head { align-items:stretch; flex-direction:column; } .seasonality-stats{grid-template-columns:1fr;} }
+@media (max-width:700px) { .seasonality-monthly-toolbar { align-items:stretch; flex-direction:column; } .seasonality-monthly-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } #seasonality-monthly-canvas { height:340px; } .seasonality-monthly-legend { flex-wrap:wrap; } }
+@media (max-width:1000px) { .seasonality-stats{grid-template-columns:repeat(3,minmax(0,1fr));} .seasonality-detail-grid{grid-template-columns:1fr;} }
+
 .cot-wrap {
   display: grid;
   gap: 1rem;
+  position: relative;
+}
+
+.cot-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  background: #151719;
+}
+
+.cot-loading p {
+  margin: 0;
+  color: #aeb9c7;
+  text-align: center;
+  font-size: .85rem;
+}
+
+.cot-loading-head,
+.cot-loading-meta,
+.cot-loading-card {
+  background: linear-gradient(100deg, rgba(255,255,255,.06) 20%, rgba(32,224,208,.16) 40%, rgba(255,255,255,.06) 60%);
+  background-size: 220% 100%;
+  animation: cot-loading-shimmer 1.35s ease-in-out infinite;
+}
+
+.cot-loading-head {
+  width: 38%;
+  height: 8rem;
+  border-radius: 8px;
+}
+
+.cot-loading-meta {
+  width: 100%;
+  height: 3.2rem;
+  border-radius: 8px;
+}
+
+.cot-loading-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.cot-loading-card {
+  min-height: 28rem;
+  border-radius: 8px;
+}
+
+@keyframes cot-loading-shimmer {
+  from { background-position: 180% 0; }
+  to { background-position: -20% 0; }
 }
 
 .cot-header {

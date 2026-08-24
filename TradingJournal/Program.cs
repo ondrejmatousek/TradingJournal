@@ -3,7 +3,14 @@ using Microsoft.EntityFrameworkCore;
 using TradingJournal.Data;
 using TradingJournal.Services;
 
+using Microsoft.AspNetCore.HttpOverrides;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+});
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -22,6 +29,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<SeasonalityService>();
+builder.Services.AddSingleton<SeasonalityUpdateState>();
+builder.Services.AddHostedService<SeasonalityUpdateHostedService>();
 builder.Services.AddScoped<CotDataService>();
 builder.Services.AddHostedService<CotUpdateHostedService>();
 builder.Services.AddSingleton<AppClock>();
@@ -106,6 +116,7 @@ else
     app.UseHsts();
 }
 
+app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
