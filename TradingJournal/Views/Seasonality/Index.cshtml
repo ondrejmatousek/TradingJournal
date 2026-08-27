@@ -3,15 +3,19 @@
 @{
     ViewData["Title"] = "Seasonality";
     ViewData["BodyClass"] = "journal-shell";
+    var assets = Model.Assets.Select(asset => new { key = asset.Key, name = asset.Name });
     var data = Model.Prices.ToDictionary(pair => pair.Key, pair => pair.Value.Select(item => new { date = item.Date.ToString("yyyy-MM-dd"), close = item.Close }));
 }
 <div class="seasonality-page" data-updating="@Model.IsUpdating.ToString().ToLowerInvariant()" data-data-url="@Url.Action("Data", "Seasonality")">
     <div class="seasonality-wrap">
         <header class="seasonality-header">
             <div><p class="seasonality-eyebrow">CALENDAR PATTERNS</p><h1>Seasonality Dashboard</h1><p>Historické sezonní chování pro výběr období a assetu.</p></div>
-            <select id="seasonality-asset" class="seasonality-select" aria-label="Asset">
-                @foreach (var asset in Model.Assets) { <option value="@asset.Key">@asset.Name</option> }
-            </select>
+            <div class="seasonality-asset-search">
+                <input id="seasonality-asset-search" type="search" value="@Model.Assets.FirstOrDefault()?.Name" autocomplete="off" spellcheck="false" aria-label="Vyhledat asset" aria-controls="seasonality-asset-suggestions" aria-expanded="false">
+                <span id="seasonality-asset-loading" class="seasonality-asset-loading" aria-hidden="true"></span>
+                <div id="seasonality-asset-suggestions" class="seasonality-asset-suggestions" role="listbox" hidden></div>
+                <span id="seasonality-asset-status" class="seasonality-asset-status" role="status"></span>
+            </div>
         </header>
         <nav class="seasonality-tabs" aria-label="Seasonality views">
             <button type="button" class="is-active" data-seasonality-tab="curve">Sezónní křivka</button>
@@ -55,4 +59,5 @@
         </div>
     </div>
 </div>
+<script id="seasonality-assets" type="application/json">@Html.Raw(JsonSerializer.Serialize(assets))</script>
 <script id="seasonality-data" type="application/json">@Html.Raw(JsonSerializer.Serialize(data))</script>

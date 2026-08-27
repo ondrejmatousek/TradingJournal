@@ -4,7 +4,11 @@
     const chartGeometry = window.SeasonalityChartGeometry;
 
     let data = JSON.parse(document.querySelector('#seasonality-data').textContent);
-    const asset = document.querySelector('#seasonality-asset');
+    const assets = JSON.parse(document.querySelector('#seasonality-assets').textContent);
+    const assetSearch = document.querySelector('#seasonality-asset-search');
+    const assetLoading = document.querySelector('#seasonality-asset-loading');
+    const assetSuggestions = document.querySelector('#seasonality-asset-suggestions');
+    const assetStatus = document.querySelector('#seasonality-asset-status');
     const years = document.querySelector('#seasonality-years');
     const list = document.querySelector('#seasonality-year-list');
     const canvas = document.querySelector('#seasonality-canvas');
@@ -29,8 +33,111 @@
     let interval = null;
     let dragStart = null;
     let hoverDay = null;
+    let activeAsset = assets[0];
+    let assetSearchTimer = null;
+    let highlightedAssetIndex = 0;
+    let visibleAssetSuggestions = [];
 
-    const rows = () => data[asset.value] || [];
+    const normalizeSearch = value => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const rows = () => activeAsset ? data[activeAsset.key] || [] : [];
+    const matchingAssets = value => {
+        const term = normalizeSearch(value);
+        if (!term) return assets.slice(0, 8);
+        const scored = assets
+            .map(item => {
+                const key = normalizeSearch(item.key);
+                const name = normalizeSearch(item.name);
+                const exact = key === term || name === term;
+                const starts = key.startsWith(term) || name.startsWith(term);
+                const includes = key.includes(term) || name.includes(term);
+                return { item, score: exact ? 0 : starts ? 1 : includes ? 2 : 3 };
+            })
+            .filter(match => match.score < 3)
+            .sort((a, b) => a.score - b.score || a.item.name.localeCompare(b.item.name));
+        return scored.slice(0, 8).map(match => match.item);
+    };
+    const findAsset = value => {
+        const term = normalizeSearch(value);
+        if (!term) return activeAsset;
+        return matchingAssets(value)[0];
+    };
+    const setAssetSearchLoading = isLoading => {
+        assetLoading.classList.toggle('is-visible', isLoading);
+        assetSearch.setAttribute('aria-busy', String(isLoading));
+    };
+    const updateAssetStatus = () => {
+        if (!activeAsset) {
+            assetStatus.textContent = 'Asset nenalezen';
+            return;
+        }
+        assetStatus.textContent = `${activeAsset.name} · ${rows().length ? `${rows().length} záznamů` : 'data se načítají'}`;
+    };
+    const hideAssetSuggestions = () => {
+        assetSuggestions.hidden = true;
+        assetSearch.setAttribute('aria-expanded', 'false');
+    };
+    const renderAssetSuggestions = () => {
+        visibleAssetSuggestions = matchingAssets(assetSearch.value);
+        highlightedAssetIndex = Math.min(highlightedAssetIndex, Math.max(visibleAssetSuggestions.length - 1, 0));
+        assetSuggestions.innerHTML = '';
+        if (!visibleAssetSuggestions.length) {
+            const empty = document.createElement('div');
+            empty.className = 'seasonality-asset-suggestion-empty';
+            empty.textContent = 'Žádný asset neodpovídá hledání';
+            assetSuggestions.append(empty);
+            assetSuggestions.hidden = false;
+            assetSearch.setAttribute('aria-expanded', 'true');
+            return;
+        }
+        visibleAssetSuggestions.forEach((item, index) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'seasonality-asset-suggestion';
+            button.setAttribute('role', 'option');
+            button.setAttribute('aria-selected', String(index === highlightedAssetIndex));
+            button.dataset.assetKey = item.key;
+            const key = document.createElement('strong');
+            key.textContent = item.key;
+            const name = document.createElement('span');
+            name.textContent = item.name;
+            button.append(key, name);
+            button.onmousedown = event => event.preventDefault();
+            button.onclick = () => selectAsset(item);
+            assetSuggestions.append(button);
+        });
+        assetSuggestions.hidden = false;
+        assetSearch.setAttribute('aria-expanded', 'true');
+    };
+    const selectAsset = next => {
+        if (!next) return;
+        window.clearTimeout(assetSearchTimer);
+        setAssetSearchLoading(false);
+        const changed = !activeAsset || next.key !== activeAsset.key;
+        activeAsset = next;
+        assetSearch.value = next.name;
+        updateAssetStatus();
+        hideAssetSuggestions();
+        if (changed) {
+            rebuild();
+            if (!document.querySelector('#seasonality-monthly-view').hidden) drawMonthly();
+        }
+    };
+    const applyAssetSearch = (showSuggestions = false) => {
+        const next = findAsset(assetSearch.value);
+        setAssetSearchLoading(false);
+        if (!next) {
+            assetStatus.textContent = 'Asset nenalezen';
+            return;
+        }
+        const changed = !activeAsset || next.key !== activeAsset.key;
+        activeAsset = next;
+        updateAssetStatus();
+        if (showSuggestions) renderAssetSuggestions();
+        if (changed) {
+            rebuild();
+            if (!document.querySelector('#seasonality-monthly-view').hidden) drawMonthly();
+        }
+    };
     const electionType = year => year % 4 === 0
         ? 'election'
         : year % 4 === 1 ? 'post' : year % 4 === 2 ? 'midterm' : 'pre';
@@ -319,7 +426,7 @@
         });
         ctx.stroke();
 
-        document.querySelector('#seasonality-title').textContent = asset.options[asset.selectedIndex].text;
+        document.querySelector('#seasonality-title').textContent = activeAsset ? `${activeAsset.name} · ${activeAsset.key}` : 'Asset';
         document.querySelector('#seasonality-subtitle').textContent =
             `${selected.size} vybraných let · průměr podle obchodních dnů · index 100 = začátek roku`;
         updateStats(points, selectedIntervalStats.length ? selectedIntervalStats : yearStats, selected.size);
@@ -509,7 +616,38 @@
         context.stroke();
     }
 
-    asset.onchange = () => { rebuild(); if (!document.querySelector('#seasonality-monthly-view').hidden) drawMonthly(); };
+    assetSearch.oninput = () => {
+        window.clearTimeout(assetSearchTimer);
+        highlightedAssetIndex = 0;
+        setAssetSearchLoading(true);
+        assetStatus.textContent = 'Hledám…';
+        renderAssetSuggestions();
+        assetSearchTimer = window.setTimeout(() => applyAssetSearch(true), 260);
+    };
+    assetSearch.onfocus = renderAssetSuggestions;
+    assetSearch.onblur = () => window.setTimeout(hideAssetSuggestions, 120);
+    assetSearch.onkeydown = event => {
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            highlightedAssetIndex = Math.min(highlightedAssetIndex + 1, visibleAssetSuggestions.length - 1);
+            renderAssetSuggestions();
+            return;
+        }
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            highlightedAssetIndex = Math.max(highlightedAssetIndex - 1, 0);
+            renderAssetSuggestions();
+            return;
+        }
+        if (event.key === 'Escape') {
+            hideAssetSuggestions();
+            return;
+        }
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            selectAsset(visibleAssetSuggestions[highlightedAssetIndex] || findAsset(assetSearch.value));
+        }
+    };
     years.onchange = rebuild;
     monthlyYears.onchange = drawMonthly;
     root.querySelectorAll('[data-seasonality-tab]').forEach(button => button.onclick = () => {
@@ -592,6 +730,7 @@
         draw();
     };
     new ResizeObserver(() => { draw(); if (!document.querySelector('#seasonality-monthly-view').hidden) drawMonthly(); }).observe(canvas.parentElement);
+    applyAssetSearch();
     rebuild();
 
     async function pollForData() {
@@ -601,6 +740,7 @@
             const payload = await response.json();
             const hasData = Object.values(payload.prices || {}).some(items => items.length > 0);
             data = payload.prices || {};
+            updateAssetStatus();
             root.classList.toggle('is-loading', Boolean(payload.isUpdating && !hasData));
             document.querySelector('#seasonality-sync-status').textContent = payload.isUpdating
                 ? 'Aktualizace dat probíhá na pozadí…'

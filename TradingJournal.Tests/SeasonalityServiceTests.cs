@@ -40,7 +40,8 @@ public sealed class SeasonalityServiceTests
 
         var model = await service.LoadAsync();
 
-        Assert.Equal(4, model.Assets.Count);
+        Assert.Equal(100, model.Assets.Count);
+        Assert.Equal(model.Assets.Count, model.Assets.Select(asset => asset.Key).Distinct().Count());
         Assert.All(model.Assets, asset => Assert.NotEmpty(model.Prices[asset.Key]));
     }
 
