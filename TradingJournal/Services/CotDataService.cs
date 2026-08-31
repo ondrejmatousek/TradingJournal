@@ -27,25 +27,9 @@ public sealed class CotDataService
         _logger = logger;
     }
 
-    public static IReadOnlyList<CotMarketDefinition> MarketDefinitions { get; } =
-    [
-        new("EUR/USD", "EUR/USD", "EURO FX", "gpe5-46if", "TFF Futures Only", "Leveraged Money", "lev_money_positions_long", "lev_money_positions_short"),
-        new("XAU/USD", "XAU/USD", "GOLD", "72hh-3qpy", "Disaggregated Futures Only", "Managed Money", "m_money_positions_long", "m_money_positions_short"),
-        new("NQ", "NASDAQ-100", "NASDAQ-100 Consolidated", "gpe5-46if", "TFF Futures Only", "Leveraged Money", "lev_money_positions_long", "lev_money_positions_short"),
-        new("ES", "S&P 500", "E-MINI S&P 500", "gpe5-46if", "TFF Futures Only", "Leveraged Money", "lev_money_positions_long", "lev_money_positions_short")
-    ];
+    public static IReadOnlyList<CotMarketDefinition> MarketDefinitions { get; } = BuildMarketDefinitions();
 
-    private static IReadOnlyList<CotMarketDefinition> LegacyMarketDefinitions { get; } =
-    [
-        new("EUR/USD", "EUR/USD", "EURO FX", "6dca-aqww", "Legacy Futures Only", "Commercials", "comm_positions_long_all", "comm_positions_short_all"),
-        new("EUR/USD", "EUR/USD", "EURO FX", "6dca-aqww", "Legacy Futures Only", "Retailers", "nonrept_positions_long_all", "nonrept_positions_short_all"),
-        new("XAU/USD", "XAU/USD", "GOLD", "6dca-aqww", "Legacy Futures Only", "Commercials", "comm_positions_long_all", "comm_positions_short_all"),
-        new("XAU/USD", "XAU/USD", "GOLD", "6dca-aqww", "Legacy Futures Only", "Retailers", "nonrept_positions_long_all", "nonrept_positions_short_all"),
-        new("NQ", "NASDAQ-100", "NASDAQ-100 Consolidated", "6dca-aqww", "Legacy Futures Only", "Commercials", "comm_positions_long_all", "comm_positions_short_all"),
-        new("NQ", "NASDAQ-100", "NASDAQ-100 Consolidated", "6dca-aqww", "Legacy Futures Only", "Retailers", "nonrept_positions_long_all", "nonrept_positions_short_all"),
-        new("ES", "S&P 500", "E-MINI S&P 500", "6dca-aqww", "Legacy Futures Only", "Commercials", "comm_positions_long_all", "comm_positions_short_all"),
-        new("ES", "S&P 500", "E-MINI S&P 500", "6dca-aqww", "Legacy Futures Only", "Retailers", "nonrept_positions_long_all", "nonrept_positions_short_all")
-    ];
+    private static IReadOnlyList<CotMarketDefinition> LegacyMarketDefinitions { get; } = BuildLegacyMarketDefinitions();
 
     public async Task<CotUpdateResult> UpdateAsync(bool force, CancellationToken cancellationToken = default)
     {
@@ -58,8 +42,8 @@ public sealed class CotDataService
                 .OrderByDescending(run => run.CompletedAt)
                 .FirstOrDefaultAsync(cancellationToken);
 
-        if (!force && lastSuccessfulRun?.CompletedAt is not null &&
-            DateTimeOffset.UtcNow - lastSuccessfulRun.CompletedAt.Value < TimeSpan.FromHours(20))
+            if (!force && lastSuccessfulRun?.CompletedAt is not null &&
+                DateTimeOffset.UtcNow - lastSuccessfulRun.CompletedAt.Value < TimeSpan.FromHours(20))
             {
                 return new CotUpdateResult(true, true, lastSuccessfulRun.RowsImported, "COT data je již aktuální.");
             }
@@ -89,6 +73,14 @@ public sealed class CotDataService
                 await _context.SaveChangesAsync(cancellationToken);
 
                 return new CotUpdateResult(true, false, imported, importRun.Message);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                importRun.Success = false;
+                importRun.CompletedAt = DateTimeOffset.UtcNow;
+                importRun.Message = "Aktualizace COT dat byla přerušena.";
+                await _context.SaveChangesAsync(CancellationToken.None);
+                throw;
             }
             catch (Exception ex)
             {
@@ -164,7 +156,9 @@ public sealed class CotDataService
             IsImportInProgress = lastRun is not null &&
                 !lastRun.CompletedAt.HasValue &&
                 DateTimeOffset.UtcNow - lastRun.StartedAt < TimeSpan.FromMinutes(30),
-            Items = MarketDefinitions.Select(definition =>
+            Items = MarketDefinitions
+                .Where(definition => latestBySymbol.GetValueOrDefault(definition.SymbolKey) is not null)
+                .Select(definition =>
             {
                 latestBySymbol.TryGetValue(definition.SymbolKey, out var latest);
                 historyBySymbol.TryGetValue(definition.SymbolKey, out var history);
@@ -181,6 +175,7 @@ public sealed class CotDataService
                 {
                     SymbolKey = definition.SymbolKey,
                     DisplayName = definition.DisplayName,
+                    CotSymbolKey = definition.SymbolKey,
                     Latest = latest,
                     TraderCategory = definition.TraderCategory,
                     IsStale = isStale,
@@ -200,9 +195,13 @@ public sealed class CotDataService
         if (symbolKey is null)
             return null;
 
+        var definition = MarketDefinitions.FirstOrDefault(item => item.SymbolKey == symbolKey);
+        if (definition is null)
+            return null;
+
         var latest = _context.CotReports
             .AsNoTracking()
-            .Where(report => report.SymbolKey == symbolKey)
+            .Where(report => report.SymbolKey == symbolKey && report.TraderCategory == definition.TraderCategory)
             .OrderByDescending(report => report.ReportDate)
             .FirstOrDefault();
 
@@ -230,12 +229,115 @@ public sealed class CotDataService
         return normalized switch
         {
             "EUR/USD" or "EURUSD" or "6E" or "M6E" or "EUROFX" or "EUROFXFUTURES" => "EUR/USD",
+            "GBP/USD" or "GBPUSD" or "6B" or "M6B" or "BRITISHPOUND" => "GBP/USD",
+            "USD/JPY" or "USDJPY" or "JPY" or "6J" or "M6J" or "JAPANESEYEN" => "JPY",
+            "USD/CHF" or "USDCHF" or "CHF" or "6S" or "M6S" or "SWISSFRANC" => "CHF",
+            "USD/CAD" or "USDCAD" or "CAD" or "6C" or "M6C" or "CANADIANDOLLAR" => "CAD",
+            "AUD/USD" or "AUDUSD" or "6A" or "M6A" or "AUSTRALIANDOLLAR" => "AUD/USD",
+            "MXN" or "6M" or "MEXICANPESO" => "MXN",
             "XAU/USD" or "XAUUSD" or "GC" or "MGC" or "GOLD" => "XAU/USD",
+            "SI" or "SILVER" or "XAG/USD" or "XAGUSD" => "SILVER",
+            "HG" or "COPPER" => "COPPER",
+            "PL" or "PLATINUM" => "PLATINUM",
+            "PA" or "PALLADIUM" => "PALLADIUM",
+            "CL" or "WTI" or "CRUDEOIL" or "CRUDEOILWTI" => "WTI",
+            "HO" or "HEATINGOIL" or "ULSD" => "ULSD",
+            "RB" or "RBOB" or "GASOLINE" => "RBOB",
+            "NG" or "NATGAS" or "NATURALGAS" => "NATGAS",
+            "ZC" or "CORN" => "CORN",
+            "ZW" or "WHEAT" or "SRW" => "WHEAT",
+            "KE" or "HRW" => "WHEAT-HRW",
+            "ZS" or "SOYBEANS" => "SOYBEANS",
+            "ZL" or "SOYBEANOIL" => "SOYBEAN OIL",
+            "ZM" or "SOYBEANMEAL" => "SOYBEAN MEAL",
+            "ZO" or "OATS" => "OATS",
+            "ZR" or "RICE" or "ROUGHRICE" => "ROUGH RICE",
+            "LE" or "LIVECATTLE" => "LIVE CATTLE",
+            "GF" or "FEEDERCATTLE" => "FEEDER CATTLE",
+            "HE" or "LEANHOGS" => "LEAN HOGS",
+            "KC" or "COFFEE" => "COFFEE",
+            "SB" or "SUGAR" => "SUGAR",
+            "CT" or "COTTON" => "COTTON",
+            "CC" or "COCOA" => "COCOA",
             "NQ" or "MNQ" or "NASDAQ-100" or "NASDAQ100" => "NQ",
             "ES" or "MES" or "S&P500" or "SP500" or "EMINISP500" => "ES",
+            "YM" or "MYM" or "DOW" or "DJIA" => "YM",
+            "RTY" or "M2K" or "RUSSELL2000" => "RTY",
+            "ZB" or "USTBOND" or "USBOND" => "ZB",
+            "UB" or "ULTRABOND" => "UB",
+            "ZN" or "10Y" or "10YEAR" => "ZN",
+            "ZF" or "5Y" or "5YEAR" => "ZF",
+            "ZT" or "2Y" or "2YEAR" => "ZT",
             _ => null
         };
     }
+
+    private static IReadOnlyList<CotMarketDefinition> BuildMarketDefinitions()
+    {
+        return
+        [
+            Tff("EUR/USD", "EUR/USD", "EURO FX"),
+            Tff("GBP/USD", "GBP/USD", "BRITISH POUND"),
+            Tff("JPY", "Japanese Yen", "JAPANESE YEN"),
+            Tff("CHF", "Swiss Franc", "SWISS FRANC"),
+            Tff("CAD", "Canadian Dollar", "CANADIAN DOLLAR"),
+            Tff("AUD/USD", "AUD/USD", "AUSTRALIAN DOLLAR"),
+            Tff("MXN", "Mexican Peso", "MEXICAN PESO"),
+            ManagedMoney("XAU/USD", "Gold", "GOLD"),
+            ManagedMoney("SILVER", "Silver", "SILVER"),
+            ManagedMoney("COPPER", "Copper", "COPPER- #1"),
+            ManagedMoney("PLATINUM", "Platinum", "PLATINUM"),
+            ManagedMoney("PALLADIUM", "Palladium", "PALLADIUM"),
+            ManagedMoney("WTI", "Crude Oil WTI", "CRUDE OIL, LIGHT SWEET-WTI"),
+            ManagedMoney("ULSD", "NY Harbor ULSD", "NY HARBOR ULSD"),
+            ManagedMoney("RBOB", "RBOB Gasoline", "GASOLINE RBOB"),
+            ManagedMoney("NATGAS", "Natural Gas", "NATURAL GAS"),
+            ManagedMoney("CORN", "Corn", "CORN"),
+            ManagedMoney("WHEAT", "Wheat SRW", "WHEAT-SRW"),
+            ManagedMoney("WHEAT-HRW", "Wheat HRW", "WHEAT-HRW"),
+            ManagedMoney("SOYBEANS", "Soybeans", "SOYBEANS"),
+            ManagedMoney("SOYBEAN OIL", "Soybean Oil", "SOYBEAN OIL"),
+            ManagedMoney("SOYBEAN MEAL", "Soybean Meal", "SOYBEAN MEAL"),
+            ManagedMoney("OATS", "Oats", "OATS"),
+            ManagedMoney("ROUGH RICE", "Rough Rice", "ROUGH RICE"),
+            ManagedMoney("LIVE CATTLE", "Live Cattle", "LIVE CATTLE"),
+            ManagedMoney("FEEDER CATTLE", "Feeder Cattle", "FEEDER CATTLE"),
+            ManagedMoney("LEAN HOGS", "Lean Hogs", "LEAN HOGS"),
+            ManagedMoney("COFFEE", "Coffee", "COFFEE C"),
+            ManagedMoney("SUGAR", "Sugar", "SUGAR NO. 11"),
+            ManagedMoney("COTTON", "Cotton", "COTTON NO. 2"),
+            ManagedMoney("COCOA", "Cocoa", "COCOA"),
+            Tff("NQ", "NASDAQ-100", "NASDAQ-100 Consolidated"),
+            Tff("ES", "S&P 500", "E-MINI S&P 500"),
+            Tff("YM", "Dow Jones", "DJIA Consolidated"),
+            Tff("RTY", "Russell 2000", "RUSSELL E-MINI"),
+            Tff("ZB", "U.S. Treasury Bond", "UST BOND"),
+            Tff("UB", "Ultra U.S. Treasury Bond", "ULTRA UST BOND"),
+            Tff("ZN", "10Y Treasury Note", "UST 10Y NOTE"),
+            Tff("ZF", "5Y Treasury Note", "UST 5Y NOTE"),
+            Tff("ZT", "2Y Treasury Note", "UST 2Y NOTE")
+        ];
+    }
+
+    private static IReadOnlyList<CotMarketDefinition> BuildLegacyMarketDefinitions()
+    {
+        return MarketDefinitions
+            .SelectMany(definition => new[]
+            {
+                Legacy(definition, "Commercials", "comm_positions_long_all", "comm_positions_short_all"),
+                Legacy(definition, "Retailers", "nonrept_positions_long_all", "nonrept_positions_short_all")
+            })
+            .ToList();
+    }
+
+    private static CotMarketDefinition Tff(string symbolKey, string displayName, string marketPattern) =>
+        new(symbolKey, displayName, marketPattern, "gpe5-46if", "TFF Futures Only", "Leveraged Money", "lev_money_positions_long", "lev_money_positions_short");
+
+    private static CotMarketDefinition ManagedMoney(string symbolKey, string displayName, string marketPattern) =>
+        new(symbolKey, displayName, marketPattern, "72hh-3qpy", "Disaggregated Futures Only", "Managed Money", "m_money_positions_long", "m_money_positions_short");
+
+    private static CotMarketDefinition Legacy(CotMarketDefinition definition, string traderCategory, string longField, string shortField) =>
+        new(definition.SymbolKey, definition.DisplayName, definition.MarketPattern, "6dca-aqww", "Legacy Futures Only", traderCategory, longField, shortField);
 
     private async Task<List<JsonElement>> FetchRowsAsync(CotMarketDefinition definition, CancellationToken cancellationToken)
     {

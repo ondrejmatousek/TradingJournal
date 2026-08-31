@@ -30,14 +30,31 @@ public sealed class SeasonalityController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Data(CancellationToken cancellationToken)
+    public async Task<IActionResult> Data(string? assetKey, CancellationToken cancellationToken)
     {
-        var model = await _service.LoadCachedAsync(cancellationToken);
-        var prices = model.Prices.ToDictionary(pair => pair.Key, pair => pair.Value.Select(item => new
+        if (string.IsNullOrWhiteSpace(assetKey))
         {
-            date = item.Date.ToString("yyyy-MM-dd"),
-            close = item.Close
-        }));
-        return Json(new { prices, isUpdating = _updateState.IsRunning, error = _updateState.LastError });
+            return BadRequest(new { message = "Missing assetKey." });
+        }
+
+        var asset = SeasonalityService.Assets.FirstOrDefault(item =>
+            string.Equals(item.Key, assetKey, StringComparison.OrdinalIgnoreCase));
+        if (asset is null)
+        {
+            return NotFound(new { message = "Unknown asset." });
+        }
+
+        var prices = await _service.LoadCachedPricesAsync(asset.Key, cancellationToken);
+        return Json(new
+        {
+            assetKey = asset.Key,
+            prices = prices.Select(item => new
+            {
+                date = item.Date.ToString("yyyy-MM-dd"),
+                close = item.Close
+            }),
+            isUpdating = _updateState.IsRunning,
+            error = _updateState.LastError
+        });
     }
 }

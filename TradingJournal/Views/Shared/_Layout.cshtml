@@ -62,13 +62,13 @@
                 @if (isTradingSection)
                 {
                     <div class="sidebar-title">Trading</div>
-                    <a class="sidebar-link @(action == "Index" ? "active" : "")" asp-controller="JournalEntries" asp-action="Index">Journal</a>
-                    <a class="sidebar-link @(action == "Strategy" ? "active" : "")" asp-controller="JournalEntries" asp-action="Strategy">Strategie</a>
-                    <a class="sidebar-link @(action == "SetupReview" ? "active" : "")" asp-controller="JournalEntries" asp-action="SetupReview">Setup Review</a>
+                    <a class="sidebar-link @(controller == "JournalEntries" && action == "Index" ? "active" : "")" asp-controller="JournalEntries" asp-action="Index">Journal</a>
+                    <a class="sidebar-link @(controller == "JournalEntries" && action == "Strategy" ? "active" : "")" asp-controller="JournalEntries" asp-action="Strategy">Strategie</a>
+                    <a class="sidebar-link @(controller == "JournalEntries" && action == "SetupReview" ? "active" : "")" asp-controller="JournalEntries" asp-action="SetupReview">Setup Review</a>
                     <a class="sidebar-link @(controller == "Cot" ? "active" : "")" asp-controller="Cot" asp-action="Index">COT Dashboard</a>
                     <a class="sidebar-link @(controller == "Seasonality" ? "active" : "")" asp-controller="Seasonality" asp-action="Index">Seasonality</a>
-                    <a class="sidebar-link @(action == "TradeQuality" ? "active" : "")" asp-controller="JournalEntries" asp-action="TradeQuality">Kvalita tradu</a>
-                    <a class="sidebar-link @(action == "Analysis" ? "active" : "")" asp-controller="JournalEntries" asp-action="Analysis">Analýza</a>
+                    <a class="sidebar-link @(controller == "JournalEntries" && action == "TradeQuality" ? "active" : "")" asp-controller="JournalEntries" asp-action="TradeQuality">Kvalita tradu</a>
+                    <a class="sidebar-link @(controller == "JournalEntries" && action == "Analysis" ? "active" : "")" asp-controller="JournalEntries" asp-action="Analysis">Analýza</a>
                 }
                 else if (isProgrammingSection)
                 {

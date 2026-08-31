@@ -37,6 +37,7 @@
     let assetSearchTimer = null;
     let highlightedAssetIndex = 0;
     let visibleAssetSuggestions = [];
+    let loadingAssetKey = null;
 
     const normalizeSearch = value => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
     const rows = () => activeAsset ? data[activeAsset.key] || [] : [];
@@ -72,6 +73,56 @@
         }
         assetStatus.textContent = `${activeAsset.name} · ${rows().length ? `${rows().length} záznamů` : 'data se načítají'}`;
     };
+    const setSyncStatus = (isUpdating, error) => {
+        document.querySelector('#seasonality-sync-status').textContent = isUpdating
+            ? 'Aktualizace dat probíhá na pozadí…'
+            : error ? `Aktualizace se nepodařila: ${error}` : '';
+    };
+    function refreshActiveViews() {
+        rebuild();
+        if (!document.querySelector('#seasonality-monthly-view').hidden) drawMonthly();
+    }
+    async function loadAssetData(asset) {
+        if (!asset || rows().length && activeAsset?.key === asset.key) return;
+
+        const assetKey = asset.key;
+        loadingAssetKey = assetKey;
+        root.classList.add('is-loading');
+        setAssetSearchLoading(true);
+        updateAssetStatus();
+
+        try {
+            const url = new URL(root.dataset.dataUrl, window.location.href);
+            url.searchParams.set('assetKey', assetKey);
+            const response = await fetch(url, { headers: { Accept: 'application/json' } });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            const payloadKey = payload.assetKey || assetKey;
+            data[payloadKey] = payload.prices || [];
+            setSyncStatus(Boolean(payload.isUpdating), payload.error);
+
+            if (activeAsset?.key === payloadKey) {
+                root.classList.toggle('is-loading', Boolean(payload.isUpdating && !rows().length));
+                updateAssetStatus();
+                refreshActiveViews();
+                if (payload.isUpdating && !rows().length) {
+                    window.clearTimeout(pollTimer);
+                    pollTimer = window.setTimeout(() => loadAssetData(asset), 4000);
+                }
+            }
+        } catch (error) {
+            if (activeAsset?.key === assetKey) {
+                document.querySelector('#seasonality-sync-status').textContent = 'Data se nepodařilo načíst. Zkouším to znovu…';
+                window.clearTimeout(pollTimer);
+                pollTimer = window.setTimeout(() => loadAssetData(asset), 6000);
+            }
+        } finally {
+            if (loadingAssetKey === assetKey) {
+                loadingAssetKey = null;
+                setAssetSearchLoading(false);
+            }
+        }
+    }
     const hideAssetSuggestions = () => {
         assetSuggestions.hidden = true;
         assetSearch.setAttribute('aria-expanded', 'false');
@@ -118,8 +169,9 @@
         updateAssetStatus();
         hideAssetSuggestions();
         if (changed) {
-            rebuild();
-            if (!document.querySelector('#seasonality-monthly-view').hidden) drawMonthly();
+            root.classList.toggle('is-loading', !rows().length);
+            refreshActiveViews();
+            loadAssetData(next);
         }
     };
     const applyAssetSearch = (showSuggestions = false) => {
@@ -134,8 +186,11 @@
         updateAssetStatus();
         if (showSuggestions) renderAssetSuggestions();
         if (changed) {
-            rebuild();
-            if (!document.querySelector('#seasonality-monthly-view').hidden) drawMonthly();
+            root.classList.toggle('is-loading', !rows().length);
+            refreshActiveViews();
+            loadAssetData(next);
+        } else if (!rows().length) {
+            loadAssetData(next);
         }
     };
     const electionType = year => year % 4 === 0
@@ -732,27 +787,7 @@
     new ResizeObserver(() => { draw(); if (!document.querySelector('#seasonality-monthly-view').hidden) drawMonthly(); }).observe(canvas.parentElement);
     applyAssetSearch();
     rebuild();
-
-    async function pollForData() {
-        try {
-            const response = await fetch(root.dataset.dataUrl, { headers: { Accept: 'application/json' } });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const payload = await response.json();
-            const hasData = Object.values(payload.prices || {}).some(items => items.length > 0);
-            data = payload.prices || {};
-            updateAssetStatus();
-            root.classList.toggle('is-loading', Boolean(payload.isUpdating && !hasData));
-            document.querySelector('#seasonality-sync-status').textContent = payload.isUpdating
-                ? 'Aktualizace dat probíhá na pozadí…'
-                : payload.error ? `Aktualizace se nepodařila: ${payload.error}` : '';
-            rebuild();
-            if (payload.isUpdating || !hasData) pollTimer = window.setTimeout(pollForData, 4000);
-        } catch (error) {
-            document.querySelector('#seasonality-sync-status').textContent = 'Data se nepodařilo načíst. Zkouším to znovu…';
-            pollTimer = window.setTimeout(pollForData, 6000);
-        }
-    }
-
-    root.classList.toggle('is-loading', root.dataset.updating === 'true' && !Object.values(data).some(items => items.length > 0));
-    pollForData();
+    setSyncStatus(root.dataset.updating === 'true', null);
+    root.classList.toggle('is-loading', root.dataset.updating === 'true' && !rows().length);
+    if (activeAsset && !rows().length) loadAssetData(activeAsset);
 })();

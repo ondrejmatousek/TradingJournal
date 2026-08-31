@@ -15,26 +15,31 @@ public sealed class SeasonalityUpdateHostedService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromDays(1));
-        do
+        try
         {
-            _state.Started();
-            try
+            using var timer = new PeriodicTimer(TimeSpan.FromDays(1));
+            while (await timer.WaitForNextTickAsync(stoppingToken))
             {
-                using var scope = _scopeFactory.CreateScope();
-                await scope.ServiceProvider.GetRequiredService<SeasonalityService>().UpdateAsync(stoppingToken);
-                _state.Completed();
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                break;
-            }
-            catch (Exception exception)
-            {
-                _state.Failed(exception);
-                _logger.LogError(exception, "Scheduled seasonality update failed.");
+                _state.Started();
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    await scope.ServiceProvider.GetRequiredService<SeasonalityService>().UpdateAsync(stoppingToken);
+                    _state.Completed();
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception exception)
+                {
+                    _state.Failed(exception);
+                    _logger.LogError(exception, "Scheduled seasonality update failed.");
+                }
             }
         }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+        }
     }
 }

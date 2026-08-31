@@ -19,6 +19,8 @@ public sealed class CotDashboardItem
 
     public string DisplayName { get; init; } = string.Empty;
 
+    public string CotSymbolKey { get; init; } = string.Empty;
+
     public CotReport? Latest { get; init; }
 
     public bool IsStale { get; init; }

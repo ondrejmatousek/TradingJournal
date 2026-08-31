@@ -40,9 +40,46 @@ public sealed class SeasonalityServiceTests
 
         var model = await service.LoadAsync();
 
-        Assert.Equal(100, model.Assets.Count);
+        Assert.Equal(500, model.Assets.Count);
         Assert.Equal(model.Assets.Count, model.Assets.Select(asset => asset.Key).Distinct().Count());
         Assert.All(model.Assets, asset => Assert.NotEmpty(model.Prices[asset.Key]));
+    }
+
+    [Fact]
+    public void Assets_include_expanded_commodity_markets()
+    {
+        var keys = SeasonalityService.Assets
+            .Select(asset => asset.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        string[] expectedCommodityKeys =
+        [
+            "GASOLINE",
+            "HEATINGOIL",
+            "COTTON",
+            "COCOA",
+            "OATS",
+            "RICE",
+            "SOYBEANOIL",
+            "SOYBEANMEAL",
+            "LIVECATTLE",
+            "FEEDERCATTLE",
+            "LEANHOGS",
+            "ORANGEJUICE",
+            "LUMBER",
+            "DBC",
+            "PDBC",
+            "DBA",
+            "DBE",
+            "DBB",
+            "CPER",
+            "WEAT",
+            "CORNETF",
+            "SOYBETF",
+            "CANE"
+        ];
+
+        Assert.All(expectedCommodityKeys, key => Assert.Contains(key, keys));
     }
 
     private sealed class FakeHttpClientFactory : IHttpClientFactory

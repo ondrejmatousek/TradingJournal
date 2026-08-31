@@ -8,8 +8,7 @@
     if (url.searchParams.get("refreshed") === "1") {
         url.searchParams.delete("refreshed");
         window.history.replaceState({}, document.title, url.toString());
-        loading.remove();
-        return;
+        loading.hidden = true;
     }
 
     let refreshing = false;
@@ -43,5 +42,4 @@
     };
 
     form.addEventListener("submit", refresh);
-    refresh();
 })();
