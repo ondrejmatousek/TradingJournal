@@ -162,6 +162,7 @@ namespace TradingJournal.Controllers
             NormalizeInvoiceDecimalFieldsFromForm(model);
             NormalizeItems(model);
             await PopulateInvoiceFormOptionsAsync(model);
+            ApplyVatRegime(model);
 
             if (!model.Items.Any())
                 ModelState.AddModelError("", "Faktura musí­ obsahovat alespoň jednu položku.");
@@ -192,7 +193,7 @@ namespace TradingJournal.Controllers
                 CustomerCompanyId = model.CustomerCompanyId!.Value,
                 IssueDate = model.IssueDate.Date,
                 DueDate = model.DueDate.Date,
-                TaxableSupplyDate = model.TaxableSupplyDate?.Date,
+                TaxableSupplyDate = model.IsSupplierVatPayer ? model.TaxableSupplyDate?.Date : null,
                 Currency = model.Currency.Trim().ToUpperInvariant(),
                 Status = InvoiceStatus.Draft,
                 Notes = model.Notes,
@@ -203,7 +204,7 @@ namespace TradingJournal.Controllers
                     Unit = string.IsNullOrWhiteSpace(item.Unit) ? "ks" : item.Unit.Trim(),
                     Quantity = item.Quantity,
                     UnitPrice = item.UnitPrice,
-                    VatRate = item.VatRate
+                    VatRate = model.IsSupplierVatPayer ? item.VatRate : 0m
                 }).ToList()
             };
 
@@ -264,6 +265,7 @@ namespace TradingJournal.Controllers
             NormalizeInvoiceDecimalFieldsFromForm(model);
             NormalizeItems(model);
             await PopulateInvoiceFormOptionsAsync(model);
+            ApplyVatRegime(model);
 
             if (!model.Items.Any())
                 ModelState.AddModelError("", "Faktura musí obsahovat alespoň jednu položku.");
@@ -297,7 +299,7 @@ namespace TradingJournal.Controllers
             invoice.CustomerCompanyId = model.CustomerCompanyId!.Value;
             invoice.IssueDate = model.IssueDate.Date;
             invoice.DueDate = model.DueDate.Date;
-            invoice.TaxableSupplyDate = model.TaxableSupplyDate?.Date;
+            invoice.TaxableSupplyDate = model.IsSupplierVatPayer ? model.TaxableSupplyDate?.Date : null;
             invoice.Currency = model.Currency.Trim().ToUpperInvariant();
             invoice.Notes = model.Notes;
 
@@ -308,7 +310,7 @@ namespace TradingJournal.Controllers
                 Unit = string.IsNullOrWhiteSpace(item.Unit) ? "ks" : item.Unit.Trim(),
                 Quantity = item.Quantity,
                 UnitPrice = item.UnitPrice,
-                VatRate = item.VatRate
+                VatRate = model.IsSupplierVatPayer ? item.VatRate : 0m
             }).ToList();
 
             await _context.SaveChangesAsync();
@@ -411,7 +413,7 @@ namespace TradingJournal.Controllers
                 CustomerCompanyId = model.CustomerCompanyId,
                 IssueDate = model.IssueDate,
                 DueDate = model.DueDate,
-                TaxableSupplyDate = model.TaxableSupplyDate,
+                TaxableSupplyDate = model.IsSupplierVatPayer ? model.TaxableSupplyDate : null,
                 Currency = model.Currency,
                 Status = InvoiceStatus.Draft,
                 TotalHoursOverride = items.Sum(i => i.Quantity),
@@ -712,6 +714,7 @@ namespace TradingJournal.Controllers
             model.SupplierOptions = companies
                 .Select(c => new SelectListItem(c.Name, c.Id.ToString(CultureInfo.InvariantCulture), c.Id == model.SupplierCompanyId))
                 .ToList();
+            model.SupplierVatPayerOptions = companies.ToDictionary(c => c.Id, c => c.IsVatPayer);
 
             model.CustomerOptions = companies
                 .Where(c => !model.SupplierCompanyId.HasValue || c.Id != model.SupplierCompanyId.Value)
@@ -722,6 +725,10 @@ namespace TradingJournal.Controllers
             model.CustomerHourlyRates = companies
                 .Where(c => c.LastHourlyRate.HasValue)
                 .ToDictionary(c => c.Id, c => c.LastHourlyRate);
+            var teamDelivery = companies.Where(c => IsTeamDeliverySolution(c.Name)).ToList();
+            model.CustomerInvoiceDescriptions = teamDelivery.ToDictionary(c => c.Id, _ => "expertní vývojové práce MS .NET");
+            model.CustomerInvoiceDefaultPrices = teamDelivery.ToDictionary(c => c.Id, _ => 750m);
+            model.IsSupplierVatPayer = model.SupplierCompanyId.HasValue && companies.Any(c => c.Id == model.SupplierCompanyId.Value && c.IsVatPayer);
         }
 
         private async Task PopulateImportOptionsAsync(InvoiceImportViewModel model)
@@ -734,8 +741,20 @@ namespace TradingJournal.Controllers
 
             await PopulateInvoiceFormOptionsAsync(form);
             model.SupplierOptions = form.SupplierOptions;
+            model.SupplierVatPayerOptions = form.SupplierVatPayerOptions;
             model.CustomerOptions = form.CustomerOptions;
             model.CustomerHourlyRates = form.CustomerHourlyRates;
+            model.CustomerInvoiceDescriptions = form.CustomerInvoiceDescriptions;
+            model.CustomerInvoiceDefaultPrices = form.CustomerInvoiceDefaultPrices;
+        }
+
+        private static bool IsTeamDeliverySolution(string? companyName)
+        {
+            var normalized = new string((companyName ?? string.Empty)
+                .Where(char.IsLetterOrDigit)
+                .ToArray())
+                .ToLowerInvariant();
+            return normalized.Contains("teamdeliverysolution", StringComparison.Ordinal);
         }
 
         private async Task<int?> DefaultSupplierIdAsync()
@@ -787,6 +806,20 @@ namespace TradingJournal.Controllers
                 .Where(c => c.Id == companyId.Value && c.UserId == CurrentUserId)
                 .Select(c => c.IsVatPayer)
                 .FirstOrDefaultAsync();
+        }
+
+        private void ApplyVatRegime(InvoiceFormViewModel model)
+        {
+            if (model.IsSupplierVatPayer)
+                return;
+
+            model.TaxableSupplyDate = null;
+            foreach (var item in model.Items)
+                item.VatRate = 0m;
+
+            ModelState.Remove(nameof(InvoiceFormViewModel.TaxableSupplyDate));
+            for (var i = 0; i < model.Items.Count; i++)
+                ModelState.Remove($"Items[{i}].{nameof(InvoiceItemInput.VatRate)}");
         }
 
         private async Task<string> GenerateInvoiceNumberAsync()

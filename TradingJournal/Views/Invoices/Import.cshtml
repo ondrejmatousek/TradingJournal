@@ -46,7 +46,7 @@
                             <label asp-for="DueDate" class="form-label">Splatnost</label>
                             <input asp-for="DueDate" type="date" class="form-control" />
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-3 @(Model.IsSupplierVatPayer ? "" : "d-none")" data-vat-only>
                             <label asp-for="TaxableSupplyDate" class="form-label">DUZP</label>
                             <input asp-for="TaxableSupplyDate" type="date" class="form-control" />
                         </div>
@@ -87,6 +87,7 @@
         (() => {
             const supplier = document.getElementById('SupplierCompanyId');
             const customer = document.getElementById('CustomerCompanyId');
+            const vatPayers = @Html.Raw(JsonSerializer.Serialize(Model.SupplierVatPayerOptions));
             const hourlyRate = document.getElementById('HourlyRate');
             const hourlyRateHint = document.getElementById('hourlyRateHint');
             const customerHourlyRates = @Html.Raw(JsonSerializer.Serialize(Model.CustomerHourlyRates));
@@ -111,6 +112,11 @@
                 }
             }
 
+            function syncVatFields() {
+                const isVatPayer = supplier.value && vatPayers[supplier.value] === true;
+                document.querySelectorAll('[data-vat-only]').forEach(element => element.classList.toggle('d-none', !isVatPayer));
+            }
+
             function syncHourlyRate() {
                 if (!hourlyRate) {
                     return;
@@ -128,9 +134,11 @@
             }
 
             supplier.addEventListener('change', syncCustomerOptions);
+            supplier.addEventListener('change', syncVatFields);
             customer.addEventListener('change', syncHourlyRate);
             syncCustomerOptions();
             syncHourlyRate();
+            syncVatFields();
         })();
     </script>
 }

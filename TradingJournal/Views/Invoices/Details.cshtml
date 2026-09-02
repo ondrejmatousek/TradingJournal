@@ -3,6 +3,8 @@
 
 @{
     var variableSymbol = VariableSymbol(Model.InvoiceNumber);
+    var supplierIsVatPayer = Model.SupplierCompany?.IsVatPayer == true;
+    var invoiceTotal = supplierIsVatPayer ? Model.TotalGross : Model.TotalNet;
     ViewData["Title"] = variableSymbol;
     ViewData["BodyClass"] = "journal-shell";
 }
@@ -62,28 +64,37 @@
                         <span>Splatnost</span>
                         <strong>@Model.DueDate.ToString("dd.MM.yyyy")</strong>
                     </div>
+                    @if (supplierIsVatPayer)
+                    {
                     <div class="metric-cell">
                         <span>Zdanitelné plnění</span>
                         <strong>@(Model.TaxableSupplyDate?.ToString("dd.MM.yyyy") ?? "-")</strong>
                     </div>
+                    }
                 </div>
 
                 <div class="invoice-items">
-                    <div class="invoice-items-head">
+                    <div class="invoice-items-head @(supplierIsVatPayer ? "vat-enabled" : "no-vat")">
                         <span>Popis</span>
                         <span>Množství</span>
                         <span>Cena</span>
-                        <span>DPH</span>
+                        @if (supplierIsVatPayer)
+                        {
+                            <span>DPH</span>
+                        }
                         <span>Celkem</span>
                     </div>
                     @foreach (var item in Model.Items)
                     {
-                        <div class="invoice-item-row">
+                        <div class="invoice-item-row @(supplierIsVatPayer ? "vat-enabled" : "no-vat")">
                             <span>@item.Description</span>
                             <span>@item.Quantity.ToString("N2") @item.Unit</span>
                             <span>@item.UnitPrice.ToString("N2")</span>
-                            <span>@item.VatRate.ToString("N0")%</span>
-                            <strong>@item.TotalGross.ToString("N2")</strong>
+                            @if (supplierIsVatPayer)
+                            {
+                                <span>@item.VatRate.ToString("N0")%</span>
+                            }
+                            <strong>@((supplierIsVatPayer ? item.TotalGross : item.TotalNet).ToString("N2"))</strong>
                         </div>
                     }
                 </div>
@@ -104,8 +115,11 @@
                 </div>
                 <div class="invoice-summary-lines">
                     <div><span>Základ</span><strong>@Model.TotalNet.ToString("N2")</strong></div>
-                    <div><span>DPH</span><strong>@Model.TotalVat.ToString("N2")</strong></div>
-                    <div class="total"><span>Celkem</span><strong>@Model.TotalGross.ToString("N2")</strong></div>
+                    @if (supplierIsVatPayer)
+                    {
+                        <div><span>DPH</span><strong>@Model.TotalVat.ToString("N2")</strong></div>
+                    }
+                    <div class="total"><span>Celkem</span><strong>@invoiceTotal.ToString("N2")</strong></div>
                 </div>
                 <div class="journal-note compact">
                     <span>Bankovní účet</span>

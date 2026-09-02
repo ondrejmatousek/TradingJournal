@@ -1,6 +1,7 @@
 @model TradingJournal.ViewModels.InvoiceFormViewModel
 @using TradingJournal.Models
 @using System.Globalization
+@using System.Text.Json
 
 @{
     var isEdit = Model.Id.HasValue;
@@ -77,7 +78,7 @@
                             <input asp-for="DueDate" type="date" class="form-control" />
                             <span asp-validation-for="DueDate" class="text-danger"></span>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-4 @(Model.IsSupplierVatPayer ? "" : "d-none")" data-vat-only>
                             <label asp-for="TaxableSupplyDate" class="form-label">DUZP</label>
                             <input asp-for="TaxableSupplyDate" type="date" class="form-control" />
                             <span asp-validation-for="TaxableSupplyDate" class="text-danger"></span>
@@ -130,24 +131,24 @@
                         }
                         else
                         {
-                            <div class="invoice-form-grid invoice-form-grid-head">
+                            <div class="invoice-form-grid invoice-form-grid-head @(Model.IsSupplierVatPayer ? "vat-enabled" : "no-vat")">
                                 <span>Popis</span>
                                 <span>Množství</span>
                                 <span>MJ</span>
                                 <span>Cena</span>
-                                <span>DPH %</span>
+                                <span data-vat-only class="@(Model.IsSupplierVatPayer ? "" : "d-none")">DPH %</span>
                                 <span></span>
                             </div>
 
                             <div id="invoiceItems">
                                 @for (var i = 0; i < Model.Items.Count; i++)
                                 {
-                                    <div class="invoice-form-grid invoice-item-input">
+                                    <div class="invoice-form-grid invoice-item-input @(Model.IsSupplierVatPayer ? "vat-enabled" : "no-vat")">
                                         <input asp-for="Items[i].Description" class="form-control" placeholder="Např. Konzultace, správa portfolia..." />
                                         <input asp-for="Items[i].Quantity" class="form-control" inputmode="decimal" />
                                         <input asp-for="Items[i].Unit" class="form-control" />
                                         <input asp-for="Items[i].UnitPrice" class="form-control" inputmode="decimal" />
-                                        <input asp-for="Items[i].VatRate" class="form-control" inputmode="decimal" />
+                                        <input asp-for="Items[i].VatRate" class="form-control @(Model.IsSupplierVatPayer ? "" : "d-none")" inputmode="decimal" data-vat-only />
                                         <button type="button" class="btn btn-outline-danger btn-sm remove-invoice-item">Odebrat</button>
                                         <span asp-validation-for="Items[i].Description" class="text-danger grid-validation"></span>
                                     </div>
@@ -173,12 +174,12 @@
 </div>
 
 <template id="invoiceItemTemplate">
-    <div class="invoice-form-grid invoice-item-input">
+    <div class="invoice-form-grid invoice-item-input vat-enabled">
         <input name="Items[__index__].Description" class="form-control" placeholder="Popis položky" />
         <input name="Items[__index__].Quantity" class="form-control" inputmode="decimal" value="1" />
         <input name="Items[__index__].Unit" class="form-control" value="ks" />
         <input name="Items[__index__].UnitPrice" class="form-control" inputmode="decimal" value="0" />
-        <input name="Items[__index__].VatRate" class="form-control" inputmode="decimal" value="21" />
+        <input name="Items[__index__].VatRate" class="form-control" inputmode="decimal" value="21" data-vat-only />
         <button type="button" class="btn btn-outline-danger btn-sm remove-invoice-item">Odebrat</button>
     </div>
 </template>
@@ -192,6 +193,11 @@
         (() => {
             const supplier = document.getElementById('SupplierCompanyId');
             const customer = document.getElementById('CustomerCompanyId');
+            const vatPayers = @Html.Raw(JsonSerializer.Serialize(Model.SupplierVatPayerOptions));
+            const customerDescriptions = @Html.Raw(JsonSerializer.Serialize(Model.CustomerInvoiceDescriptions));
+            const customerDefaultPrices = @Html.Raw(JsonSerializer.Serialize(Model.CustomerInvoiceDefaultPrices));
+            let automaticDescription = null;
+            let automaticPrice = null;
             if (!supplier || !customer) {
                 return;
             }
@@ -213,8 +219,61 @@
                 }
             }
 
+            function syncVatFields() {
+                const isVatPayer = supplier.value && vatPayers[supplier.value] === true;
+                document.querySelectorAll('[data-vat-only]').forEach(element => {
+                    const isInput = element.matches('input');
+                    element.classList.toggle('d-none', !isVatPayer);
+                    if (isInput) {
+                        element.disabled = !isVatPayer;
+                        element.tabIndex = isVatPayer ? 0 : -1;
+                        if (!isVatPayer) element.value = '0';
+                        else if (!element.value || element.value === '0') element.value = '21';
+                    }
+                });
+                document.querySelectorAll('.invoice-form-grid').forEach(grid => grid.classList.toggle('no-vat', !isVatPayer));
+            }
+
+            function syncCustomerDefaults() {
+                const row = document.querySelector('#invoiceItems .invoice-item-input');
+                if (!row) return;
+
+                const description = row.querySelector('[name$=".Description"]');
+                const price = row.querySelector('[name$=".UnitPrice"]');
+                if (!description || !price) return;
+
+                if (automaticDescription !== null && description.value === automaticDescription && !customerDescriptions[customer.value]) {
+                    description.value = '';
+                }
+                if (automaticPrice !== null && price.value === automaticPrice && !customerDefaultPrices[customer.value]) {
+                    price.value = '0';
+                }
+
+                automaticDescription = null;
+                automaticPrice = null;
+                const selectedCustomerName = customer.options[customer.selectedIndex]?.textContent || '';
+                const normalizedCustomerName = selectedCustomerName.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase();
+                const isTeamDelivery = normalizedCustomerName.includes('teamdeliverysolution');
+                const defaultDescription = customerDescriptions[customer.value] || (isTeamDelivery ? 'expertní vývojové práce MS .NET' : null);
+                const defaultPrice = customerDefaultPrices[customer.value] || (isTeamDelivery ? 750 : null);
+                const normalizedPrice = (price.value || '').replace(/\s/g, '').replace(',', '.');
+                const hasZeroPrice = !normalizedPrice || Number.parseFloat(normalizedPrice) === 0;
+                if (defaultDescription && !description.value.trim()) {
+                    description.value = defaultDescription;
+                    automaticDescription = defaultDescription;
+                }
+                if (defaultPrice && hasZeroPrice) {
+                    price.value = Number(defaultPrice).toLocaleString('cs-CZ', { useGrouping: false, maximumFractionDigits: 2 });
+                    automaticPrice = price.value;
+                }
+            }
+
             supplier.addEventListener('change', syncCustomerOptions);
+            supplier.addEventListener('change', syncVatFields);
+            customer.addEventListener('change', syncCustomerDefaults);
             syncCustomerOptions();
+            syncVatFields();
+            syncCustomerDefaults();
         })();
     </script>
 }

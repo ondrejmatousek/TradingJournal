@@ -17,6 +17,8 @@ namespace TradingJournal.ViewModels
         [Required(ErrorMessage = "Vyber, komu fakturuješ.")]
         public int? CustomerCompanyId { get; set; }
 
+        public bool IsSupplierVatPayer { get; set; }
+
         [Required]
         public DateTime IssueDate { get; set; } = DateTime.Today;
 
@@ -43,8 +45,11 @@ namespace TradingJournal.ViewModels
         };
 
         public List<SelectListItem> SupplierOptions { get; set; } = new();
+        public Dictionary<int, bool> SupplierVatPayerOptions { get; set; } = new();
         public List<SelectListItem> CustomerOptions { get; set; } = new();
         public Dictionary<int, decimal?> CustomerHourlyRates { get; set; } = new();
+        public Dictionary<int, string> CustomerInvoiceDescriptions { get; set; } = new();
+        public Dictionary<int, decimal> CustomerInvoiceDefaultPrices { get; set; } = new();
     }
 
     public class InvoiceItemInput
@@ -121,6 +126,8 @@ namespace TradingJournal.ViewModels
         [Required(ErrorMessage = "Vyber, komu fakturuješ.")]
         public int? CustomerCompanyId { get; set; }
 
+        public bool IsSupplierVatPayer { get; set; }
+
         public DateTime IssueDate { get; set; } = DateTime.Today;
         public DateTime DueDate { get; set; } = DateTime.Today.AddDays(14);
         public DateTime? TaxableSupplyDate { get; set; } = DateTime.Today;
@@ -131,7 +138,10 @@ namespace TradingJournal.ViewModels
         public string Currency { get; set; } = "CZK";
 
         public List<SelectListItem> SupplierOptions { get; set; } = new();
+        public Dictionary<int, bool> SupplierVatPayerOptions { get; set; } = new();
         public List<SelectListItem> CustomerOptions { get; set; } = new();
         public Dictionary<int, decimal?> CustomerHourlyRates { get; set; } = new();
+        public Dictionary<int, string> CustomerInvoiceDescriptions { get; set; } = new();
+        public Dictionary<int, decimal> CustomerInvoiceDefaultPrices { get; set; } = new();
     }
 }
