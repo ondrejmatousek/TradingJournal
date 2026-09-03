@@ -18,28 +18,38 @@ public sealed class SeasonalityUpdateHostedService : BackgroundService
         try
         {
             using var timer = new PeriodicTimer(TimeSpan.FromDays(1));
+            await RunUpdateAsync(stoppingToken, missingOnly: true);
             while (await timer.WaitForNextTickAsync(stoppingToken))
             {
-                _state.Started();
-                try
-                {
-                    using var scope = _scopeFactory.CreateScope();
-                    await scope.ServiceProvider.GetRequiredService<SeasonalityService>().UpdateAsync(stoppingToken);
-                    _state.Completed();
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception exception)
-                {
-                    _state.Failed(exception);
-                    _logger.LogError(exception, "Scheduled seasonality update failed.");
-                }
+                await RunUpdateAsync(stoppingToken, missingOnly: false);
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
+        }
+    }
+
+    private async Task RunUpdateAsync(CancellationToken cancellationToken, bool missingOnly)
+    {
+        _state.Started();
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<SeasonalityService>();
+            if (missingOnly)
+                await service.UpdateMissingAsync(cancellationToken);
+            else
+                await service.UpdateAsync(cancellationToken);
+            _state.Completed();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _state.Completed();
+        }
+        catch (Exception exception)
+        {
+            _state.Failed(exception);
+            _logger.LogError(exception, "Scheduled seasonality update failed.");
         }
     }
 }

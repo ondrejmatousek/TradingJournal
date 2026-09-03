@@ -566,12 +566,34 @@ public sealed class SeasonalityService
         });
     }
 
-    public async Task UpdateAsync(CancellationToken cancellationToken = default)
+    public Task UpdateAsync(CancellationToken cancellationToken = default)
+        => UpdateAsync(cancellationToken, onlyMissing: false);
+
+    public async Task UpdateMissingAsync(CancellationToken cancellationToken = default)
+    {
+        if (_context is null) throw new InvalidOperationException("Seasonality database context is not configured.");
+
+        var cachedKeys = await _context.SeasonalityPrices
+            .AsNoTracking()
+            .Select(item => item.AssetKey)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (Assets.All(asset => cachedKeys.Contains(asset.Key, StringComparer.OrdinalIgnoreCase)))
+            return;
+
+        await UpdateAsync(cancellationToken, onlyMissing: true);
+    }
+
+    private async Task UpdateAsync(CancellationToken cancellationToken, bool onlyMissing)
     {
         if (_context is null) throw new InvalidOperationException("Seasonality database context is not configured.");
         var client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.UserAgent.ParseAdd("TradingJournal-Seasonality/1.0");
-        foreach (var asset in Assets)
+        var cachedKeys = onlyMissing
+            ? await _context.SeasonalityPrices.AsNoTracking().Select(item => item.AssetKey).Distinct().ToListAsync(cancellationToken)
+            : [];
+        foreach (var asset in Assets.Where(asset => !onlyMissing || !cachedKeys.Contains(asset.Key, StringComparer.OrdinalIgnoreCase)))
         {
             var cached = await _context.SeasonalityPrices
                 .Where(item => item.AssetKey == asset.Key)
