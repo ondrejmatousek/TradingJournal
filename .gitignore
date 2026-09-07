@@ -361,3 +361,11 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Local market cache and private investment research
+TradingJournal/App_Data/screening/
+tmp/screening*/
+tmp/screening-*.config
+tmp/screening-*.json
+tmp/screening-*.log
+tmp/screening-*.txt
+tmp/planner-layout-check/

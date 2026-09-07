@@ -11,34 +11,7 @@ namespace TradingJournal.Services
         private static readonly TimeSpan SnapshotLifetime = TimeSpan.FromHours(12);
         private static readonly SemaphoreSlim RefreshLock = new(1, 1);
 
-        private static readonly StockCandidate[] Candidates =
-        [
-            new("MCD", "McDonald's Corporation", "Consumer Defensive"),
-            new("MSFT", "Microsoft Corporation", "Technology"),
-            new("AAPL", "Apple Inc.", "Technology"),
-            new("GOOGL", "Alphabet Inc.", "Communication Services"),
-            new("AMZN", "Amazon.com Inc.", "Consumer Cyclical"),
-            new("META", "Meta Platforms Inc.", "Communication Services"),
-            new("NVDA", "NVIDIA Corporation", "Semiconductors"),
-            new("AVGO", "Broadcom Inc.", "Semiconductors"),
-            new("TSM", "Taiwan Semiconductor", "Semiconductors"),
-            new("ASML", "ASML Holding N.V.", "Semiconductors"),
-            new("COST", "Costco Wholesale", "Consumer Defensive"),
-            new("V", "Visa Inc.", "Financial Services"),
-            new("MA", "Mastercard Incorporated", "Financial Services"),
-            new("HD", "Home Depot Inc.", "Consumer Cyclical"),
-            new("LOW", "Lowe's Companies", "Consumer Cyclical"),
-            new("UNH", "UnitedHealth Group", "Healthcare"),
-            new("LLY", "Eli Lilly and Company", "Healthcare"),
-            new("NKE", "Nike Inc.", "Consumer Cyclical"),
-            new("SBUX", "Starbucks Corporation", "Consumer Cyclical"),
-            new("CRM", "Salesforce Inc.", "Technology"),
-            new("ADBE", "Adobe Inc.", "Technology"),
-            new("INTU", "Intuit Inc.", "Technology"),
-            new("ISRG", "Intuitive Surgical", "Healthcare"),
-            new("SPGI", "S&P Global Inc.", "Financial Services"),
-            new("LIN", "Linde plc", "Basic Materials")
-        ];
+        private static readonly StockCandidate[] Candidates = TradingJournal.Services.Screening.InvestmentUniverse.All.Select(s => new StockCandidate(s.Symbol, s.Name, s.Sector)).ToArray();
 
         private readonly ApplicationDbContext _context;
         private readonly IUnderEma200HistoryProvider _historyProvider;

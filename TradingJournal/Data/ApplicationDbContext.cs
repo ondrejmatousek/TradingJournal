@@ -19,6 +19,7 @@ namespace TradingJournal.Data
         public DbSet<CotReport> CotReports => Set<CotReport>();
         public DbSet<CotImportRun> CotImportRuns => Set<CotImportRun>();
         public DbSet<SeasonalityPriceEntity> SeasonalityPrices => Set<SeasonalityPriceEntity>();
+        public DbSet<ScreeningDocument> ScreeningDocuments => Set<ScreeningDocument>();
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -27,6 +28,8 @@ namespace TradingJournal.Data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            builder.Entity<ScreeningDocument>().Property(x => x.Id).HasMaxLength(64).IsUnicode(false);
+            builder.Entity<ScreeningDocument>().Property(x => x.Json).IsRequired();
 
             builder.Entity<JournalEntry>()
                 .HasIndex(e => new { e.UserId, e.CreatedAt });

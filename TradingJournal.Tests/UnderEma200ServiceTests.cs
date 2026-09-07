@@ -57,7 +57,7 @@ public class UnderEma200ServiceTests
 
         var snapshots = await database.Context.InvestmentEma200Snapshots.ToListAsync();
         var mcd = Assert.Single(snapshots, snapshot => snapshot.Symbol == "MCD");
-        Assert.Equal(25, snapshots.Count);
+        Assert.Equal(TradingJournal.Services.Screening.InvestmentUniverse.All.Count, snapshots.Count);
         Assert.True(mcd.Ema200Daily > 0);
         Assert.True(mcd.Ema200Weekly > 0);
     }

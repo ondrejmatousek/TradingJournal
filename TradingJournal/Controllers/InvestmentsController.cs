@@ -21,6 +21,8 @@ namespace TradingJournal.Controllers
             _logger = logger;
         }
 
+        public IActionResult Planner() => View();
+
         public async Task<IActionResult> UnderEma200(string? timeframe, CancellationToken cancellationToken)
         {
             var result = await _underEma200Service.GetPersistedResultAsync(timeframe, cancellationToken);

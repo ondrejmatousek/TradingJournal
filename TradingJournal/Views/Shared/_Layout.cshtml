@@ -8,7 +8,7 @@
     var action = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
     var isTradingSection = controller == "JournalEntries" || controller == "Cot" || controller == "Seasonality";
     var isProgrammingSection = controller == "Invoices";
-    var isInvestmentSection = controller == "Investments";
+    var isInvestmentSection = controller == "Investments" || controller == "Screening";
     var showSidebar = SignInManager.IsSignedIn(User) && !bodyClass.Contains("marketing-shell") && !bodyClass.Contains("auth-shell") && (isTradingSection || isProgrammingSection || isInvestmentSection);
 }
 
@@ -43,7 +43,7 @@
                                 <a class="nav-link @(isTradingSection ? "active" : "")" asp-controller="JournalEntries" asp-action="Index">Trading</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link @(isInvestmentSection ? "active" : "")" asp-controller="Investments" asp-action="UnderEma200">Investování</a>
+                                <a class="nav-link @(isInvestmentSection ? "active" : "")" asp-controller="Screening" asp-action="Index">Investování</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link @(isProgrammingSection ? "active" : "")" asp-controller="Invoices" asp-action="Index">Programování</a>
@@ -80,7 +80,8 @@
                 else if (isInvestmentSection)
                 {
                     <div class="sidebar-title">Investování</div>
-                    <a class="sidebar-link @(action == "UnderEma200" ? "active" : "")" asp-controller="Investments" asp-action="UnderEma200">Pod 200 EMA</a>
+                    <a class="sidebar-link @(action == "Planner" ? "active" : "")" asp-controller="Investments" asp-action="Planner">Investiční plánovač</a>
+                    <a class="sidebar-link @(controller == "Screening" ? "active" : "")" asp-controller="Screening" asp-action="Index">Akciový screener</a>
                 }
             </aside>
         }

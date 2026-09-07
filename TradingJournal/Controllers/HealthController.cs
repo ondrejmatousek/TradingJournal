@@ -121,7 +121,8 @@ namespace TradingJournal.Controllers
                 "TradeSetupReviews",
                 "TradeSetupReviewImages",
                 "CotReports",
-                "CotImportRuns"
+                "CotImportRuns",
+                "ScreeningDocuments"
             };
 
             foreach (var table in requiredTables)

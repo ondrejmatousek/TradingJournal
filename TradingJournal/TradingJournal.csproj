@@ -8,6 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Remove="App_Data\screening\**" />
+    <None Remove="App_Data\screening\**" />
+    <Content Update="Docs\investments\sec-tickers.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Update="Docs\strategies\petr-mucka\rubric.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.10" />

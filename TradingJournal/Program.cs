@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TradingJournal.Data;
 using TradingJournal.Services;
@@ -58,6 +58,24 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
         });
 }
 
+builder.Services.AddSingleton<TradingJournal.Services.Screening.ScreeningStore>();
+builder.Services.AddScoped<TradingJournal.Services.Screening.ScreeningDataProvider>();
+builder.Services.AddScoped<TradingJournal.Services.Screening.InvestmentScreeningService>();
+builder.Services.AddOptions<TradingJournal.Services.Screening.ScreeningSchedule>()
+    .Bind(builder.Configuration.GetSection("Screening:Schedule"))
+    .PostConfigure(o =>
+    {
+        // Free App Service may sleep; the GitHub worker owns the cloud schedule.
+        if (!string.IsNullOrEmpty(builder.Configuration["WEBSITE_SITE_NAME"]) || o.External)
+        {
+            o.External = true;
+            o.Enabled = false;
+        }
+    })
+    .Validate(o => o.Hour is >= 0 and <= 23 && o.Minute is >= 0 and <= 59, "Invalid screening schedule time.")
+    .Validate(o => TimeZoneInfo.TryFindSystemTimeZoneById(o.TimeZone, out _), "Invalid screening time zone.")
+    .ValidateOnStart();
+builder.Services.AddHostedService<TradingJournal.Services.Screening.ScreeningUpdateHostedService>();
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();

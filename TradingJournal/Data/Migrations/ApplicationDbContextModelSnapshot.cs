@@ -810,6 +810,25 @@ namespace TradingJournal.Data.Migrations
                     b.ToTable("MarketBiases");
                 });
 
+            modelBuilder.Entity("TradingJournal.Models.ScreeningDocument", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Json")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ScreeningDocuments");
+                });
+
             modelBuilder.Entity("TradingJournal.Models.SeasonalityPriceEntity", b =>
                 {
                     b.Property<int>("Id")

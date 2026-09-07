@@ -1,0 +1,41 @@
+@{
+    ViewData["Title"] = "Investiční plánovač";
+    ViewData["BodyClass"] = "journal-shell";
+    var fields = new[] {
+        ("initial", "Počáteční vklad", "Kč", 200000, 0, 5000000, 10000),
+        ("monthly", "Měsíční vklad", "Kč", 10000, 0, 100000, 500),
+        ("years", "Horizont", "let", 30, 1, 50, 1),
+        ("rate", "Očekávaný výnos", "%", 9, -10, 20, 1),
+        ("inflation", "Inflace", "%", 2, 0, 15, 1),
+        ("fee", "Roční náklady", "%", 0, 0, 5, 1)
+    };
+}
+<link rel="stylesheet" href="~/css/investment-planner.css" asp-append-version="true" />
+<div class="planner" id="investment-planner">
+    <header class="planner-heading"><div><h1>Investiční plánovač</h1><p>Naplánuj růst majetku: projekce se scénáři, milníky a hodnotou peněz po inflaci.</p></div><a class="planner-link" asp-controller="Screening" asp-action="Index">⌕ Screener</a></header>
+    <div class="planner-grid">
+        <div class="planner-main">
+            <div class="planner-toolbar"><span class="planner-tab">Projekce</span><div class="planner-scenarios" role="group" aria-label="Scénář"><button type="button" data-scenario="-3" aria-pressed="false">Pesimistický</button><button type="button" data-scenario="0" aria-pressed="true">Základní</button><button type="button" data-scenario="3" aria-pressed="false">Optimistický</button></div></div>
+            <section class="planner-stats" aria-label="Výsledky projekce" aria-live="polite">
+                <div><span>Projektovaná hodnota</span><strong id="plan-value"></strong><small id="plan-range"></small></div>
+                <div><span>Reálná hodnota</span><strong id="plan-real"></strong><small>v dnešních cenách</small></div>
+                <div><span>Vloženo</span><strong id="plan-paid"></strong><small>tvoje vklady</small></div>
+                <div><span>Zhodnocení</span><strong id="plan-gain"></strong><small id="plan-cost"></small></div>
+            </section>
+            <p class="planner-insight" id="plan-insight" aria-live="polite"></p>
+            <section class="planner-chart-card"><div class="planner-chart-heading"><h2>Projekce majetku</h2><div class="planner-legend"><span>■ Rozpětí scénářů</span><span>━ <span id="plan-scenario-label">Základní scénář</span></span><span>┄ Vklady</span></div></div><svg id="plan-chart" viewBox="0 0 1000 390" role="img" aria-labelledby="plan-chart-title plan-chart-description"><title id="plan-chart-title">Projekce majetku</title><desc id="plan-chart-description"></desc></svg></section>
+            <div class="planner-milestones" id="plan-milestones"></div>
+            <details class="planner-explanation"><summary>Jak číst projekci</summary><p>Vklady přicházejí na konci měsíce. Roční výnos se převádí na efektivní měsíční sazbu; náklady se odečítají průběžně. Reálná hodnota zohledňuje složenou inflaci. Pásmo používá výnos ±3 procentní body. Náklady ukazují rozdíl proti stejnému scénáři bez poplatků, včetně ušlého zhodnocení. Daně nejsou zahrnuty.</p><p>Jde o model s konstantním výnosem, nikoli záruku budoucího výsledku. Historické starty a zpětný test portfolia vyžadují historická data a složení portfolia; tato projekce je nepoužívá.</p></details>
+        </div>
+        <aside class="planner-inputs"><h2>Vstupy plánu <span>☷</span></h2>
+            @foreach (var f in fields)
+            {
+                if (f.Item1 == "initial" || f.Item1 == "monthly" || f.Item1 == "rate") { <h3>@(f.Item1 == "initial" ? "Výchozí stav" : f.Item1 == "monthly" ? "Vklady" : "Předpoklady")</h3> }
+                <div class="planner-field"><div><label for="plan-@f.Item1">@f.Item2</label><span><input id="plan-@f.Item1" data-field="@f.Item1" type="number" min="@f.Item5" max="@f.Item6" step="@(f.Item1 == "rate" || f.Item1 == "inflation" || f.Item1 == "fee" ? "0.1" : f.Item7.ToString())" value="@(f.Item1 == "fee" ? "0.2" : f.Item4.ToString())" /><small>@f.Item3</small></span></div><input type="range" aria-label="@f.Item2" data-slider="@f.Item1" min="@f.Item5" max="@f.Item6" step="@(f.Item1 == "rate" || f.Item1 == "inflation" || f.Item1 == "fee" ? "0.1" : f.Item7.ToString())" value="@(f.Item1 == "fee" ? "0.2" : f.Item4.ToString())" /></div>
+            }
+            <p>Pásmo scénářů = výnos ±3 p. b. kolem tvého očekávání. Výnos je před náklady; projekce náklady průběžně odečítá a reálnou hodnotu očistí o inflaci.</p><button type="button" id="plan-reset">Obnovit výchozí plán</button>
+        </aside>
+    </div>
+</div>
+@section Scripts { <script src="~/js/investment-planner.js" asp-append-version="true"></script> }
+
