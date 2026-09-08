@@ -11,8 +11,9 @@ public sealed class DesignTimeApplicationDbContextFactory : IDesignTimeDbContext
 {
     public ApplicationDbContext CreateDbContext(string[] args)
     {
-        var connection = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Host=localhost;Database=TradingJournal;Username=postgres;Password=design-time";
+        var connection = PostgresConnectionString.Normalize(
+            Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+            ?? "Host=localhost;Database=TradingJournal;Username=postgres;Password=design-time");
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(connection, npgsql => npgsql.EnableRetryOnFailure())
             .Options;

@@ -16,9 +16,9 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
-var connectionString =
+var connectionString = PostgresConnectionString.Normalize(
     builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found."));
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {

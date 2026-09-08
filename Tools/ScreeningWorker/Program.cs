@@ -24,7 +24,7 @@ if (args.Any(a => a is not ("--check" or "--run" or "--force")) || args.Contains
     return 1;
 }
 var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { ContentRootPath = AppContext.BaseDirectory });
-var connection = builder.Configuration.GetConnectionString("DefaultConnection");
+var connection = PostgresConnectionString.Normalize(builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty);
 if (string.IsNullOrWhiteSpace(connection) || string.IsNullOrWhiteSpace(builder.Configuration["Screening:SecUserAgent"]))
 {
     Console.Error.WriteLine("Missing ConnectionStrings__DefaultConnection or Screening__SecUserAgent. Configure secrets; do not pass credentials as command arguments.");
