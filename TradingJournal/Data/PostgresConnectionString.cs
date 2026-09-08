@@ -20,7 +20,7 @@ public static class PostgresConnectionString
         return string.Join(';',
             $"Host={uri.Host}",
             $"Port={uri.Port switch { -1 => 5432, var port => port }}",
-            $"Database={Uri.UnescapeDataString(database)}",
+            $"Initial Catalog={Uri.UnescapeDataString(database)}",
             $"Username={Uri.UnescapeDataString(userInfo[0])}",
             $"Password={Uri.UnescapeDataString(userInfo[1])}",
             "SSL Mode=Require",
