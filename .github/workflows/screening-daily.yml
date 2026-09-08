@@ -58,6 +58,15 @@ jobs:
       - name: Publish worker
         run: dotnet publish Tools/ScreeningWorker/ScreeningWorker.csproj --configuration Release --output worker --verbosity quiet
 
+      - name: Apply PostgreSQL migrations
+        env:
+          ConnectionStrings__DefaultConnection: ${{ secrets.SCREENING_SQL_CONNECTION_STRING }}
+        shell: bash
+        run: |
+          dotnet tool install --global dotnet-ef --version 10.0.10
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet ef database update --project TradingJournal/TradingJournal.csproj --startup-project TradingJournal/TradingJournal.csproj --context TradingJournal.Data.ApplicationDbContext
+
       - name: Sign in to Azure using short-lived identity
         uses: azure/login@v2
         with:
