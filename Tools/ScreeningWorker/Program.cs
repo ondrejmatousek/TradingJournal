@@ -11,6 +11,7 @@ using TradingJournal.Data;
 using TradingJournal.Services;
 using TradingJournal.Services.Screening;
 using TradingJournal.Services.Insiders;
+using Npgsql;
 
 if (args.Length == 0 || args.Contains("--help"))
 {
@@ -35,7 +36,14 @@ builder.Logging.SetMinimumLevel(LogLevel.Warning);
 builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.None);
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
 builder.Services.AddSingleton<IWebHostEnvironment>(new WorkerEnvironment());
-builder.Services.AddDbContext<ApplicationDbContext>(o => o.UseSqlServer(connection, sql => sql.EnableRetryOnFailure(3)));
+builder.Services.AddDbContext<ApplicationDbContext>(o =>
+{
+    if (connection.StartsWith("Host=", StringComparison.OrdinalIgnoreCase)
+        || connection.StartsWith("postgres", StringComparison.OrdinalIgnoreCase))
+        o.UseNpgsql(connection, npgsql => npgsql.EnableRetryOnFailure(3));
+    else
+        o.UseSqlServer(connection, sql => sql.EnableRetryOnFailure(3));
+});
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ScreeningStore>();
 builder.Services.AddScoped<ScreeningDataProvider>();
@@ -60,23 +68,29 @@ try
         throw new InvalidOperationException("Missing bundled SEC ticker mapping.");
     if (args.Contains("--check")) { Console.WriteLine("SQL screening storage and bundled provider mapping are ready."); return 0; }
 
-    // Session lock also prevents overlapping runs from different branches/manual dispatches.
-    // No pooling: disposing really closes the SQL session and releases its application lock.
-    await using var lease = new SqlConnection(new SqlConnectionStringBuilder(connection) { Pooling = false }.ConnectionString);
-    await lease.OpenAsync(cancellation.Token);
-    await using var acquire = lease.CreateCommand();
-    acquire.CommandText = "DECLARE @result int; EXEC @result = sys.sp_getapplock @Resource=N'EdgeDesk.ScreeningDaily', @LockMode='Exclusive', @LockOwner='Session', @LockTimeout=0; SELECT @result;";
-    if (Convert.ToInt32(await acquire.ExecuteScalarAsync(cancellation.Token)) < 0)
-    { Console.WriteLine("Another screening worker is running; no duplicate work started."); return 0; }
-    await host.Services.GetRequiredService<ScreeningUpdateHostedService>().RunIfDueAsync(DateTimeOffset.UtcNow, cancellation.Token, args.Contains("--force"));
-    var dueDate = host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ScreeningSchedule>>().Value.DueDate(DateTimeOffset.UtcNow);
-    var insiderRun = await scope.ServiceProvider.GetRequiredService<InsiderUpdateService>().RunAsync(dueDate, cancellation.Token, args.Contains("--force"));
-    var run = await host.Services.GetRequiredService<ScreeningStore>().ReadAsync<ScreeningUpdateRun>(ScreeningUpdateHostedService.StateKey, cancellation.Token);
-    var summary = run == null ? "No completed update." : $"Stocks: {run.Processed}/{InvestmentUniverse.All.Count}; incomplete: {run.Incomplete}; macro: {run.MacroUpdated}. Insider filings: {insiderRun.FilingsImported}; transactions: {insiderRun.TransactionsImported}; issuer failures: {insiderRun.IssuersFailed}; completed: {insiderRun.CompletedAt:O}.";
-    Console.WriteLine(summary);
-    var summaryPath = Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY");
-    if (!string.IsNullOrEmpty(summaryPath)) await File.AppendAllTextAsync(summaryPath, summary + Environment.NewLine, cancellation.Token);
-    return run?.CompletedAt == null || !run.MacroUpdated || run.Incomplete == InvestmentUniverse.All.Count || insiderRun.CompletedAt == null || insiderRun.IssuersFailed == InvestmentUniverse.All.Count ? 2 : 0;
+    // Session lock prevents overlapping runs. PostgreSQL uses an advisory lock;
+    // the legacy Azure SQL path keeps sp_getapplock.
+    if (connection.StartsWith("Host=", StringComparison.OrdinalIgnoreCase)
+        || connection.StartsWith("postgres", StringComparison.OrdinalIgnoreCase))
+    {
+        await using var lease = new NpgsqlConnection(connection);
+        await lease.OpenAsync(cancellation.Token);
+        await using var acquire = new NpgsqlCommand("SELECT pg_try_advisory_lock(hashtextextended('EdgeDesk.ScreeningDaily', 0));", lease);
+        if (!Convert.ToBoolean(await acquire.ExecuteScalarAsync(cancellation.Token)))
+        { Console.WriteLine("Another screening worker is running; no duplicate work started."); return 0; }
+        await RunUpdateAsync(host, scope, cancellation.Token, args.Contains("--force"));
+    }
+    else
+    {
+        await using var lease = new SqlConnection(new SqlConnectionStringBuilder(connection) { Pooling = false }.ConnectionString);
+        await lease.OpenAsync(cancellation.Token);
+        await using var acquire = lease.CreateCommand();
+        acquire.CommandText = "DECLARE @result int; EXEC @result = sys.sp_getapplock @Resource=N'EdgeDesk.ScreeningDaily', @LockMode='Exclusive', @LockOwner='Session', @LockTimeout=0; SELECT @result;";
+        if (Convert.ToInt32(await acquire.ExecuteScalarAsync(cancellation.Token)) < 0)
+        { Console.WriteLine("Another screening worker is running; no duplicate work started."); return 0; }
+        await RunUpdateAsync(host, scope, cancellation.Token, args.Contains("--force"));
+    }
+    return 0;
 }
 catch (OperationCanceledException) { Console.Error.WriteLine("Update interrupted or exceeded the 50-minute limit. Saved data remain available; next run retries unfinished work."); return 3; }
 catch (Exception ex)
@@ -84,6 +98,18 @@ catch (Exception ex)
     // Avoid logging connection strings or provider URLs with credentials.
     Console.Error.WriteLine($"Worker failed ({ex.GetType().Name}). Check SQL permissions, schema, firewall and configured secrets.");
     return 1;
+}
+
+static async Task RunUpdateAsync(IHost host, IServiceScope scope, CancellationToken cancellationToken, bool force)
+{
+    await host.Services.GetRequiredService<ScreeningUpdateHostedService>().RunIfDueAsync(DateTimeOffset.UtcNow, cancellationToken, force);
+    var dueDate = host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ScreeningSchedule>>().Value.DueDate(DateTimeOffset.UtcNow);
+    var insiderRun = await scope.ServiceProvider.GetRequiredService<InsiderUpdateService>().RunAsync(dueDate, cancellationToken, force);
+    var run = await host.Services.GetRequiredService<ScreeningStore>().ReadAsync<ScreeningUpdateRun>(ScreeningUpdateHostedService.StateKey, cancellationToken);
+    var summary = run == null ? "No completed update." : $"Stocks: {run.Processed}/{InvestmentUniverse.All.Count}; incomplete: {run.Incomplete}; macro: {run.MacroUpdated}. Insider filings: {insiderRun.FilingsImported}; transactions: {insiderRun.TransactionsImported}; issuer failures: {insiderRun.IssuersFailed}; completed: {insiderRun.CompletedAt:O}.";
+    Console.WriteLine(summary);
+    var summaryPath = Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY");
+    if (!string.IsNullOrEmpty(summaryPath)) await File.AppendAllTextAsync(summaryPath, summary + Environment.NewLine, cancellationToken);
 }
 
 sealed class WorkerEnvironment : IWebHostEnvironment

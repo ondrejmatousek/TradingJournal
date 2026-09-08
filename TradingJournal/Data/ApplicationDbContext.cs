@@ -81,7 +81,7 @@ namespace TradingJournal.Data
 
             builder.Entity<JournalEntry>()
                 .Property(e => e.ImageData)
-                .HasColumnType("varbinary(max)");
+                ;
 
             builder.Entity<JournalEntryImage>()
                 .HasOne(i => i.JournalEntry)
@@ -91,7 +91,7 @@ namespace TradingJournal.Data
 
             builder.Entity<JournalEntryImage>()
                 .Property(i => i.ImageData)
-                .HasColumnType("varbinary(max)");
+                ;
 
             builder.Entity<InvoiceCompany>()
                 .HasIndex(c => new { c.UserId, c.Name });
@@ -171,7 +171,7 @@ namespace TradingJournal.Data
 
             builder.Entity<StrategyNote>()
                 .Property(n => n.ContentHtml)
-                .HasColumnType("nvarchar(max)");
+                ;
 
             builder.Entity<TradeSetupReview>()
                 .HasIndex(r => new { r.UserId, r.TradeDate });
@@ -210,7 +210,7 @@ namespace TradingJournal.Data
 
             builder.Entity<TradeSetupReview>()
                 .Property(r => r.AiReviewJson)
-                .HasColumnType("nvarchar(max)");
+                ;
 
             builder.Entity<TradeSetupReview>()
                 .Property(r => r.Outcome)
@@ -270,19 +270,19 @@ namespace TradingJournal.Data
 
             builder.Entity<TradeSetupReview>()
                 .Property(r => r.MissingInfo)
-                .HasColumnType("nvarchar(max)");
+                ;
 
             builder.Entity<TradeSetupReview>()
                 .Property(r => r.Notes)
-                .HasColumnType("nvarchar(max)");
+                ;
 
             builder.Entity<TradeSetupReview>()
                 .Property(r => r.Aligned)
-                .HasColumnType("nvarchar(max)");
+                ;
 
             builder.Entity<TradeSetupReview>()
                 .Property(r => r.Issues)
-                .HasColumnType("nvarchar(max)");
+                ;
 
             builder.Entity<TradeSetupReviewImage>()
                 .HasOne(i => i.TradeSetupReview)
@@ -292,7 +292,7 @@ namespace TradingJournal.Data
 
             builder.Entity<TradeSetupReviewImage>()
                 .Property(i => i.ImageData)
-                .HasColumnType("varbinary(max)");
+                ;
 
             builder.Entity<TradeSetupReviewImage>()
                 .Property(i => i.Label)

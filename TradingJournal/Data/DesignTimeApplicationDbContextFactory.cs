@@ -1,0 +1,19 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
+
+namespace TradingJournal.Data;
+
+/// <summary>
+/// Keeps PostgreSQL migrations deterministic and independent of a developer's local
+/// SQL Server connection string. Runtime configuration still selects the provider.
+/// </summary>
+public sealed class DesignTimeApplicationDbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext>
+{
+    public ApplicationDbContext CreateDbContext(string[] args)
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql("Host=localhost;Database=TradingJournal;Username=postgres;Password=design-time", npgsql => npgsql.EnableRetryOnFailure())
+            .Options;
+        return new ApplicationDbContext(options);
+    }
+}
