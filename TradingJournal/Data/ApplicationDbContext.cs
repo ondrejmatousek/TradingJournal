@@ -20,6 +20,10 @@ namespace TradingJournal.Data
         public DbSet<CotImportRun> CotImportRuns => Set<CotImportRun>();
         public DbSet<SeasonalityPriceEntity> SeasonalityPrices => Set<SeasonalityPriceEntity>();
         public DbSet<ScreeningDocument> ScreeningDocuments => Set<ScreeningDocument>();
+        public DbSet<InsiderFiling> InsiderFilings => Set<InsiderFiling>();
+        public DbSet<InsiderReportingOwner> InsiderReportingOwners => Set<InsiderReportingOwner>();
+        public DbSet<InsiderTransaction> InsiderTransactions => Set<InsiderTransaction>();
+        public DbSet<InsiderImportRun> InsiderImportRuns => Set<InsiderImportRun>();
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -30,6 +34,33 @@ namespace TradingJournal.Data
             base.OnModelCreating(builder);
             builder.Entity<ScreeningDocument>().Property(x => x.Id).HasMaxLength(64).IsUnicode(false);
             builder.Entity<ScreeningDocument>().Property(x => x.Json).IsRequired();
+
+            builder.Entity<InsiderFiling>().HasIndex(x => x.AccessionNumber).IsUnique();
+            builder.Entity<InsiderFiling>().HasIndex(x => new { x.Symbol, x.FiledDate });
+            builder.Entity<InsiderFiling>().Property(x => x.AccessionNumber).HasMaxLength(24).IsUnicode(false);
+            builder.Entity<InsiderFiling>().Property(x => x.IssuerCik).HasMaxLength(10).IsUnicode(false);
+            builder.Entity<InsiderFiling>().Property(x => x.Symbol).HasMaxLength(16).IsUnicode(false);
+            builder.Entity<InsiderFiling>().Property(x => x.IssuerName).HasMaxLength(240);
+            builder.Entity<InsiderFiling>().Property(x => x.FormType).HasMaxLength(8).IsUnicode(false);
+            builder.Entity<InsiderFiling>().Property(x => x.SourceUrl).HasMaxLength(1000).IsUnicode(false);
+            builder.Entity<InsiderReportingOwner>().Property(x => x.OwnerCik).HasMaxLength(10).IsUnicode(false);
+            builder.Entity<InsiderReportingOwner>().Property(x => x.Name).HasMaxLength(240);
+            builder.Entity<InsiderReportingOwner>().Property(x => x.OfficerTitle).HasMaxLength(160);
+            builder.Entity<InsiderReportingOwner>().HasOne(x => x.Filing).WithMany(x => x.ReportingOwners)
+                .HasForeignKey(x => x.InsiderFilingId).OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<InsiderTransaction>().HasIndex(x => new { x.InsiderFilingId, x.SourceIndex }).IsUnique();
+            builder.Entity<InsiderTransaction>().HasIndex(x => x.TransactionDate);
+            builder.Entity<InsiderTransaction>().Property(x => x.SecurityTitle).HasMaxLength(240);
+            builder.Entity<InsiderTransaction>().Property(x => x.TransactionCode).HasMaxLength(4).IsUnicode(false);
+            builder.Entity<InsiderTransaction>().Property(x => x.AcquisitionDisposition).HasMaxLength(1).IsUnicode(false);
+            builder.Entity<InsiderTransaction>().Property(x => x.DirectIndirect).HasMaxLength(1).IsUnicode(false);
+            builder.Entity<InsiderTransaction>().Property(x => x.Shares).HasPrecision(28, 6);
+            builder.Entity<InsiderTransaction>().Property(x => x.PricePerShare).HasPrecision(28, 6);
+            builder.Entity<InsiderTransaction>().Property(x => x.SharesOwnedAfter).HasPrecision(28, 6);
+            builder.Entity<InsiderTransaction>().HasOne(x => x.Filing).WithMany(x => x.Transactions)
+                .HasForeignKey(x => x.InsiderFilingId).OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<InsiderImportRun>().HasIndex(x => x.ScheduledDate);
+            builder.Entity<InsiderImportRun>().Property(x => x.ErrorSummary).HasMaxLength(2000);
 
             builder.Entity<JournalEntry>()
                 .HasIndex(e => new { e.UserId, e.CreatedAt });

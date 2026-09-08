@@ -1,4 +1,4 @@
-name: Daily stock screening
+name: Daily investment data
 
 on:
   schedule:
@@ -23,7 +23,7 @@ jobs:
     # Enable only after deploying the SQL migration and verifying a manual run.
     if: github.event_name == 'workflow_dispatch' || vars.SCREENING_SCHEDULE_ENABLED == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       contents: read
       id-token: write
@@ -80,7 +80,7 @@ jobs:
           Screening__SecUserAgent: ${{ secrets.SCREENING_SEC_USER_AGENT }}
         run: dotnet worker/ScreeningWorker.dll --check
 
-      - name: Update all stocks and macro data
+      - name: Update stocks, macro and insider filings
         env:
           ConnectionStrings__DefaultConnection: ${{ secrets.SCREENING_SQL_CONNECTION_STRING }}
           Screening__SecUserAgent: ${{ secrets.SCREENING_SEC_USER_AGENT }}

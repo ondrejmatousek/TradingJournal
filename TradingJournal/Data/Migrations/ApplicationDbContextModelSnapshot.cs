@@ -361,6 +361,222 @@ namespace TradingJournal.Data.Migrations
                     b.ToTable("CotReports");
                 });
 
+            modelBuilder.Entity("TradingJournal.Models.InsiderFiling", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AccessionNumber")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(24)");
+
+                    b.Property<DateOnly>("FiledDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("FormType")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(8)");
+
+                    b.Property<DateTimeOffset>("ImportedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsAmendment")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("IssuerCik")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<string>("IssuerName")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("nvarchar(240)");
+
+                    b.Property<DateOnly?>("PeriodOfReport")
+                        .HasColumnType("date");
+
+                    b.Property<string>("SourceUrl")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("Symbol")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccessionNumber")
+                        .IsUnique();
+
+                    b.HasIndex("Symbol", "FiledDate");
+
+                    b.ToTable("InsiderFilings");
+                });
+
+            modelBuilder.Entity("TradingJournal.Models.InsiderImportRun", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ErrorSummary")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("FilingsImported")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IssuersChecked")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IssuersFailed")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("ScheduledDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("TransactionsImported")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScheduledDate");
+
+                    b.ToTable("InsiderImportRuns");
+                });
+
+            modelBuilder.Entity("TradingJournal.Models.InsiderReportingOwner", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("InsiderFilingId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsDirector")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsOfficer")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsOther")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsTenPercentOwner")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("nvarchar(240)");
+
+                    b.Property<string>("OfficerTitle")
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.Property<string>("OwnerCik")
+                        .HasMaxLength(10)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InsiderFilingId");
+
+                    b.ToTable("InsiderReportingOwners");
+                });
+
+            modelBuilder.Entity("TradingJournal.Models.InsiderTransaction", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AcquisitionDisposition")
+                        .IsRequired()
+                        .HasMaxLength(1)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(1)");
+
+                    b.Property<string>("DirectIndirect")
+                        .HasMaxLength(1)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(1)");
+
+                    b.Property<long>("InsiderFilingId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsDerivative")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("IsTenB5One")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("PricePerShare")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<string>("SecurityTitle")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("nvarchar(240)");
+
+                    b.Property<decimal>("Shares")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("SharesOwnedAfter")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<int>("SourceIndex")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TransactionCode")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(4)");
+
+                    b.Property<DateOnly>("TransactionDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TransactionDate");
+
+                    b.HasIndex("InsiderFilingId", "SourceIndex")
+                        .IsUnique();
+
+                    b.ToTable("InsiderTransactions");
+                });
+
             modelBuilder.Entity("TradingJournal.Models.InvestmentEma200Snapshot", b =>
                 {
                     b.Property<int>("Id")
@@ -1143,6 +1359,28 @@ namespace TradingJournal.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TradingJournal.Models.InsiderReportingOwner", b =>
+                {
+                    b.HasOne("TradingJournal.Models.InsiderFiling", "Filing")
+                        .WithMany("ReportingOwners")
+                        .HasForeignKey("InsiderFilingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Filing");
+                });
+
+            modelBuilder.Entity("TradingJournal.Models.InsiderTransaction", b =>
+                {
+                    b.HasOne("TradingJournal.Models.InsiderFiling", "Filing")
+                        .WithMany("Transactions")
+                        .HasForeignKey("InsiderFilingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Filing");
+                });
+
             modelBuilder.Entity("TradingJournal.Models.Invoice", b =>
                 {
                     b.HasOne("TradingJournal.Models.InvoiceCompany", "CustomerCompany")
@@ -1193,6 +1431,13 @@ namespace TradingJournal.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("TradeSetupReview");
+                });
+
+            modelBuilder.Entity("TradingJournal.Models.InsiderFiling", b =>
+                {
+                    b.Navigation("ReportingOwners");
+
+                    b.Navigation("Transactions");
                 });
 
             modelBuilder.Entity("TradingJournal.Models.Invoice", b =>

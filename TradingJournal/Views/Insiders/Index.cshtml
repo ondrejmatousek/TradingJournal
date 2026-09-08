@@ -1,0 +1,63 @@
+@model TradingJournal.ViewModels.InsidersViewModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Insiders";
+    ViewData["BodyClass"] = "journal-shell";
+    var invariant = CultureInfo.InvariantCulture;
+}
+<link rel="stylesheet" href="~/css/insiders.css" asp-append-version="true" />
+<div class="insiders-page">
+    <header class="insiders-header">
+        <div><span class="insiders-eyebrow">SEC FORM 4 · @TradingJournal.Services.Screening.InvestmentUniverse.All.Count FIREM</span><h1>Insiders</h1><p>Otevřené nákupy vedení a významných vlastníků. Každý řádek vede na původní hlášení SEC.</p></div>
+        <div class="insiders-freshness"><small>POSLEDNÍ IMPORT</small><strong>@(Model.LastUpdatedAt?.ToLocalTime().ToString("d. M. yyyy HH:mm") ?? "Čeká na první běh")</strong><span>@(Model.IssuersFailed == 0 ? "všechny firmy zpracovány" : $"{Model.IssuersFailed} firem se při posledním běhu nepodařilo načíst")</span></div>
+    </header>
+    <section class="insiders-summary">
+        <article><small>NÁKUPY · 30 DNÍ</small><strong>@Model.Purchases30Days</strong><span>pouze kód P, nabytí A</span></article>
+        <article><small>HODNOTA · 30 DNÍ</small><strong>@Model.Value30Days.ToString("C0", CultureInfo.GetCultureInfo("en-US"))</strong><span>kusy × nahlášená cena</span></article>
+        <article><small>CLUSTER SIGNÁLY</small><strong>@Model.ClusterSignals30Days</strong><span>nejméně 2 různí insideři za 30 dní</span></article>
+        <article><small>VÝSLEDKY FILTRU</small><strong>@Model.TotalRows</strong><span>řazeno podle síly a velikosti</span></article>
+    </section>
+    <form method="get" class="insiders-filters">
+        <label>Hledat<input name="search" value="@Model.Search" placeholder="Ticker, firma nebo insider" /></label>
+        <label>Od<input name="from" type="date" value="@Model.From.ToString("yyyy-MM-dd", invariant)" /></label>
+        <label>Do<input name="to" type="date" value="@Model.To.ToString("yyyy-MM-dd", invariant)" /></label>
+        <label>Sektor<select name="sector"><option value="">Všechny sektory</option>@foreach (var item in Model.Sectors) { <option value="@item" selected="@(item == Model.Sector)">@item</option> }</select></label>
+        <label>Role<select name="role"><option value="">Všechny role</option><option value="CEO" selected="@(Model.Role == "CEO")">CEO</option><option value="CFO" selected="@(Model.Role == "CFO")">CFO</option><option value="President" selected="@(Model.Role == "President")">President</option><option value="Director" selected="@(Model.Role == "Director")">Director</option><option value="10%" selected="@(Model.Role == "10%")">10% vlastník</option></select></label>
+        <label>Min. hodnota USD<input name="minimumValue" type="number" min="0" step="1000" value="@(Model.MinimumValue?.ToString(invariant))" /></label>
+        <label class="insiders-check"><input name="clustersOnly" type="checkbox" value="true" checked="@Model.ClustersOnly" /> Pouze clustery</label>
+        <button type="submit">Použít filtry</button><a asp-action="Index">Vymazat</a>
+    </form>
+    <div class="insiders-table">
+        <table>
+            <thead><tr><th>Transakce</th><th>Akcie</th><th>Insider / role</th><th>Nákup</th><th>Změna podílu</th><th>Kontext</th><th>Skóre / pokrytí</th><th>Zdroj</th></tr></thead>
+            <tbody>
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="8" class="insiders-empty">Zatím nejsou uložené žádné nákupy odpovídající filtru. První plánovaný denní import tabulku naplní.</td></tr>
+            }
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td><strong>@row.TransactionDate.ToString("d. M. yyyy")</strong><small>podáno @row.FiledDate.ToString("d. M.") · @row.FilingDelayDays dny @if(row.IsAmendment){<span class="insider-badge">oprava</span>}</small></td>
+                    <td><strong class="insider-symbol">@row.Symbol</strong><small>@row.CompanyName · @row.Sector</small></td>
+                    <td><strong>@row.InsiderName</strong><small>@row.Role</small></td>
+                    <td><strong>@row.Value.ToString("C0", CultureInfo.GetCultureInfo("en-US"))</strong><small>@row.Shares.ToString("N0") ks × @row.PricePerShare.ToString("C2", CultureInfo.GetCultureInfo("en-US"))</small></td>
+                    <td><strong>@(row.OwnershipIncreasePercent?.ToString("0.#") ?? "—")@(row.OwnershipIncreasePercent == null ? "" : " %")</strong><small>@(row.IsTenB5One == true ? "označeno 10b5-1" : row.IsTenB5One == false ? "mimo 10b5-1" : "plán neuveden")</small></td>
+                    <td><strong>@row.ClusterInsiders insideři</strong><small>@row.RepeatPurchaseDays nákupních dnů za 180 dní</small></td>
+                    <td title="@row.ScoreExplanation"><strong class="@(row.Score >= 75 ? "insider-strong" : "")">@(row.Score?.ToString("0") ?? "—") / 100</strong><small>pokrytí @row.ScoreCoverage %</small></td>
+                    <td><a href="@row.SourceUrl" target="_blank" rel="noopener noreferrer">SEC ↗</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.TotalPages > 1)
+    {
+        <nav class="insiders-pages">
+            @if (Model.Page > 1) { <a asp-action="Index" asp-route-search="@Model.Search" asp-route-sector="@Model.Sector" asp-route-role="@Model.Role" asp-route-minimumValue="@(Model.MinimumValue?.ToString(invariant))" asp-route-clustersOnly="@Model.ClustersOnly" asp-route-from="@Model.From.ToString("yyyy-MM-dd", invariant)" asp-route-to="@Model.To.ToString("yyyy-MM-dd", invariant)" asp-route-page="@(Model.Page - 1)">← Předchozí</a> }
+            <span>Strana @Model.Page z @Model.TotalPages</span>
+            @if (Model.Page < Model.TotalPages) { <a asp-action="Index" asp-route-search="@Model.Search" asp-route-sector="@Model.Sector" asp-route-role="@Model.Role" asp-route-minimumValue="@(Model.MinimumValue?.ToString(invariant))" asp-route-clustersOnly="@Model.ClustersOnly" asp-route-from="@Model.From.ToString("yyyy-MM-dd", invariant)" asp-route-to="@Model.To.ToString("yyyy-MM-dd", invariant)" asp-route-page="@(Model.Page + 1)">Další →</a> }
+        </nav>
+    }
+    <details class="insiders-method"><summary>Jak číst skóre</summary><p>Skóre významnosti nákupu kombinuje roli insidera (25 %), hodnotu nákupu (30 %), nárůst jeho pozice (20 %), nákupy více insiderů ve stejné firmě během 30 dní (15 %) a opakované nákupní dny (10 %). Chybějící složka skóre nezvyšuje a vedle výsledku je vždy pokrytí. Jde o výzkumný signál, ne předpověď výnosu ani investiční doporučení.</p><p>Granty, opční exercise a prodeje nejsou v této tabulce zaměněny za nákupy. Opravená hlášení Form 4/A jsou označena a plán 10b5-1 se ukazuje pouze tehdy, když jej filing výslovně obsahuje.</p></details>
+</div>

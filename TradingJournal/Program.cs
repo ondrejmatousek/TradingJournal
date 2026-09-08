@@ -61,6 +61,9 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
 builder.Services.AddSingleton<TradingJournal.Services.Screening.ScreeningStore>();
 builder.Services.AddScoped<TradingJournal.Services.Screening.ScreeningDataProvider>();
 builder.Services.AddScoped<TradingJournal.Services.Screening.InvestmentScreeningService>();
+builder.Services.AddScoped<TradingJournal.Services.Insiders.InsiderSecProvider>();
+builder.Services.AddScoped<TradingJournal.Services.Insiders.IInsiderSecProvider>(sp => sp.GetRequiredService<TradingJournal.Services.Insiders.InsiderSecProvider>());
+builder.Services.AddScoped<TradingJournal.Services.Insiders.InsiderUpdateService>();
 builder.Services.AddOptions<TradingJournal.Services.Screening.ScreeningSchedule>()
     .Bind(builder.Configuration.GetSection("Screening:Schedule"))
     .PostConfigure(o =>

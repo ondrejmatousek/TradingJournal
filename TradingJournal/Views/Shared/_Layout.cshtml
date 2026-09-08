@@ -8,7 +8,7 @@
     var action = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
     var isTradingSection = controller == "JournalEntries" || controller == "Cot" || controller == "Seasonality";
     var isProgrammingSection = controller == "Invoices";
-    var isInvestmentSection = controller == "Investments" || controller == "Screening";
+    var isInvestmentSection = controller == "Investments" || controller == "Screening" || controller == "Insiders";
     var showSidebar = SignInManager.IsSignedIn(User) && !bodyClass.Contains("marketing-shell") && !bodyClass.Contains("auth-shell") && (isTradingSection || isProgrammingSection || isInvestmentSection);
 }
 
@@ -82,6 +82,7 @@
                     <div class="sidebar-title">Investování</div>
                     <a class="sidebar-link @(action == "Planner" ? "active" : "")" asp-controller="Investments" asp-action="Planner">Investiční plánovač</a>
                     <a class="sidebar-link @(controller == "Screening" ? "active" : "")" asp-controller="Screening" asp-action="Index">Akciový screener</a>
+                    <a class="sidebar-link @(controller == "Insiders" ? "active" : "")" asp-controller="Insiders" asp-action="Index">Insiders</a>
                 }
             </aside>
         }

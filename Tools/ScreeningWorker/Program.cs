@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using TradingJournal.Data;
 using TradingJournal.Services;
 using TradingJournal.Services.Screening;
+using TradingJournal.Services.Insiders;
 
 if (args.Length == 0 || args.Contains("--help"))
 {
@@ -40,10 +41,13 @@ builder.Services.AddSingleton<ScreeningStore>();
 builder.Services.AddScoped<ScreeningDataProvider>();
 builder.Services.AddScoped<IUnderEma200HistoryProvider, UnderEma200HistoryProvider>();
 builder.Services.AddScoped<InvestmentScreeningService>();
+builder.Services.AddScoped<InsiderSecProvider>();
+builder.Services.AddScoped<IInsiderSecProvider>(sp => sp.GetRequiredService<InsiderSecProvider>());
+builder.Services.AddScoped<InsiderUpdateService>();
 builder.Services.AddOptions<ScreeningSchedule>().Configure(o => { o.Enabled = true; o.Hour = 6; o.Minute = 17; });
 builder.Services.AddSingleton<ScreeningUpdateHostedService>();
 using var host = builder.Build();
-using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(35));
+using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(50));
 Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancellation.Cancel(); };
 try
 {
@@ -51,6 +55,7 @@ try
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     // Check actual table access, not just TCP connectivity. Do not migrate with the worker's limited identity.
     await db.ScreeningDocuments.AsNoTracking().OrderBy(x => x.Id).Select(x => x.Id).Take(1).ToListAsync(cancellation.Token);
+    await db.InsiderFilings.AsNoTracking().OrderBy(x => x.Id).Select(x => x.Id).Take(1).ToListAsync(cancellation.Token);
     if (!File.Exists(Path.Combine(AppContext.BaseDirectory, "Docs/investments/sec-tickers.json")))
         throw new InvalidOperationException("Missing bundled SEC ticker mapping.");
     if (args.Contains("--check")) { Console.WriteLine("SQL screening storage and bundled provider mapping are ready."); return 0; }
@@ -64,14 +69,16 @@ try
     if (Convert.ToInt32(await acquire.ExecuteScalarAsync(cancellation.Token)) < 0)
     { Console.WriteLine("Another screening worker is running; no duplicate work started."); return 0; }
     await host.Services.GetRequiredService<ScreeningUpdateHostedService>().RunIfDueAsync(DateTimeOffset.UtcNow, cancellation.Token, args.Contains("--force"));
+    var dueDate = host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ScreeningSchedule>>().Value.DueDate(DateTimeOffset.UtcNow);
+    var insiderRun = await scope.ServiceProvider.GetRequiredService<InsiderUpdateService>().RunAsync(dueDate, cancellation.Token, args.Contains("--force"));
     var run = await host.Services.GetRequiredService<ScreeningStore>().ReadAsync<ScreeningUpdateRun>(ScreeningUpdateHostedService.StateKey, cancellation.Token);
-    var summary = run == null ? "No completed update." : $"Processed: {run.Processed}/{InvestmentUniverse.All.Count}; incomplete: {run.Incomplete}; macro updated: {run.MacroUpdated}; completed: {run.CompletedAt:O}.";
+    var summary = run == null ? "No completed update." : $"Stocks: {run.Processed}/{InvestmentUniverse.All.Count}; incomplete: {run.Incomplete}; macro: {run.MacroUpdated}. Insider filings: {insiderRun.FilingsImported}; transactions: {insiderRun.TransactionsImported}; issuer failures: {insiderRun.IssuersFailed}; completed: {insiderRun.CompletedAt:O}.";
     Console.WriteLine(summary);
     var summaryPath = Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY");
     if (!string.IsNullOrEmpty(summaryPath)) await File.AppendAllTextAsync(summaryPath, summary + Environment.NewLine, cancellation.Token);
-    return run?.CompletedAt == null || !run.MacroUpdated || run.Incomplete == InvestmentUniverse.All.Count ? 2 : 0;
+    return run?.CompletedAt == null || !run.MacroUpdated || run.Incomplete == InvestmentUniverse.All.Count || insiderRun.CompletedAt == null || insiderRun.IssuersFailed == InvestmentUniverse.All.Count ? 2 : 0;
 }
-catch (OperationCanceledException) { Console.Error.WriteLine("Update interrupted or exceeded the 35-minute limit. Saved data remain available; next run retries unfinished work."); return 3; }
+catch (OperationCanceledException) { Console.Error.WriteLine("Update interrupted or exceeded the 50-minute limit. Saved data remain available; next run retries unfinished work."); return 3; }
 catch (Exception ex)
 {
     // Avoid logging connection strings or provider URLs with credentials.

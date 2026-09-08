@@ -1,0 +1,57 @@
+using Microsoft.EntityFrameworkCore;
+using TradingJournal.Data;
+using TradingJournal.Models;
+using TradingJournal.Services.Screening;
+
+namespace TradingJournal.Services.Insiders;
+
+public sealed class InsiderUpdateService(ApplicationDbContext db, IInsiderSecProvider provider, ILogger<InsiderUpdateService> logger)
+{
+    public async Task<InsiderImportRun> RunAsync(DateOnly scheduledDate, CancellationToken ct, bool force = false)
+    {
+        var completed = await db.InsiderImportRuns.AsNoTracking().Where(x => x.CompletedAt != null)
+            .OrderByDescending(x => x.ScheduledDate).FirstOrDefaultAsync(ct);
+        if (!force && completed?.ScheduledDate >= scheduledDate) return completed;
+
+        var hasData = await db.InsiderFilings.AnyAsync(ct);
+        var since = scheduledDate.AddDays(hasData ? -14 : -365);
+        var known = await db.InsiderFilings.AsNoTracking().Select(x => x.AccessionNumber).ToHashSetAsync(ct);
+        var run = new InsiderImportRun { ScheduledDate = scheduledDate, StartedAt = DateTimeOffset.UtcNow };
+        db.InsiderImportRuns.Add(run);
+        await db.SaveChangesAsync(ct);
+        var errors = new List<string>();
+        foreach (var stock in InvestmentUniverse.All)
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                var recent = await provider.RecentFilingsAsync(stock, since, ct);
+                var imported = new List<InsiderFiling>();
+                foreach (var descriptor in recent.OrderBy(x => x.FiledDate))
+                {
+                    if (!known.Add(descriptor.AccessionNumber)) continue;
+                    var filing = await provider.FilingAsync(stock, descriptor, ct);
+                    db.InsiderFilings.Add(filing);
+                    imported.Add(filing);
+                }
+                await db.SaveChangesAsync(ct);
+                run.FilingsImported += imported.Count;
+                run.TransactionsImported += imported.Sum(x => x.Transactions.Count);
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                run.IssuersFailed++;
+                if (errors.Count < 12) errors.Add($"{stock.Symbol}: {ex.GetType().Name}");
+                logger.LogWarning(ex, "Insider filings could not be refreshed for {Symbol}.", stock.Symbol);
+                db.ChangeTracker.Clear();
+                db.Attach(run);
+            }
+            finally { run.IssuersChecked++; }
+            if (run.IssuersChecked % 10 == 0) await db.SaveChangesAsync(ct);
+        }
+        run.CompletedAt = DateTimeOffset.UtcNow;
+        run.ErrorSummary = errors.Count == 0 ? null : string.Join(", ", errors);
+        await db.SaveChangesAsync(ct);
+        return run;
+    }
+}

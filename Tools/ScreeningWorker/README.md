@@ -1,14 +1,14 @@
 # Denní aktualizace na GitHub Actions
 
-Web zůstává na Azure App Service Free. Samostatný .NET 10 program stahuje ceny, výkazy a makro na standardním Linux runneru, bez spuštění webu nebo počítače uživatele. Oba procesy používají tabulku `dbo.ScreeningDocuments` ve stejné SQL databázi. JSON dokumenty jsou nyní uvnitř SQL; nejde o GitHub artifacts ani dočasný disk runneru. Osobní analýzy zůstávají oddělené podle uživatele. Chybějící geopolitika a analýzy traderů nemají nový datový zdroj.
+Web zůstává na Azure App Service Free. Samostatný .NET 10 program stahuje ceny, výkazy, makro a SEC hlášení insiderů na standardním Linux runneru, bez spuštění webu nebo počítače uživatele. Oba procesy používají stejnou SQL databázi. Screener ukládá JSON do `dbo.ScreeningDocuments`; insider filingy, vlastníci, transakce a historie importů jsou v normalizovaných tabulkách. Nejde o GitHub artifacts ani dočasný disk runneru. Osobní analýzy zůstávají oddělené podle uživatele. Chybějící geopolitika a analýzy traderů nemají nový datový zdroj.
 
 ## Pořadí prvního nasazení
 
-1. Commit/push změn včetně migrace `AddScreeningDocuments` na nasazovanou větev. Stávající workflow `tradingJournal.yml` nasadí web. Web při startu aplikuje migraci; jeho SQL identita musí mít oprávnění ke změně schématu. Migrace pouze přidává tabulku, nemění existující záznamy. Readiness `/health/deep` nyní kontroluje i novou tabulku. Neaktivujte plán při neúspěšné migraci.
+1. Commit/push změn včetně migrací `AddScreeningDocuments` a `AddInsiderFilings` na nasazovanou větev. Stávající workflow `tradingJournal.yml` nasadí web. Web při startu aplikuje migrace; jeho SQL identita musí mít oprávnění ke změně schématu. Migrace pouze přidávají tabulky, nemění existující záznamy. Readiness `/health/deep` kontroluje screeningové úložiště. Neaktivujte plán při neúspěšné migraci.
 2. Pokud jsou ve staré cloudové cache ručně zadané analýzy, před nasazením ji zálohujte. Nový web při načtení převezme existující lokální JSON jen tehdy, když v SQL ještě není odpovídající klíč. Worker staré soubory na webu nevidí. Nasazení, které soubory odstraní, neumožní jejich následný import; nevkládejte je do GitHubu.
 3. Připravte omezeného SQL uživatele pro worker ve stejné databázi (viz níže) a Azure federovanou identitu pro dočasné pravidlo firewallu.
 4. V repozitáři Settings → Secrets and variables → Actions vyplňte níže uvedené secrets a variables. Hesla nevkládejte do chatu ani do souborů projektu.
-5. Actions → Daily stock screening → Run workflow na výchozí větvi. Úloha ověří přístup a existenci tabulky, stáhne data a zveřejní souhrn počtů. Ověřte data ve screeneru. Neúplná data mohou zůstat nevyhodnocená; hotový běh není zárukou všech polí. Při selhání makra nebo neúplnosti všech tickerů je běh označen jako neúspěšný. Volba force dovolí znovu zkusit dokončený běh i čerstvou cache.
+5. Actions → Daily investment data → Run workflow na výchozí větvi. Úloha ověří přístup a existenci tabulek, stáhne screening i SEC insider data a zveřejní souhrn počtů. Ověřte data ve screeneru a v modulu Insiders. Neúplná data mohou zůstat nevyhodnocená; hotový běh není zárukou všech polí. Při selhání makra, neúplnosti všech tickerů nebo nedostupnosti SEC pro všechny firmy je běh označen jako neúspěšný. Volba force dovolí znovu zkusit dokončený běh i čerstvou cache.
 6. Teprve po úspěšném ověření nastavte repository variable `SCREENING_SCHEDULE_ENABLED=true`. Plán je 06:17 `Europe/Prague`, automaticky respektuje letní čas. Bez této proměnné se plánované běhy přeskakují. GitHub spouští plán pouze z výchozí větve a negarantuje přesný čas; může dojít ke zpoždění nebo vynechání běhu.
 
 ## GitHub secrets
@@ -30,6 +30,10 @@ Repository variables: `AZURE_SQL_RESOURCE_GROUP` (resource group SQL serveru), `
 
 ```sql
 GRANT SELECT, INSERT, UPDATE ON OBJECT::dbo.ScreeningDocuments TO [screening_worker];
+GRANT SELECT, INSERT, UPDATE ON OBJECT::dbo.InsiderFilings TO [screening_worker];
+GRANT SELECT, INSERT, UPDATE ON OBJECT::dbo.InsiderReportingOwners TO [screening_worker];
+GRANT SELECT, INSERT, UPDATE ON OBJECT::dbo.InsiderTransactions TO [screening_worker];
+GRANT SELECT, INSERT, UPDATE ON OBJECT::dbo.InsiderImportRuns TO [screening_worker];
 ```
 
 Úloha si drží session lock `EdgeDesk.ScreeningDaily` přes `sp_getapplock`, aby se dvě instance workeru nepřekrývaly; standardní členství v databázové roli public je dostačující. Spojení držící lock nepoužívá pooling a po skončení se skutečně uzavře.
@@ -40,7 +44,7 @@ SQL server musí mít povolené veřejné síťové rozhraní. Workflow povolí 
 
 ## Provoz a limity
 
-- Celý job má limit 45 minut, vlastní aktualizace 35 minut; nepřidávají se automatické retry celé úlohy. Jednotlivé zdroje mají vlastní timeouty a limity. Při ukončení zůstávají již uložená data zachovaná.
+- Celý job má limit 60 minut, vlastní aktualizace 50 minut; nepřidávají se automatické retry celé úlohy. Jednotlivé zdroje mají vlastní timeouty a limity. Při ukončení zůstávají již uložená data zachovaná.
 - `concurrency` zabraňuje souběhu workflow. SQL lock chrání i před nezávislým ručním workerem. Záznam dokončeného dne brání duplicitnímu dennímu běhu.
 - Web při detekci Azure App Service (`WEBSITE_SITE_NAME`) vypne svůj interní plánovač screeneru. Mimo Azure lze nastavit `Screening__Schedule__External=true`. Ruční tlačítko zůstává dostupné. Externí plán se zapíná pouze v GitHubu.
 - GitHub Free má 2 000 minut standardního Linux runneru měsíčně pro soukromé repozitáře, sdílených s dalšími úlohami. Délku běhu je potřeba měřit; cena není garantována. Nenahráváme cenová data do artifactů ani Actions cache. Nastavte v GitHub billing rozpočet s blokováním placené spotřeby, pokud nechcete čerpat nad bezplatnou kvótu. Nastavení rozpočtu není součástí YAML a musí se ověřit v účtu. SQL/API se účtují samostatně.
