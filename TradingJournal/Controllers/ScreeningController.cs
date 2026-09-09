@@ -16,12 +16,15 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
     public async Task<IActionResult> UpdateStatus([FromServices] Microsoft.Extensions.Options.IOptions<ScreeningSchedule> schedule, CancellationToken ct)
         => Json(new { schedule = schedule.Value, run = await store.ReadAsync<ScreeningUpdateRun>(ScreeningUpdateHostedService.StateKey, ct) });
     [HttpGet]
-    public Task<IActionResult> Data(CancellationToken ct = default, int page = 1, int pageSize = 25) => ReadScreeningAsync(async () =>
+    public Task<IActionResult> Data(CancellationToken ct = default, int page = 1, int pageSize = 25,
+        string? search = null, string? sector = null, string? filter = null, string? sort = null) => ReadScreeningAsync(async () =>
     {
-        page = Math.Clamp(page, 1, 1000); pageSize = Math.Clamp(pageSize, 1, 50);
-        var allSymbols = InvestmentUniverse.All.Select(x => x.Symbol).ToArray();
-        var symbols = allSymbols.Skip((page - 1) * pageSize).Take(pageSize).ToArray();
-        return Json(new { rows = await service.LoadAsync(UserKey, ct, symbols), total = allSymbols.Length, page, pageSize, macro = await ContextAsync(ct) });
+        var snapshot = await store.ReadAsync<ScreeningSnapshot>(ScreeningSnapshot.Key, ct);
+        if (snapshot == null) return StatusCode(503, "Hodnocení zatím není připravené. Spusť denní aktualizaci dat v GitHub Actions.");
+        var personal = await store.ReadAsync<ScreeningSnapshot>("screening-personal-" + UserKey, ct);
+        if (personal != null && personal.CalculatedAt >= snapshot.CalculatedAt)
+            snapshot = snapshot with { Rows = snapshot.Rows.Select(r => personal.Rows.FirstOrDefault(p => p.Symbol == r.Symbol) ?? r).ToList() };
+        return Json(ScreeningSnapshot.Page(snapshot, page, pageSize, search, sector, filter, sort));
     }, ct);
 
     private async Task<IActionResult> ReadScreeningAsync(Func<Task<IActionResult>> read, CancellationToken ct)
@@ -47,7 +50,18 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
     public async Task<IActionResult> Refresh(string symbol, CancellationToken ct)
     {
         if (!InvestmentUniverse.All.Any(s => s.Symbol == symbol)) return BadRequest("Neznámý ticker.");
-        return await ReadScreeningAsync(async () => Json(await service.RefreshAsync(symbol, UserKey, ct, force: true)), ct);
+        return await ReadScreeningAsync(async () => Json(await SavePersonalResultAsync(symbol, ct, true)), ct);
+    }
+    private async Task<ScreeningRow> SavePersonalResultAsync(string symbol, CancellationToken ct, bool refresh)
+    {
+        var row = refresh ? await service.RefreshAsync(symbol, UserKey, ct, force: true)
+            : (await service.LoadAsync(UserKey, ct, [symbol])).Single();
+        var shared = await store.ReadAsync<ScreeningSnapshot>(ScreeningSnapshot.Key, ct);
+        var personal = await store.ReadAsync<ScreeningSnapshot>("screening-personal-" + UserKey, ct);
+        var rows = personal != null && (shared == null || personal.CalculatedAt >= shared.CalculatedAt) ? personal.Rows : [];
+        rows.RemoveAll(r => r.Symbol == symbol); rows.Add(row);
+        await store.WriteAsync("screening-personal-" + UserKey, new ScreeningSnapshot(DateTimeOffset.UtcNow, rows, []), ct);
+        return row;
     }
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> RefreshMacro(CancellationToken ct)
@@ -84,6 +98,8 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
             || new[] { f.Revenue, f.PreviousRevenue, f.Shares, f.Assets, f.Liabilities, f.CapitalExpenditure, f.OperatingCashFlow, f.NetIncome }.Any(v => Math.Abs(v) > 1000000000000000m)))
             return BadRequest("Zkontroluj výkazy: USD v absolutních jednotkách, kladné tržby/aktiva/počet akcií, nezáporný capex/závazky, správná data a HTTPS zdroj.");
         await store.WriteAsync("research-" + UserKey + "-" + symbol, research, ct);
+        if (await store.ReadAsync<ScreeningSnapshot>(ScreeningSnapshot.Key, ct) != null)
+            await SavePersonalResultAsync(symbol, ct, false);
         return Ok(new { saved = true });
     }
 }

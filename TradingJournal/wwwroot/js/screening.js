@@ -24,14 +24,7 @@
         macro.forEach(m => { const span = document.createElement('span'); const label = m.series === 'DGS10' ? 'Výnos US 10Y' : m.series === 'UNRATE' ? 'Nezaměstnanost USA' : 'Geopolitické riziko'; span.innerHTML = `${safeLink(m.source, label)}: ${pct(m.value)} · ${esc(m.date)}${m.priorValue == null ? '' : ` · před 3 měsíci ${pct(m.priorValue)}`}　`; $('screen-macro').append(span); });
     }
     function render() {
-        const query = $('screen-search').value.toLowerCase(), sector = $('screen-sector').value, filter = $('screen-filter').value;
-        let visible = rows.filter(r => `${r.symbol} ${r.name}`.toLowerCase().includes(query) && (!sector || r.sector === sector));
-        visible = visible.filter(r => filter === 'all' || filter === 'rated' && r.score != null || filter === 'discount' && r.discount > 0 || filter === 'ema' && r.emaDistance != null && r.emaDistance < 0 || filter === 'season' && r.seasonality[1]?.median > 0);
-        const sort = $('screen-sort').value;
-        visible.sort((a, b) => sort === 'symbol' ? a.symbol.localeCompare(b.symbol) : ((sort === 'season' ? b.seasonality[1]?.median : b[sort]) ?? -Infinity) - ((sort === 'season' ? a.seasonality[1]?.median : a[sort]) ?? -Infinity) || a.symbol.localeCompare(b.symbol));
-        $('screen-count').textContent = `${visible.length} / ${rows.length}`;
-        $('screen-rated').textContent = rows.filter(r => r.score != null).length;
-        $('screen-discount').textContent = rows.filter(r => r.discount > 0).length;
+        const visible = rows;
         const pages = Math.max(1, Math.ceil((window.screeningTotal ?? visible.length) / 25));
         page = Math.max(1, Math.min(page, pages));
         $('screen-page').textContent = `Strana ${page} / ${pages} · 25 akcií na stránku`;
@@ -39,17 +32,26 @@
         $('screen-next').disabled = page >= pages;
         $('screen-rows').innerHTML = visible.length ? visible.map(r => `<tr><td><button type="button" data-symbol="${esc(r.symbol)}">${esc(r.symbol)} ↗</button><small title="${esc(r.name)}">${esc(r.name)}</small><small>${esc(r.sector)}</small></td><td>${number(r.price, 2)}<small>${esc(r.priceDate || 'chybí cena')}</small></td><td>${r.valuation ? `${number(r.valuation.low)}–${number(r.valuation.high)}` : '—'}<small>${r.valuation ? `základ ${number(r.valuation.base)}` : 'chybí ocenění'}</small></td><td class="${r.discount > 0 ? 'screen-positive' : ''}">${pct(r.discount)}</td>${['quality','macro','seasonality','technical','geopolitics','analysts'].map(k => `<td>${number(pillar(r,k),0)}${k === 'seasonality' ? `<small>${r.seasonality[1]?.years || 0} let · ${pct(r.seasonality[1]?.median)}</small>` : ''}</td>`).join('')}<td><strong>${number(r.score)} / 100</strong><small>pokrytí ${r.coverage} %</small><small>${esc(r.verdict)}</small></td></tr>`).join('') : '<tr><td colspan="11">Pro tento filtr nejsou žádné akcie.</td></tr>';
     }
+    let loadVersion = 0;
     async function load(targetPage = page) {
+        const version = ++loadVersion;
         request('/UpdateStatus').then(({schedule, run}) => {
             const time = `${String(schedule.hour).padStart(2, '0')}:${String(schedule.minute).padStart(2, '0')}`;
             const last = run ? ` Poslední běh: ${new Date(run.startedAt).toLocaleString('cs-CZ')}, ${run.processed} akcií, ${run.incomplete} neúplných. ${run.completedAt ? 'Dokončen.' : 'Zatím nedokončen.'}` : ' První aktualizace proběhne automaticky.';
             $('screen-schedule').textContent = (schedule.external ? 'Aktualizaci zajišťuje externí denní úloha; stav jejího nastavení je v GitHub Actions.' : schedule.enabled ? `Automatická aktualizace denně v ${time} (${schedule.timeZone}), pokud aplikace běží.` : 'Automatická aktualizace je vypnutá.') + last;
         }).catch(() => { $('screen-schedule').textContent = 'Stav automatické aktualizace není dostupný.'; });
-        const data = await request(`/Data?page=${targetPage}&pageSize=25`); rows = data.rows; page = data.page; window.screeningTotal = data.total; macroText(data.macro);
+        const query = new URLSearchParams({ page: targetPage, pageSize: 25, search: $('screen-search').value, sector: $('screen-sector').value, filter: $('screen-filter').value, sort: $('screen-sort').value });
+        const data = await request(`/Data?${query}`);
+        if (version !== loadVersion) return;
+        rows = data.rows; page = data.page; window.screeningTotal = data.total; macroText(data.macro);
+        $('screen-count').textContent = `${data.total} / ${data.universeTotal}`;
+        $('screen-rated').textContent = data.rated;
+        $('screen-discount').textContent = data.discounted;
+        $('screen-status').textContent = `Hodnocení vypočteno ${new Date(data.calculatedAt).toLocaleString('cs-CZ')}`;
         const sector = $('screen-sector').value;
-        $('screen-sector').innerHTML = '<option value="">Všechny sektory</option>' + [...new Set(rows.map(r => r.sector))].sort().map(s => `<option>${esc(s)}</option>`).join('');
+        $('screen-sector').innerHTML = '<option value="">Všechny sektory</option>' + data.sectors.map(s => `<option>${esc(s)}</option>`).join('');
         $('screen-sector').value = sector; render();
-        if (selected) selected = rows.find(r => r.symbol === selected.symbol);
+        if (selected) selected = rows.find(r => r.symbol === selected.symbol) || selected;
     }
     function detail() {
         const r = selected;
@@ -61,15 +63,17 @@
     }
     $('screen-rows').addEventListener('click', e => { const b = e.target.closest('[data-symbol]'); if (b) open(b.dataset.symbol); });
     $('detail-close').onclick = () => $('screen-detail').close();
-    ['screen-search','screen-sector','screen-filter','screen-sort'].forEach(id => $(id).addEventListener('input', () => { page=1; render(); }));
-    $('screen-prev').onclick=()=>{if(page>1) load(page-1);}; $('screen-next').onclick=()=>{load(page+1);};
+    const navigate = p => load(p).catch(e => { $('screen-status').textContent = e.message; });
+    let filterTimer;
+    ['screen-search','screen-sector','screen-filter','screen-sort'].forEach(id => $(id).addEventListener('input', () => { clearTimeout(filterTimer); filterTimer = setTimeout(() => navigate(1), 250); }));
+    $('screen-prev').onclick=()=>{if(page>1) navigate(page-1);}; $('screen-next').onclick=()=>{navigate(page+1);};
     document.querySelectorAll('[data-preset]').forEach(button => button.onclick = () => {
         const preset = button.dataset.preset;
         const filter = $('screen-filter'), sort = $('screen-sort');
         filter.value = preset === 'opportunity' ? 'discount' : preset === 'season' ? 'season' : preset === 'complete' ? 'rated' : 'all';
         sort.value = preset === 'quality' ? 'score' : preset === 'opportunity' ? 'discount' : preset === 'season' ? 'season' : preset === 'complete' ? 'coverage' : 'coverage';
         document.querySelectorAll('[data-preset]').forEach(item => item.classList.toggle('is-active', item === button));
-        page = 1; render();
+        navigate(1);
     });
     $('screen-refresh').onclick = async () => {
         if (refreshing) return; refreshing = true; stopping = false;

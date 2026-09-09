@@ -49,7 +49,8 @@ public sealed class ScreeningUpdateHostedService(IServiceScopeFactory scopes, Sc
         if (!options.Value.Enabled) return;
         var due = options.Value.DueDate(now);
         var previous = await store.ReadAsync<ScreeningUpdateRun>(StateKey, ct);
-        if (!force && previous is { CompletedAt: not null } && previous.ScheduledDate >= due) return;
+        if (!force && previous is { CompletedAt: not null } && previous.ScheduledDate >= due
+            && await store.ReadAsync<ScreeningSnapshot>(ScreeningSnapshot.Key, ct) != null) return;
         var run = new ScreeningUpdateRun(due, now, null, 0, 0, false);
         await store.WriteAsync(StateKey, run, ct);
         using var scope = scopes.CreateScope();
@@ -64,6 +65,7 @@ public sealed class ScreeningUpdateHostedService(IServiceScopeFactory scopes, Sc
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         { logger.LogWarning(ex, "Scheduled macro refresh failed; retaining previous data."); }
+        var results = new List<ScreeningRow>();
         foreach (var stock in InvestmentUniverse.All)
         {
             ct.ThrowIfCancellationRequested();
@@ -75,10 +77,17 @@ public sealed class ScreeningUpdateHostedService(IServiceScopeFactory scopes, Sc
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             { logger.LogWarning(ex, "Scheduled refresh failed for {Symbol}; continuing with remaining stocks.", stock.Symbol); }
+            // Compute from persisted inputs even when a provider is unavailable. Never
+            // publish a partial snapshot; the previous complete snapshot remains readable.
+            results.AddRange(await service.LoadAsync("system", ct, [stock.Symbol]));
             run = run with { Processed = run.Processed + 1, Incomplete = run.Incomplete + (incomplete ? 1 : 0) };
             await store.WriteAsync(StateKey, run, ct);
             await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
         }
+        var context = await store.ReadAsync<List<MacroObservation>>("macro-v1", ct) ?? [];
+        var geo = await store.ReadAsync<MacroObservation>("macro-geopolitics-v1", ct);
+        if (geo != null) context.Add(geo);
+        await store.WriteAsync(ScreeningSnapshot.Key, new ScreeningSnapshot(DateTimeOffset.UtcNow, results, context), ct);
         // Completed means the entire universe was attempted, not that every provider returned complete data.
         run = run with { CompletedAt = DateTimeOffset.UtcNow };
         await store.WriteAsync(StateKey, run, ct);

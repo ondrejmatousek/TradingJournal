@@ -44,6 +44,7 @@ public sealed class ScreeningServiceTests
         var schedule = new ScreeningSchedule { Enabled = enabled };
         var saved = new ScreeningUpdateRun(schedule.DueDate(now), now, now, 200, 12, true);
         await fixture.Store.WriteAsync(ScreeningUpdateHostedService.StateKey, saved, default);
+        await fixture.Store.WriteAsync(ScreeningSnapshot.Key, new ScreeningSnapshot(now, [], []), default);
         using var services = new ServiceCollection().BuildServiceProvider();
         using var worker = new ScreeningUpdateHostedService(services.GetRequiredService<IServiceScopeFactory>(), fixture.Store,
             Options.Create(schedule), NullLogger<ScreeningUpdateHostedService>.Instance);
@@ -104,15 +105,14 @@ public sealed class ScreeningServiceTests
     };
 
     [Fact]
-    public async Task Data_ClientDisconnectDuringDatabaseRead_IsHandledAsCancellation()
+    public async Task Data_SnapshotRead_DoesNotQueryPriceDatabase()
     {
         await using var fixture = await Fixture.CreateAsync();
         using var cancellation = new CancellationTokenSource();
         fixture.Interceptor.ErrorFactory = () => { cancellation.Cancel(); return new TaskCanceledException("Request disconnected"); };
 
-        var response = Assert.IsType<StatusCodeResult>(await Controller(fixture).Data(cancellation.Token));
-
-        Assert.Equal(499, response.StatusCode);
+        await fixture.Store.WriteAsync(ScreeningSnapshot.Key, new ScreeningSnapshot(DateTimeOffset.UtcNow, [], []), default);
+        Assert.IsType<JsonResult>(await Controller(fixture).Data(cancellation.Token));
         Assert.Equal(0, fixture.Http.Calls);
         Assert.Null(await fixture.Store.ReadAsync<ScreeningMarketCache>("market-MSFT", default));
     }
@@ -120,7 +120,7 @@ public sealed class ScreeningServiceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task Data_DatabaseFailureWithoutClientCancellation_ReturnsRetryableError(bool timeout)
+    public async Task Data_MissingSnapshot_DoesNotFallBackToExpensivePriceDatabase(bool timeout)
     {
         await using var fixture = await Fixture.CreateAsync();
         fixture.Interceptor.ErrorFactory = () => timeout ? new TaskCanceledException("Provider timeout") : new SqliteException("Database unavailable", 1);
@@ -128,7 +128,7 @@ public sealed class ScreeningServiceTests
         var response = Assert.IsType<ObjectResult>(await Controller(fixture).Data(default));
 
         Assert.Equal(503, response.StatusCode);
-        Assert.Contains("načíst", Assert.IsType<string>(response.Value));
+        Assert.Contains("Hodnocení", Assert.IsType<string>(response.Value));
         Assert.Equal(0, fixture.Http.Calls);
     }
 
