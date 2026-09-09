@@ -31,14 +31,17 @@ public sealed class InsiderUpdateServiceTests
         Assert.Equal(1, await db.InsiderTransactions.CountAsync());
         Assert.Equal(callsAfterFirst, provider.SubmissionCalls);
         Assert.Equal(first.Id, second.Id);
+        Assert.Equal(new DateOnly(2026, 9, 1), provider.LastSince);
     }
 
     private sealed class FakeProvider : IInsiderSecProvider
     {
         public int SubmissionCalls { get; private set; }
+        public DateOnly LastSince { get; private set; }
         public Task<IReadOnlyList<SecOwnershipFiling>> RecentFilingsAsync(InvestmentSymbol stock, DateOnly since, CancellationToken ct)
         {
             SubmissionCalls++;
+            LastSince = since;
             IReadOnlyList<SecOwnershipFiling> result = stock.Symbol == "AAPL"
                 ? [new("0000320193-26-000001", new(2026, 9, 7), new(2026, 9, 6), "4", "form4.xml", "Apple Inc.", 320193)] : [];
             return Task.FromResult(result);
