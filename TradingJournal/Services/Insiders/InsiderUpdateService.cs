@@ -17,7 +17,9 @@ public sealed class InsiderUpdateService(ApplicationDbContext db, IInsiderSecPro
         var hasData = await db.InsiderFilings.AnyAsync(ct);
         // Keep the import focused on current filings. Older SEC history is not
         // useful for the dashboard and can exhaust the provider/runtime quota.
-        var since = new[] { EarliestSupportedFiling, scheduledDate.AddDays(hasData ? -14 : 0) }.Max();
+        var since = hasData
+            ? new[] { EarliestSupportedFiling, scheduledDate.AddDays(-14) }.Max()
+            : EarliestSupportedFiling;
         var known = await db.InsiderFilings.AsNoTracking().Select(x => x.AccessionNumber).ToHashSetAsync(ct);
         var run = new InsiderImportRun { ScheduledDate = scheduledDate, StartedAt = DateTimeOffset.UtcNow };
         db.InsiderImportRuns.Add(run);
