@@ -15,7 +15,7 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
         var historyStart = today.AddYears(-15);
         Dictionary<string, IReadOnlyList<SeasonalityPrice>> bySymbol;
         if (turso?.IsConfigured == true)
-            bySymbol = (await turso.LoadAllAsync(ct)).Where(x => keys.Contains(x.Key, StringComparer.OrdinalIgnoreCase)).ToDictionary(x => x.Key, x => (IReadOnlyList<SeasonalityPrice>)x.Value.Where(p => p.Date >= historyStart && p.Date <= today).ToArray(), StringComparer.OrdinalIgnoreCase);
+            bySymbol = (await turso.LoadAllAsync(keys, ct)).ToDictionary(x => x.Key, x => (IReadOnlyList<SeasonalityPrice>)x.Value.Where(p => p.Date >= historyStart && p.Date <= today).ToArray(), StringComparer.OrdinalIgnoreCase);
         else
         {
             var cachedPrices = await db.SeasonalityPrices.AsNoTracking().Where(p => keys.Contains(p.AssetKey) && p.Date >= historyStart && p.Date <= today).OrderBy(p => p.AssetKey).ThenBy(p => p.Date).Select(p => new { p.AssetKey, p.Date, p.Close }).ToListAsync(ct);

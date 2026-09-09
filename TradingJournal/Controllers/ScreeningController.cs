@@ -32,7 +32,7 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
             // do not continue expensive database work or turn it into an application error.
             return StatusCode(499);
         }
-        catch (Exception ex) when (ex is OperationCanceledException or System.Data.Common.DbException or TimeoutException)
+        catch (Exception ex) when (ex is OperationCanceledException or System.Data.Common.DbException or TimeoutException or HttpRequestException or InvalidOperationException)
         {
             logger?.LogWarning(ex, "Screening data could not be loaded; caller cancellation: {Canceled}.", ct.IsCancellationRequested);
             return StatusCode(503, "Data screeneru se nepodařilo načíst. Zkus načtení zopakovat; uložené výsledky zůstaly zachované.");

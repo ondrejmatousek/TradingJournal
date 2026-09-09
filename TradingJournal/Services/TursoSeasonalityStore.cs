@@ -44,9 +44,21 @@ public sealed class TursoSeasonalityStore
     }
 
     public async Task<IReadOnlyDictionary<string, IReadOnlyList<SeasonalityPrice>>> LoadAllAsync(CancellationToken cancellationToken = default)
+        => await LoadAllAsync(null, cancellationToken);
+
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<SeasonalityPrice>>> LoadAllAsync(IReadOnlyCollection<string>? assetKeys, CancellationToken cancellationToken = default)
     {
         if (!IsConfigured) return new Dictionary<string, IReadOnlyList<SeasonalityPrice>>();
-        var result = await ExecuteAsync("SELECT AssetKey, Date, Close FROM SeasonalityPrices ORDER BY AssetKey, Date", [], cancellationToken);
+        var sql = "SELECT AssetKey, Date, Close FROM SeasonalityPrices";
+        IReadOnlyList<JsonElement> args = [];
+        if (assetKeys is { Count: > 0 })
+        {
+            var keys = assetKeys.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            sql += $" WHERE AssetKey IN ({string.Join(",", keys.Select(_ => "?"))})";
+            args = keys.Select(TextArg).ToArray();
+        }
+        sql += " ORDER BY AssetKey, Date";
+        var result = await ExecuteAsync(sql, args, cancellationToken);
         return ReadRows(result).GroupBy(row => row[0], StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<SeasonalityPrice>)g.Select(row => new SeasonalityPrice(DateOnly.Parse(row[1], CultureInfo.InvariantCulture), decimal.Parse(row[2], CultureInfo.InvariantCulture))).ToList(), StringComparer.OrdinalIgnoreCase);
     }
