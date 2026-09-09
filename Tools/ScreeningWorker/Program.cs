@@ -99,7 +99,11 @@ catch (OperationCanceledException) { Console.Error.WriteLine("Update interrupted
 catch (Exception ex)
 {
     // Avoid logging connection strings or provider URLs with credentials.
-    Console.Error.WriteLine($"Worker failed ({ex.GetType().Name}). Check SQL permissions, schema, firewall and configured secrets.");
+    var detail = ex.Message.Replace(Environment.NewLine, " ").Replace("\r", " ").Replace("\n", " ");
+    if (detail.Length > 800) detail = detail[..800];
+    Console.Error.WriteLine($"Worker failed ({ex.GetType().Name}): {detail}");
+    if (ex.InnerException is not null)
+        Console.Error.WriteLine($"Inner error ({ex.InnerException.GetType().Name}): {ex.InnerException.Message.Replace(Environment.NewLine, " ")}");
     return 1;
 }
 
