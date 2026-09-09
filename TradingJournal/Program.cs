@@ -47,8 +47,10 @@ builder.Services.AddScoped<HomeInsightService>();
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
-var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
-var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+var googleClientId = builder.Configuration["Authentication:Google:ClientId"]
+    ?? builder.Configuration["GOOGLE_CLIENT_ID"];
+var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]
+    ?? builder.Configuration["GOOGLE_CLIENT_SECRET"];
 
 if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(googleClientSecret))
 {

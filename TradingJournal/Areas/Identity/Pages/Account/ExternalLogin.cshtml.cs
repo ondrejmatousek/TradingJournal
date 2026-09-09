@@ -43,6 +43,21 @@ namespace TradingJournal.Areas.Identity.Pages.Account
         {
             returnUrl ??= Url.Content("~/");
 
+            try
+            {
+                return await HandleCallbackAsync(returnUrl, remoteError);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "External login callback failed for {ReturnUrl}.", returnUrl);
+                ErrorMessage = "Přihlášení přes Google se nepodařilo dokončit. Zkus to prosím znovu.";
+                return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
+            }
+        }
+
+        private async Task<IActionResult> HandleCallbackAsync(string returnUrl, string? remoteError)
+        {
+
             if (remoteError is not null)
             {
                 ErrorMessage = $"Error from external provider: {remoteError}";

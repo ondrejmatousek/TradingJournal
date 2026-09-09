@@ -29,7 +29,10 @@ namespace TradingJournal.Controllers
 
         public IActionResult Index()
         {
-            return View(new TradingJournal.ViewModels.HomeIndexViewModel());
+            // The investment screener is the application's primary landing page.
+            // Keeping the redirect server-side prevents the old dashboard widgets
+            // from starting data requests when the app is opened.
+            return RedirectToAction("Index", "Screening");
         }
 
         [HttpGet]
