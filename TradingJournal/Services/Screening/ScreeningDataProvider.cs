@@ -112,16 +112,16 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
         foreach (var series in new[] { "DGS10", "UNRATE" })
         {
             string csv;
-            try { csv = await client.GetStringAsync($"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}&cosd={DateTime.UtcNow.AddYears(-1):yyyy-MM-dd}", ct); }
+            try { csv = await ProviderHttp.GetStringAsync(client, $"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}&cosd={DateTime.UtcNow.AddYears(-1):yyyy-MM-dd}", ct); }
             catch (Exception ex) when (!ct.IsCancellationRequested && ex is HttpRequestException or OperationCanceledException)
             {
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
                 var url = series == "UNRATE" ? "https://api.bls.gov/publicAPI/v2/timeseries/data/LNS14000000"
                     : $"https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value={today.Year}";
-                var body = await client.GetStringAsync(url, ct);
+                var body = await ProviderHttp.GetStringAsync(client, url, ct);
                 if (series == "DGS10" && today.Month <= 4)
                 {
-                    var priorBody = await client.GetStringAsync(url.Replace($"={today.Year}", $"={today.Year - 1}"), ct);
+                    var priorBody = await ProviderHttp.GetStringAsync(client, url.Replace($"={today.Year}", $"={today.Year - 1}"), ct);
                     var xml = XDocument.Parse(body);
                     xml.Root!.Add(XDocument.Parse(priorBody).Root!.Elements().Where(e => e.Name.LocalName == "entry"));
                     body = xml.ToString();
@@ -147,7 +147,7 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
         using var client = factory.CreateClient();
         client.Timeout = TimeSpan.FromSeconds(20);
         const string source = "https://api.gdeltproject.org/api/v2/doc/doc?query=geopolitics%20OR%20war%20OR%20sanctions%20OR%20tariffs&mode=artlist&format=json&maxrecords=100&sort=datedesc";
-        using var document = JsonDocument.Parse(await client.GetStringAsync(source, ct));
+        using var document = JsonDocument.Parse(await ProviderHttp.GetStringAsync(client, source, ct));
         var articles = document.RootElement.TryGetProperty("articles", out var items)
             ? items.EnumerateArray().ToArray()
             : [];

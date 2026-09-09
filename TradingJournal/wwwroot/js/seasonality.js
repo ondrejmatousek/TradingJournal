@@ -38,6 +38,8 @@
     let highlightedAssetIndex = 0;
     let visibleAssetSuggestions = [];
     let loadingAssetKey = null;
+    const loadedAssets = new Set();
+    const failedAssets = new Set();
 
     const normalizeSearch = value => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
     const rows = () => activeAsset ? data[activeAsset.key] || [] : [];
@@ -71,7 +73,10 @@
             assetStatus.textContent = 'Asset nenalezen';
             return;
         }
-        assetStatus.textContent = `${activeAsset.name} · ${rows().length ? `${rows().length} záznamů` : 'data se načítají'}`;
+        const status = rows().length ? `${rows().length} záznamů`
+            : failedAssets.has(activeAsset.key) ? 'načtení selhalo'
+            : loadedAssets.has(activeAsset.key) ? 'v databázi nejsou uložená data' : 'data se načítají';
+        assetStatus.textContent = `${activeAsset.name} · ${status}`;
     };
     const setSyncStatus = (isUpdating, error) => {
         document.querySelector('#seasonality-sync-status').textContent = isUpdating
@@ -86,6 +91,7 @@
         if (!asset || rows().length && activeAsset?.key === asset.key) return;
 
         const assetKey = asset.key;
+        failedAssets.delete(assetKey);
         loadingAssetKey = assetKey;
         root.classList.add('is-loading');
         setAssetSearchLoading(true);
@@ -99,7 +105,11 @@
             const payload = await response.json();
             const payloadKey = payload.assetKey || assetKey;
             data[payloadKey] = payload.prices || [];
+            loadedAssets.add(payloadKey);
             setSyncStatus(Boolean(payload.isUpdating), payload.error);
+            if (activeAsset?.key === payloadKey && !data[payloadKey].length && !payload.isUpdating && !payload.error) {
+                document.querySelector('#seasonality-sync-status').textContent = 'Pro tento asset nejsou v připojené databázi ceny. Ověř připojení aplikace k Turso a výsledek denní aktualizace.';
+            }
 
             if (activeAsset?.key === payloadKey) {
                 root.classList.toggle('is-loading', Boolean(payload.isUpdating && !rows().length));
@@ -112,9 +122,11 @@
             }
         } catch (error) {
             if (activeAsset?.key === assetKey) {
-                document.querySelector('#seasonality-sync-status').textContent = 'Data se nepodařilo načíst. Zkouším to znovu…';
+                failedAssets.add(assetKey);
+                root.classList.remove('is-loading');
+                updateAssetStatus();
+                document.querySelector('#seasonality-sync-status').textContent = 'Data se nepodařilo načíst. Zkus asset vyhledat znovu nebo obnov stránku.';
                 window.clearTimeout(pollTimer);
-                pollTimer = window.setTimeout(() => loadAssetData(asset), 6000);
             }
         } finally {
             if (loadingAssetKey === assetKey) {

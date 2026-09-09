@@ -32,7 +32,7 @@ public sealed class InsiderSecProvider(IHttpClientFactory factory, IConfiguratio
     public async Task<InsiderFiling> FilingAsync(InvestmentSymbol stock, SecOwnershipFiling item, CancellationToken ct)
     {
         var accessionPath = item.AccessionNumber.Replace("-", "", StringComparison.Ordinal);
-        var url = $"https://www.sec.gov/Archives/edgar/data/{item.Cik}/{accessionPath}/{item.PrimaryDocument}";
+        var url = $"https://www.sec.gov/Archives/edgar/data/{item.Cik}/{accessionPath}/{RawDocumentPath(item.PrimaryDocument)}";
         var filing = ParseOwnershipXml(await GetStringAsync(url, ct), stock.Symbol, item.AccessionNumber,
             item.FiledDate, item.PeriodOfReport, item.FormType, url);
         filing.IssuerName = string.IsNullOrWhiteSpace(filing.IssuerName) ? item.CompanyName : filing.IssuerName;
@@ -49,7 +49,15 @@ public sealed class InsiderSecProvider(IHttpClientFactory factory, IConfiguratio
             cikBySymbol = JsonSerializer.Deserialize<Dictionary<string, long>>(await File.ReadAllTextAsync(path, ct))
                 ?? throw new InvalidDataException("SEC ticker mapping is empty.");
         }
-        return cikBySymbol.GetValueOrDefault(symbol);
+        return cikBySymbol.TryGetValue(symbol, out var cik) && cik > 0 ? cik : null;
+    }
+
+    // SEC's xsl folders render XML as HTML for browsers; download the original document.
+    public static string RawDocumentPath(string path)
+    {
+        var parts = path.Split('/');
+        return parts.Length == 2 && parts[0].StartsWith("xsl", StringComparison.OrdinalIgnoreCase)
+            ? parts[1] : path;
     }
 
     private async Task<string> GetStringAsync(string url, CancellationToken ct)
@@ -61,7 +69,7 @@ public sealed class InsiderSecProvider(IHttpClientFactory factory, IConfiguratio
             client.Timeout = TimeSpan.FromSeconds(30);
             client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent",
                 configuration["Screening:SecUserAgent"] ?? "EdgeDesk/1.0 investment-research contact@example.com");
-            var result = await client.GetStringAsync(url, ct);
+            var result = await ProviderHttp.GetStringAsync(client, url, ct);
             // Stay well below SEC's published maximum of ten requests per second.
             await Task.Delay(TimeSpan.FromMilliseconds(250), ct);
             return result;
@@ -95,6 +103,8 @@ public sealed class InsiderSecProvider(IHttpClientFactory factory, IConfiguratio
     public static InsiderFiling ParseOwnershipXml(string xml, string fallbackSymbol, string accessionNumber,
         DateOnly filedDate, DateOnly? periodOfReport, string formType, string sourceUrl)
     {
+        if (xml.Contains("<html", StringComparison.OrdinalIgnoreCase) || xml.Contains("<!DOCTYPE html", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("SEC returned HTML instead of ownership XML; check the raw document URL and SEC access restrictions.");
         var document = XDocument.Parse(xml, LoadOptions.None);
         static IEnumerable<XElement> Children(XContainer node, string name) => node.Elements().Where(x => x.Name.LocalName == name);
         static XElement? Child(XContainer node, string name) => Children(node, name).FirstOrDefault();
@@ -112,6 +122,8 @@ public sealed class InsiderSecProvider(IHttpClientFactory factory, IConfiguratio
         static DateOnly? Date(string? value) => DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ? date : null;
 
         var root = document.Root ?? throw new InvalidDataException("Ownership filing has no root element.");
+        if (root.Name.LocalName != "ownershipDocument")
+            throw new InvalidDataException("SEC response is not an ownership document.");
         var issuer = Child(root, "issuer");
         var filing = new InsiderFiling
         {
