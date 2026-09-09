@@ -127,7 +127,7 @@ namespace TradingJournal.Controllers
 
             foreach (var table in requiredTables)
             {
-                var exists = await SchemaObjectExistsAsync($"OBJECT_ID(N'[dbo].[{table}]', N'U') IS NOT NULL", cancellationToken);
+                var exists = await TableExistsAsync(table, cancellationToken);
                 checks.Add(new ReadinessCheck($"table:{table}", exists, exists ? "Table exists." : $"Missing table dbo.{table}."));
             }
 
@@ -194,7 +194,7 @@ namespace TradingJournal.Controllers
 
             foreach (var (table, column) in requiredColumns)
             {
-                var exists = await SchemaObjectExistsAsync($"COL_LENGTH(N'[dbo].[{table}]', N'{column}') IS NOT NULL", cancellationToken);
+                var exists = await ColumnExistsAsync(table, column, cancellationToken);
                 checks.Add(new ReadinessCheck($"column:{table}.{column}", exists, exists ? "Column exists." : $"Missing column dbo.{table}.{column}."));
             }
         }
@@ -314,7 +314,7 @@ namespace TradingJournal.Controllers
             }
         }
 
-        private async Task<bool> SchemaObjectExistsAsync(string predicate, CancellationToken cancellationToken)
+        private async Task<bool> TableExistsAsync(string table, CancellationToken cancellationToken)
         {
             var connection = _context.Database.GetDbConnection();
 
@@ -322,7 +322,49 @@ namespace TradingJournal.Controllers
                 await connection.OpenAsync(cancellationToken);
 
             await using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT CASE WHEN {predicate} THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END";
+            if (_context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                command.CommandText = "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = @table)";
+            }
+            else
+            {
+                command.CommandText = "SELECT CASE WHEN OBJECT_ID(N'[dbo].[' + @table + ']', N'U') IS NOT NULL THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END";
+            }
+
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = "@table";
+            parameter.Value = table;
+            command.Parameters.Add(parameter);
+
+            var result = await command.ExecuteScalarAsync(cancellationToken);
+            return result is not null && Convert.ToBoolean(result);
+        }
+
+        private async Task<bool> ColumnExistsAsync(string table, string column, CancellationToken cancellationToken)
+        {
+            var connection = _context.Database.GetDbConnection();
+
+            if (connection.State != ConnectionState.Open)
+                await connection.OpenAsync(cancellationToken);
+
+            await using var command = connection.CreateCommand();
+            if (_context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                command.CommandText = "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = @table AND column_name = @column)";
+            }
+            else
+            {
+                command.CommandText = "SELECT CASE WHEN COL_LENGTH('[dbo].[' + @table + ']', @column) IS NOT NULL THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END";
+            }
+
+            var tableParameter = command.CreateParameter();
+            tableParameter.ParameterName = "@table";
+            tableParameter.Value = table;
+            command.Parameters.Add(tableParameter);
+            var columnParameter = command.CreateParameter();
+            columnParameter.ParameterName = "@column";
+            columnParameter.Value = column;
+            command.Parameters.Add(columnParameter);
 
             var result = await command.ExecuteScalarAsync(cancellationToken);
             return result is not null && Convert.ToBoolean(result);
