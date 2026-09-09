@@ -88,6 +88,6 @@ public sealed class TursoSeasonalityStore
     }
 
     private static JsonElement TextArg(string value) => JsonSerializer.SerializeToElement(new { type = "text", value });
-    private static JsonElement FloatArg(decimal value) => JsonSerializer.SerializeToElement(new { type = "float", value = value.ToString(CultureInfo.InvariantCulture) });
+    private static JsonElement FloatArg(decimal value) => JsonSerializer.SerializeToElement(new { type = "float", value = (double)value });
     private sealed record Request(string Sql, IReadOnlyList<JsonElement> Args);
 }
