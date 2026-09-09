@@ -9,6 +9,7 @@ namespace TradingJournal.Services;
 
 public sealed class SeasonalityService
 {
+    private static readonly SemaphoreSlim UpdateGate = new(1, 1);
     public static IReadOnlyList<SeasonalityAsset> Assets { get; } = BuildAssets();
 
     private static IReadOnlyList<SeasonalityAsset> BuildAssets()
@@ -588,6 +589,9 @@ public sealed class SeasonalityService
     private async Task UpdateAsync(CancellationToken cancellationToken, bool onlyMissing)
     {
         if (_context is null) throw new InvalidOperationException("Seasonality database context is not configured.");
+        await UpdateGate.WaitAsync(cancellationToken);
+        try
+        {
         var client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.UserAgent.ParseAdd("TradingJournal-Seasonality/1.0");
         var cachedKeys = onlyMissing
@@ -624,6 +628,11 @@ public sealed class SeasonalityService
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+        }
+        finally
+        {
+            UpdateGate.Release();
+        }
     }
 
     private async Task<SeasonalityViewModel> DownloadAsync(CancellationToken cancellationToken)
@@ -681,7 +690,7 @@ public sealed class SeasonalityService
 
     private async Task UpsertAsync(string assetKey, string source, IReadOnlyList<SeasonalityPrice> prices, Dictionary<DateOnly, SeasonalityPriceEntity> cached, CancellationToken cancellationToken)
     {
-        foreach (var price in prices)
+        foreach (var price in prices.DistinctBy(price => price.Date))
         {
             if (cached.TryGetValue(price.Date, out var existing))
             {
