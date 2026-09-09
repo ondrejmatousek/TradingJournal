@@ -17,7 +17,7 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
         => Json(new { schedule = schedule.Value, run = await store.ReadAsync<ScreeningUpdateRun>(ScreeningUpdateHostedService.StateKey, ct) });
     [HttpGet]
     public Task<IActionResult> Data(CancellationToken ct) => ReadScreeningAsync(async () =>
-        Json(new { rows = await service.LoadAsync(UserKey, ct), macro = await store.ReadAsync<List<MacroObservation>>("macro-v1", ct) ?? [] }), ct);
+        Json(new { rows = await service.LoadAsync(UserKey, ct), macro = await ContextAsync(ct) }), ct);
 
     private async Task<IActionResult> ReadScreeningAsync(Func<Task<IActionResult>> read, CancellationToken ct)
     {
@@ -47,8 +47,16 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> RefreshMacro(CancellationToken ct)
     {
-        try { return Json(await provider.MacroAsync(ct)); }
+        try { var macro = await provider.MacroAsync(ct); try { var geo = await provider.GeopoliticsAsync(ct); macro.Add(geo); } catch { } return Json(macro); }
         catch (Exception) when (!ct.IsCancellationRequested) { return StatusCode(503, "Makrodata nejsou dostupná. Původní data zůstala zachována."); }
+    }
+
+    private async Task<List<MacroObservation>> ContextAsync(CancellationToken ct)
+    {
+        var macro = await store.ReadAsync<List<MacroObservation>>("macro-v1", ct) ?? [];
+        var geo = await store.ReadAsync<MacroObservation>("macro-geopolitics-v1", ct);
+        if (geo != null) macro.Add(geo);
+        return macro;
     }
     [HttpGet]
     public async Task<IActionResult> Research(string symbol, CancellationToken ct)

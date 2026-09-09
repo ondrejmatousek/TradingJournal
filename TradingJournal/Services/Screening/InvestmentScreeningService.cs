@@ -17,7 +17,7 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
             .OrderBy(p => p.AssetKey).ThenBy(p => p.Date)
             .Select(p => new { p.AssetKey, p.Date, p.Close }).ToListAsync(ct);
         var bySymbol = cachedPrices.GroupBy(p => p.AssetKey).ToDictionary(g => g.Key, g => (IReadOnlyList<SeasonalityPrice>)g.Select(p => new SeasonalityPrice(p.Date, p.Close)).ToArray());
-        var macro = await store.ReadAsync<List<MacroObservation>>("macro-v1", ct) ?? [];
+        var macro = await ContextAsync(ct);
         var rows = new List<ScreeningRow>();
         foreach (var stock in InvestmentUniverse.All)
         {
@@ -72,7 +72,7 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
         var market = await RefreshMarketAsync(symbol, ct, force);
         var seasonal = await db.SeasonalityPrices.AsNoTracking().Where(p => p.AssetKey == symbol).OrderBy(p => p.Date).Select(p => new SeasonalityPrice(p.Date, p.Close)).ToListAsync(ct);
         var research = await store.ReadAsync<ScreeningResearch>("research-" + user + "-" + symbol, ct) ?? new();
-        var macro = await store.ReadAsync<List<MacroObservation>>("macro-v1", ct) ?? [];
+        var macro = await ContextAsync(ct);
         var result = ScreeningCalculator.Evaluate(stock, Merge(seasonal, market.Prices), market.Fundamentals, macro, research, DateOnly.FromDateTime(DateTime.UtcNow));
         result.RefreshMessage = market.Message;
         return result;
@@ -84,6 +84,14 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
         if (market.Count == 0) return seasonal;
         if (seasonal.Count == 0) return market;
         return market.Max(p => p.Date) >= seasonal.Max(p => p.Date) ? market : seasonal;
+    }
+
+    private async Task<List<MacroObservation>> ContextAsync(CancellationToken ct)
+    {
+        var macro = await store.ReadAsync<List<MacroObservation>>("macro-v1", ct) ?? [];
+        var geo = await store.ReadAsync<MacroObservation>("macro-geopolitics-v1", ct);
+        if (geo != null) macro.Add(geo);
+        return macro;
     }
 }
 

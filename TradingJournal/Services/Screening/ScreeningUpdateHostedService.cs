@@ -58,6 +58,8 @@ public sealed class ScreeningUpdateHostedService(IServiceScopeFactory scopes, Sc
         try
         {
             await provider.MacroAsync(ct);
+            try { await provider.GeopoliticsAsync(ct); } catch (Exception ex) when (!ct.IsCancellationRequested)
+            { logger.LogWarning(ex, "Scheduled geopolitical refresh failed; retaining previous data."); }
             run = run with { MacroUpdated = true };
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)

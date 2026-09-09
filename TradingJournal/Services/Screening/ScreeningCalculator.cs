@@ -103,7 +103,9 @@ public static class ScreeningCalculator
             technical = 50 + Math.Clamp(momentum * 2, -25, 25) + Math.Clamp(row.EmaDistance.Value, -25, 25);
         }
         Add("technical", "Načasování", 10, technical, "Stabilizace: 21denní momentum a trend vůči denní EMA200. Samotná hloubka propadu není bonus za levnou akcii.");
-        Add("geopolitics", "Geopolitika", 5, EvidenceScore(research.Evidence, "geopolitics", today), "Jen datovaný rozbor s odkazem, vazbou na firmu a popsaným rizikem. Neznámá expozice není neutrální hodnocení.");
+        var geopolitical = macro.FirstOrDefault(m => m.Series == "GEO_RISK" && today.DayNumber - m.Date.DayNumber is >= 0 and <= 3);
+        Add("geopolitics", "Geopolitika", 5, EvidenceScore(research.Evidence, "geopolitics", today) ?? geopolitical?.Value,
+            geopolitical is null ? "Chybí aktuální agregovaný geopolitický kontext." : "Široký index z veřejných geopolitických titulků GDELT; vyšší skóre znamená nižší zachycené riziko. Neurčuje expozici konkrétní firmy.");
         Add("analysts", "Analýzy", 5, EvidenceScore(research.Evidence, "analysts", today), "Pouze rozbory s autorem a označenou prověřenou historií; deklarace uživatele není nezávislý audit autora. Duplicitní URL se počítá jednou.");
         foreach (var key in new[] { "macro", "geopolitics", "analysts" })
             if (research.Evidence.Any(e => e.Pillar == key) && EvidenceScore(research.Evidence, key, today) == null)

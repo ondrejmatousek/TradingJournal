@@ -21,7 +21,7 @@
         $('screen-macro').replaceChildren();
         $('screen-macro').append(document.createTextNode('MAKRO · '));
         if (!macro.length) { $('screen-macro').append(document.createTextNode('Bez uložených dat. Aktualizuj data nebo přidej doložený vlastní rozbor.')); return; }
-        macro.forEach(m => { const span = document.createElement('span'); span.innerHTML = `${safeLink(m.source, m.series === 'DGS10' ? 'Výnos US 10Y' : 'Nezaměstnanost USA')}: ${pct(m.value)} · ${esc(m.date)} · před 3 měsíci ${pct(m.priorValue)}　`; $('screen-macro').append(span); });
+        macro.forEach(m => { const span = document.createElement('span'); const label = m.series === 'DGS10' ? 'Výnos US 10Y' : m.series === 'UNRATE' ? 'Nezaměstnanost USA' : 'Geopolitické riziko'; span.innerHTML = `${safeLink(m.source, label)}: ${pct(m.value)} · ${esc(m.date)}${m.priorValue == null ? '' : ` · před 3 měsíci ${pct(m.priorValue)}`}　`; $('screen-macro').append(span); });
     }
     function render() {
         const query = $('screen-search').value.toLowerCase(), sector = $('screen-sector').value, filter = $('screen-filter').value;

@@ -142,6 +142,29 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
         return observations;
     }
 
+    public async Task<MacroObservation> GeopoliticsAsync(CancellationToken ct)
+    {
+        using var client = factory.CreateClient();
+        client.Timeout = TimeSpan.FromSeconds(20);
+        const string source = "https://api.gdeltproject.org/api/v2/doc/doc?query=geopolitics%20OR%20war%20OR%20sanctions%20OR%20tariffs&mode=artlist&format=json&maxrecords=100&sort=datedesc";
+        using var document = JsonDocument.Parse(await client.GetStringAsync(source, ct));
+        var articles = document.RootElement.TryGetProperty("articles", out var items)
+            ? items.EnumerateArray().ToArray()
+            : [];
+        if (articles.Length == 0) throw new InvalidDataException("Geopolitical feed has no articles.");
+        var negative = new[] { "war", "attack", "conflict", "sanction", "tariff", "missile", "military", "crisis", "tension" };
+        var negativeHits = articles.Count(article =>
+        {
+            var title = article.TryGetProperty("title", out var value) ? value.GetString() ?? "" : "";
+            return negative.Any(word => title.Contains(word, StringComparison.OrdinalIgnoreCase));
+        });
+        var riskScore = Math.Clamp(100m - negativeHits * 100m / articles.Length, 0m, 100m);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var result = new MacroObservation("GEO_RISK", today, riskScore, null, source);
+        await store.WriteAsync("macro-geopolitics-v1", result, ct);
+        return result;
+    }
+
     public static MacroObservation ParseOfficialMacro(string series, string body, DateOnly today)
     {
         var points = new List<(DateOnly Date, decimal Value)>();
