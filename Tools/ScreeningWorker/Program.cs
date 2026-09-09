@@ -47,6 +47,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(o =>
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ScreeningStore>();
 builder.Services.AddScoped<ScreeningDataProvider>();
+builder.Services.AddScoped<SeasonalityService>();
+builder.Services.AddScoped<CotDataService>();
 builder.Services.AddScoped<IUnderEma200HistoryProvider, UnderEma200HistoryProvider>();
 builder.Services.AddScoped<InvestmentScreeningService>();
 builder.Services.AddScoped<InsiderSecProvider>();
@@ -102,6 +104,8 @@ catch (Exception ex)
 
 static async Task RunUpdateAsync(IHost host, IServiceScope scope, CancellationToken cancellationToken, bool force)
 {
+    await scope.ServiceProvider.GetRequiredService<SeasonalityService>().UpdateAsync(cancellationToken);
+    await scope.ServiceProvider.GetRequiredService<CotDataService>().UpdateAsync(force, cancellationToken);
     await host.Services.GetRequiredService<ScreeningUpdateHostedService>().RunIfDueAsync(DateTimeOffset.UtcNow, cancellationToken, force);
     var dueDate = host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ScreeningSchedule>>().Value.DueDate(DateTimeOffset.UtcNow);
     var insiderRun = await scope.ServiceProvider.GetRequiredService<InsiderUpdateService>().RunAsync(dueDate, cancellationToken, force);

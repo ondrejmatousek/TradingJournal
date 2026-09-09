@@ -33,9 +33,11 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<SeasonalityService>();
 builder.Services.AddSingleton<SeasonalityUpdateState>();
-builder.Services.AddHostedService<SeasonalityUpdateHostedService>();
+if (builder.Configuration.GetValue("DataRefresh:Enabled", true))
+    builder.Services.AddHostedService<SeasonalityUpdateHostedService>();
 builder.Services.AddScoped<CotDataService>();
-builder.Services.AddHostedService<CotUpdateHostedService>();
+if (builder.Configuration.GetValue("DataRefresh:Enabled", true))
+    builder.Services.AddHostedService<CotUpdateHostedService>();
 builder.Services.AddSingleton<AppClock>();
 builder.Services.AddSingleton<MuckaRubricProvider>();
 builder.Services.AddScoped<MarketBiasService>();
@@ -82,7 +84,8 @@ builder.Services.AddOptions<TradingJournal.Services.Screening.ScreeningSchedule>
     .Validate(o => o.Hour is >= 0 and <= 23 && o.Minute is >= 0 and <= 59, "Invalid screening schedule time.")
     .Validate(o => TimeZoneInfo.TryFindSystemTimeZoneById(o.TimeZone, out _), "Invalid screening time zone.")
     .ValidateOnStart();
-builder.Services.AddHostedService<TradingJournal.Services.Screening.ScreeningUpdateHostedService>();
+if (builder.Configuration.GetValue("DataRefresh:Enabled", true))
+    builder.Services.AddHostedService<TradingJournal.Services.Screening.ScreeningUpdateHostedService>();
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
