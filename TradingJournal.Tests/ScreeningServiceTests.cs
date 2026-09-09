@@ -24,6 +24,29 @@ namespace TradingJournal.Tests;
 public sealed class ScreeningServiceTests
 {
     [Fact]
+    public async Task MarketCacheKeepsOnly252PastPrices()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        fixture.History.Result = Enumerable.Range(-600, 602).Select(day => new UnderEma200PricePoint(fixture.Today.AddDays(day).ToDateTime(TimeOnly.MinValue), 100)).ToArray();
+        await fixture.Service.RefreshMarketAsync("MSFT", default);
+        var saved = (await fixture.Store.ReadAsync<ScreeningMarketCache>("market-MSFT", default))!;
+        Assert.Equal(252, saved.Prices.Count);
+        Assert.Equal(fixture.Today, saved.Prices[^1].Date);
+        Assert.Equal(fixture.Today.AddDays(-251), saved.Prices[0].Date);
+    }
+
+    [Fact]
+    public async Task BothLoadAndExplicitRefreshUseSqlRowLimit()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        await fixture.SeedHistoryAsync();
+        fixture.Interceptor.RequireBoundedPrices = true;
+        var row = Assert.Single(await fixture.Service.LoadAsync("user", default, ["MSFT"]));
+        Assert.Empty(row.Seasonality);
+        Assert.NotNull(row.Pillars.Single(p => p.Key == "technical").Score);
+        await fixture.Service.RefreshAsync("MSFT", "user", default);
+    }
+    [Fact]
     public async Task BackgroundMarketRefresh_DoesNotReadDatabaseOrPersonalResearch()
     {
         await using var fixture = await Fixture.CreateAsync();
@@ -216,7 +239,7 @@ public sealed class ScreeningServiceTests
         Assert.Equal(InvestmentUniverse.All.Count, rows.Count);
         var microsoft = Assert.Single(rows, r => r.Symbol == "MSFT");
         Assert.Equal(100m, microsoft.Price);
-        Assert.True(microsoft.Seasonality[1].Years >= 5);
+        Assert.Empty(microsoft.Seasonality);
         Assert.Null(microsoft.Score);
         Assert.Equal(0, fixture.Http.Calls);
         Assert.Equal(0, fixture.History.Calls);
@@ -232,7 +255,7 @@ public sealed class ScreeningServiceTests
         var row = Assert.Single(await fixture.Service.LoadAsync("user", default), r => r.Symbol == "MSFT");
 
         Assert.Equal(10m, row.Price);
-        Assert.Equal(0, row.Seasonality[1].Years);
+        Assert.Empty(row.Seasonality);
         Assert.Null(row.Pillars.Single(p => p.Key == "technical").Score);
     }
 
@@ -332,11 +355,17 @@ public sealed class ScreeningServiceTests
     }
     private sealed class QueryInterceptor : DbCommandInterceptor
     {
+        public bool RequireBoundedPrices { get; set; }
         public Func<Exception>? ErrorFactory { get; set; }
         public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData,
             InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
         {
             if (ErrorFactory != null) throw ErrorFactory();
+            if (RequireBoundedPrices && command.CommandText.Contains("SeasonalityPrices"))
+            {
+                Assert.Contains("LIMIT", command.CommandText);
+                Assert.Contains(command.Parameters.Cast<DbParameter>(), p => Convert.ToString(p.Value) == "252");
+            }
             return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
         }
     }

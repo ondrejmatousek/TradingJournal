@@ -16,24 +16,14 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
         var stocks = requestedSymbols is null
             ? InvestmentUniverse.All
             : InvestmentUniverse.All.Where(s => requestedSymbols.Contains(s.Symbol, StringComparer.OrdinalIgnoreCase)).ToArray();
-        var keys = stocks.Select(s => s.Symbol).ToArray();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var historyStart = today.AddYears(-15);
-        Dictionary<string, IReadOnlyList<SeasonalityPrice>> bySymbol;
-        if (turso?.IsConfigured == true)
-            bySymbol = (await turso.LoadAllAsync(keys, ct)).ToDictionary(x => x.Key, x => (IReadOnlyList<SeasonalityPrice>)x.Value.Where(p => p.Date >= historyStart && p.Date <= today).ToArray(), StringComparer.OrdinalIgnoreCase);
-        else
-        {
-            var cachedPrices = await db.SeasonalityPrices.AsNoTracking().Where(p => keys.Contains(p.AssetKey) && p.Date >= historyStart && p.Date <= today).OrderBy(p => p.AssetKey).ThenBy(p => p.Date).Select(p => new { p.AssetKey, p.Date, p.Close }).ToListAsync(ct);
-            bySymbol = cachedPrices.GroupBy(p => p.AssetKey).ToDictionary(g => g.Key, g => (IReadOnlyList<SeasonalityPrice>)g.Select(p => new SeasonalityPrice(p.Date, p.Close)).ToArray());
-        }
         var macro = await ContextAsync(ct);
         var rows = new List<ScreeningRow>();
         foreach (var stock in stocks)
         {
             var cache = await store.ReadAsync<ScreeningMarketCache>("market-" + stock.Symbol, ct);
             var research = await store.ReadAsync<ScreeningResearch>("research-" + user + "-" + stock.Symbol, ct) ?? new();
-            var prices = Merge(bySymbol.GetValueOrDefault(stock.Symbol, []), cache?.Prices ?? []);
+            var prices = Merge(await LoadRecentAsync(stock.Symbol, today, ct), Recent(cache?.Prices ?? [], today));
             var row = ScreeningCalculator.Evaluate(stock, prices, cache?.Fundamentals, macro, research, DateOnly.FromDateTime(DateTime.UtcNow));
             row.RefreshMessage = cache?.Message;
             rows.Add(row);
@@ -49,7 +39,8 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
         {
             var old = await store.ReadAsync<ScreeningMarketCache>("market-" + symbol, ct);
             var messages = new List<string>();
-            var prices = old?.Prices ?? [];
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var prices = Recent(old?.Prices ?? [], today);
             FundamentalInput? fundamental = old?.Fundamentals;
             // Explicit user refresh bypasses the local result cache; provider rate limits still apply.
             if (force || old == null || DateTimeOffset.UtcNow - old.RetrievedAt > (string.IsNullOrWhiteSpace(old.Message) ? TimeSpan.FromHours(12) : TimeSpan.FromMinutes(15)))
@@ -57,7 +48,7 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
                 try
                 {
                     var fetched = await history.GetDailyPricesAsync(symbol, ct);
-                    if (fetched.Count > 0) prices = fetched.Select(p => new SeasonalityPrice(DateOnly.FromDateTime(p.Date), p.Close)).ToList();
+                    if (fetched.Count > 0) prices = Recent(fetched.Select(p => new SeasonalityPrice(DateOnly.FromDateTime(p.Date), p.Close)), today);
                     else messages.Add("Cenový poskytovatel nevrátil historii; zachována dostupná data.");
                 }
                 catch (Exception) when (!ct.IsCancellationRequested) { messages.Add("Ceny se nepodařilo aktualizovat."); }
@@ -80,7 +71,7 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
     {
         var stock = InvestmentUniverse.All.Single(s => s.Symbol == symbol);
         var market = await RefreshMarketAsync(symbol, ct, force);
-        var seasonal = turso?.IsConfigured == true ? await turso.LoadAsync(symbol, ct) : await db.SeasonalityPrices.AsNoTracking().Where(p => p.AssetKey == symbol).OrderBy(p => p.Date).Select(p => new SeasonalityPrice(p.Date, p.Close)).ToListAsync(ct);
+        var seasonal = await LoadRecentAsync(symbol, DateOnly.FromDateTime(DateTime.UtcNow), ct);
         var research = await store.ReadAsync<ScreeningResearch>("research-" + user + "-" + symbol, ct) ?? new();
         var macro = await ContextAsync(ct);
         var result = ScreeningCalculator.Evaluate(stock, Merge(seasonal, market.Prices), market.Fundamentals, macro, research, DateOnly.FromDateTime(DateTime.UtcNow));
@@ -95,6 +86,18 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
         if (seasonal.Count == 0) return market;
         return market.Max(p => p.Date) >= seasonal.Max(p => p.Date) ? market : seasonal;
     }
+
+    private async Task<IReadOnlyList<SeasonalityPrice>> LoadRecentAsync(string symbol, DateOnly today, CancellationToken ct)
+    {
+        if (turso?.IsConfigured == true) return await turso.LoadRecentAsync(symbol, today, ct);
+        var prices = await db.SeasonalityPrices.AsNoTracking().Where(p => p.AssetKey == symbol && p.Date <= today)
+            .OrderByDescending(p => p.Date).Take(252).Select(p => new SeasonalityPrice(p.Date, p.Close)).ToListAsync(ct);
+        prices.Reverse();
+        return prices;
+    }
+
+    private static List<SeasonalityPrice> Recent(IEnumerable<SeasonalityPrice> prices, DateOnly today)
+        => prices.Where(p => p.Date <= today && p.Close > 0).DistinctBy(p => p.Date).OrderBy(p => p.Date).TakeLast(252).ToList();
 
     private async Task<List<MacroObservation>> ContextAsync(CancellationToken ct)
     {

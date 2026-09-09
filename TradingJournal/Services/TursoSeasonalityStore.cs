@@ -43,6 +43,17 @@ public sealed class TursoSeasonalityStore
         return ReadRows(result).Select(row => new SeasonalityPrice(DateOnly.Parse(row[0], CultureInfo.InvariantCulture), decimal.Parse(row[1], CultureInfo.InvariantCulture))).ToList();
     }
 
+    public async Task<IReadOnlyList<SeasonalityPrice>> LoadRecentAsync(string assetKey, DateOnly asOf, CancellationToken cancellationToken = default)
+    {
+        if (!IsConfigured) return [];
+        // The (AssetKey, Date) primary key supports a bounded reverse index scan.
+        // Apply the limit in SQL, never after downloading the complete asset history.
+        var result = await ExecuteAsync("SELECT Date, Close FROM SeasonalityPrices WHERE AssetKey = ? AND Date <= ? ORDER BY Date DESC LIMIT 252",
+            [TextArg(assetKey), TextArg(asOf.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))], cancellationToken);
+        return ReadRows(result).Select(row => new SeasonalityPrice(DateOnly.Parse(row[0], CultureInfo.InvariantCulture), decimal.Parse(row[1], CultureInfo.InvariantCulture)))
+            .OrderBy(p => p.Date).ToArray();
+    }
+
     public async Task<IReadOnlyDictionary<string, IReadOnlyList<SeasonalityPrice>>> LoadAllAsync(CancellationToken cancellationToken = default)
         => await LoadAllAsync(null, cancellationToken);
 

@@ -145,7 +145,18 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
     public async Task<MacroObservation> GeopoliticsAsync(CancellationToken ct)
     {
         using var client = factory.CreateClient();
-        client.Timeout = TimeSpan.FromSeconds(20);
+        client.Timeout = TimeSpan.FromSeconds(10);
+        MacroObservation? rss = null;
+        try
+        {
+            rss = ParseGeopoliticalRss(await client.GetStringAsync("https://feeds.bbci.co.uk/news/world/rss.xml", ct), DateTimeOffset.UtcNow);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested && ex is HttpRequestException or OperationCanceledException or System.Xml.XmlException or InvalidDataException) { }
+        if (rss != null)
+        {
+            await store.WriteAsync("macro-geopolitics-v1", rss, ct);
+            return rss;
+        }
         const string source = "https://api.gdeltproject.org/api/v2/doc/doc?query=geopolitics%20OR%20war%20OR%20sanctions%20OR%20tariffs&mode=artlist&format=json&maxrecords=100&sort=datedesc";
         using var document = JsonDocument.Parse(await ProviderHttp.GetStringAsync(client, source, ct));
         var articles = document.RootElement.TryGetProperty("articles", out var items)
@@ -163,6 +174,22 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
         var result = new MacroObservation("GEO_RISK", today, riskScore, null, source);
         await store.WriteAsync("macro-geopolitics-v1", result, ct);
         return result;
+    }
+
+    public static MacroObservation ParseGeopoliticalRss(string xml, DateTimeOffset now)
+    {
+        var items = XDocument.Parse(xml).Descendants("item")
+            .Select(x => new { Title = x.Element("title")?.Value.Trim(), Date = x.Element("pubDate")?.Value })
+            .Where(x => !string.IsNullOrWhiteSpace(x.Title)
+                && DateTimeOffset.TryParse(x.Date, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var date)
+                && date <= now && date >= now.AddDays(-7))
+            .DistinctBy(x => x.Title, StringComparer.OrdinalIgnoreCase).ToArray();
+        if (items.Length < 5) throw new InvalidDataException("BBC geopolitical feed has insufficient recent headlines.");
+        var pattern = @"\b(wars?|attacks?|conflicts?|sanctions?|tariffs?|missiles?|military|crisis|tensions?)\b";
+        var hits = items.Count(x => System.Text.RegularExpressions.Regex.IsMatch(x.Title!, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant));
+        var latest = items.Max(x => DateTimeOffset.Parse(x.Date!, CultureInfo.InvariantCulture));
+        return new MacroObservation("GEO_RISK", DateOnly.FromDateTime(latest.UtcDateTime),
+            100m - hits * 100m / items.Length, null, "https://feeds.bbci.co.uk/news/world/rss.xml");
     }
 
     public static MacroObservation ParseOfficialMacro(string series, string body, DateOnly today)

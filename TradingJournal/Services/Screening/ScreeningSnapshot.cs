@@ -9,15 +9,16 @@ public sealed record ScreeningSnapshot(DateTimeOffset CalculatedAt, List<Screeni
             && (string.IsNullOrEmpty(sector) || r.Sector == sector));
         rows = rows.Where(r => filter switch
         {
+            "candidate" => r.Entry?.Status == "candidate", "wait" => r.Entry?.Status == "wait",
             "rated" => r.Score != null, "discount" => r.Discount > 0,
-            "ema" => r.EmaDistance < 0, "season" => r.Seasonality.FirstOrDefault(s => s.Days == 63)?.Median > 0,
+            "ema" => r.EmaDistance < 0,
             _ => true
         });
         decimal? Metric(ScreeningRow r) => sort switch
         {
             "score" => r.Score, "discount" => r.Discount,
             "quality" => r.Pillars.FirstOrDefault(p => p.Key == "quality")?.Score,
-            "season" => r.Seasonality.FirstOrDefault(s => s.Days == 63)?.Median, _ => r.Coverage
+            _ => r.Coverage
         };
         rows = sort == "symbol" ? rows.OrderBy(r => r.Symbol) : rows.OrderByDescending(Metric).ThenBy(r => r.Symbol);
         var matches = rows.ToArray();

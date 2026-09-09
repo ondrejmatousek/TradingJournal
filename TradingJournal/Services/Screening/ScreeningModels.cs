@@ -34,7 +34,14 @@ public sealed record SeasonalWindow(int Days, int Years, decimal? Median, decima
 public sealed record FundamentalInput(DateOnly PeriodEnd, DateOnly Filed, decimal Revenue, decimal PreviousRevenue,
     decimal OperatingCashFlow, decimal CapitalExpenditure, decimal NetIncome, decimal Assets, decimal Liabilities,
     decimal Shares, string Source, string Currency = "USD");
-public sealed record ValuationResult(decimal Low, decimal Base, decimal High, decimal Growth, decimal DiscountRate, decimal TerminalGrowth);
+public sealed record ValuationResult(decimal Low, decimal Base, decimal High, decimal Growth, decimal DiscountRate, decimal TerminalGrowth)
+{
+    public string Model { get; init; } = "Legacy DCF";
+    public decimal MarginOfSafety { get; init; }
+    public decimal BuyBelow { get; init; }
+}
+public sealed record EntryAssessment(string Status, string Label, decimal? ZoneLow, decimal? ZoneHigh,
+    decimal? Support, decimal? Momentum, List<string> Reasons);
 public sealed record MacroObservation(string Series, DateOnly Date, decimal Value, decimal? PriorValue, string Source);
 public sealed record ResearchEvidence(string Pillar, decimal Score, DateOnly Published, string SourceUrl,
     string Author, string Thesis, string Risk, int HorizonDays, bool TrackRecordVerified = false);
@@ -60,6 +67,7 @@ public sealed class ScreeningRow
     public FundamentalInput? Fundamentals { get; set; }
     public ValuationResult? Valuation { get; set; }
     public decimal? Discount { get; set; }
+    public EntryAssessment? Entry { get; set; }
     public List<ResearchEvidence> Evidence { get; set; } = [];
     public string? RefreshMessage { get; set; }
 }

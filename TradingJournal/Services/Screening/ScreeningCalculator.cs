@@ -30,21 +30,37 @@ public static class ScreeningCalculator
             samples.Min(s => s.Return), recent.Length >= 3 ? Median(recent) : null);
     }
 
-    public static ValuationResult? Value(FundamentalInput f, string sector)
+    public static ValuationResult? Value(FundamentalInput f, string sector, decimal? treasuryYield = null)
     {
         // Cash from operations less capex is an equity cash-flow proxy, not FCFF: no second debt subtraction.
         if (sector is "Financial Services" or "Real Estate" || f.Currency != "USD" || f.Shares <= 0 || f.PreviousRevenue <= 0 || f.Revenue <= 0) return null;
         var cash = f.OperatingCashFlow - f.CapitalExpenditure;
         if (cash <= 0 || f.CapitalExpenditure < 0) return null;
-        var growth = Math.Clamp(f.Revenue / f.PreviousRevenue - 1, -0.05m, 0.12m);
+        // One annual report is not a normalized earnings history: shrink observed growth
+        // and retain a conservative scenario instead of extrapolating a single strong year.
+        var growth = Math.Clamp((f.Revenue / f.PreviousRevenue - 1) * .5m, -0.05m, 0.10m);
+        var rate = treasuryYield is >= 0 and <= 15 ? Math.Clamp(treasuryYield.Value / 100 + .06m, .09m, .20m) : .11m;
         decimal Dcf(decimal g, decimal rate, decimal terminal)
         {
             var annual = cash / f.Shares;
             decimal present = 0;
-            for (var year = 1; year <= 5; year++) { annual *= 1 + g; present += annual / (decimal)Math.Pow((double)(1 + rate), year); }
-            return present + annual * (1 + terminal) / (rate - terminal) / (decimal)Math.Pow((double)(1 + rate), 5);
+            for (var year = 1; year <= 10; year++)
+            {
+                var fadedGrowth = year <= 5 ? g : g + (terminal - g) * (year - 5) / 5;
+                annual *= 1 + fadedGrowth;
+                present += annual / (decimal)Math.Pow((double)(1 + rate), year);
+            }
+            return present + annual * (1 + terminal) / (rate - terminal) / (decimal)Math.Pow((double)(1 + rate), 10);
         }
-        return new(Dcf(growth - .03m, .12m, .015m), Dcf(growth, .10m, .02m), Dcf(growth + .03m, .09m, .025m), growth * 100, 10, 2);
+        var low = Dcf(growth - .03m, rate + .02m, .01m) * .8m;
+        var basis = Dcf(growth, rate, .02m);
+        var high = Dcf(growth + .03m, rate - .01m, .025m) * 1.1m;
+        var margin = Math.Clamp(20 + (high - low) / basis * 10, 25, 40);
+        return new(low, basis, high, growth * 100, rate * 100, 2)
+        {
+            Model = "DCF-10-v2", MarginOfSafety = margin,
+            BuyBelow = Math.Min(low, basis * (1 - margin / 100))
+        };
     }
 
     public static ScreeningRow Evaluate(InvestmentSymbol stock, IReadOnlyList<SeasonalityPrice> prices,
@@ -70,13 +86,13 @@ public static class ScreeningCalculator
                 + Math.Clamp((1 - f.Liabilities / f.Assets) * 100, 0, 100) * .2m;
             if (f.NetIncome < 0 || f.OperatingCashFlow <= 0) row.Risks.Add("Ztráta nebo nekladný provozní cash flow: nutná individuální revize.");
             if (f.Liabilities > f.Assets) row.Risks.Add("Záporný vlastní kapitál: prověřit rozvahu a buybacky.");
-            row.Valuation = Value(f, stock.Sector);
+            row.Valuation = Value(f, stock.Sector, macro.FirstOrDefault(m => m.Series == "DGS10" && today.DayNumber - m.Date.DayNumber is >= 0 and <= 10)?.Value);
         }
         Add("quality", "Kvalita", 25, quality, "Roční růst tržeb 30 %, čistá marže 25 %, FCF marže 25 %, podíl vlastního kapitálu 20 %. Heuristika, nikoli sektorově kalibrovaný rating.");
         if (row.Valuation != null && fresh && row.Price > 0)
             row.Discount = (1 - row.Price.Value / row.Valuation.Base) * 100;
         Add("valuation", "Ocenění", 30, row.Discount is {} discount ? 50 + discount : null,
-            "Orientační DCF proxy CFO − capex, 5 let; základní diskont 10 %, terminální růst 2 %. Nezahrnuje budoucí financování ani ředění. Banky a REIT vyžadují jiný model.");
+            "DCF CFO − capex na akcii: 10 let, útlum růstu v letech 6–10, tři scénáře. Diskont US10Y + 6 p. b. (min. 9 %), bez aktuálních sazeb 11 %. Jednoletý cash flow není víceletý normalizovaný zisk. Banky a REIT vyžadují jiný model.");
         if (row.Valuation is null) row.Risks.Add("Férová hodnota není dostupná: neúplné výkazy, nekladný FCF nebo nepodporovaný sektor.");
         var rates = macro.FirstOrDefault(m => m.Series == "DGS10" && today.DayNumber - m.Date.DayNumber is >= 0 and <= 10);
         var unemployment = macro.FirstOrDefault(m => m.Series == "UNRATE" && today.DayNumber - m.Date.DayNumber is >= 0 and <= 65);
@@ -88,12 +104,6 @@ public static class ScreeningCalculator
         }
         var macroEvidence = EvidenceScore(research.Evidence, "macro", today);
         Add("macro", "Makro", 15, macroEvidence ?? macroScore, "Změna amerického 10letého výnosu a nezaměstnanosti proti cca 3 měsícům; vyšší citlivost růstových a úrokově citlivých sektorů. Datovaný vlastní rozbor má přednost. Nejde o úplný makromodel.");
-        row.Seasonality = [Seasonality(valid, today, 21), Seasonality(valid, today, 63)];
-        var seasonal = row.Seasonality[1];
-        Add("seasonality", "Sezónnost", 10, seasonal.Median is {} median && seasonal.WinRate is {} win ? 50 + median * 2 + (win - 50) * .5m : null,
-            "Stejné kalendářní období, 63 obchodních dní, posledních max. 15 let, minimum 5 pozorování. Cenové výnosy bez dividend; úpravy poskytovatele je nutné ověřit.");
-        if (seasonal.Years < 8) row.Risks.Add("Sezónnost má méně než 8 historických pozorování.");
-        if (seasonal.Median * seasonal.RecentMedian < 0) row.Risks.Add("Sezónnost mění znaménko mezi delší historií a posledními 5 lety.");
         decimal? technical = null;
         if (valid.Length >= 252 && fresh)
         {
@@ -102,7 +112,7 @@ public static class ScreeningCalculator
             var momentum = (latest.Close / valid[^22].Close - 1) * 100;
             technical = 50 + Math.Clamp(momentum * 2, -25, 25) + Math.Clamp(row.EmaDistance.Value, -25, 25);
         }
-        Add("technical", "Načasování", 10, technical, "Stabilizace: 21denní momentum a trend vůči denní EMA200. Samotná hloubka propadu není bonus za levnou akcii.");
+        Add("technical", "Načasování", 20, technical, "Stabilizace: 21denní momentum a trend vůči denní EMA200. Samotná hloubka propadu není bonus za levnou akcii.");
         var geopolitical = macro.FirstOrDefault(m => m.Series == "GEO_RISK" && today.DayNumber - m.Date.DayNumber is >= 0 and <= 3);
         Add("geopolitics", "Geopolitika", 5, EvidenceScore(research.Evidence, "geopolitics", today) ?? geopolitical?.Value,
             geopolitical is null ? "Chybí aktuální agregovaný geopolitický kontext." : "Široký index z veřejných geopolitických titulků GDELT; vyšší skóre znamená nižší zachycené riziko. Neurčuje expozici konkrétní firmy.");
@@ -115,6 +125,7 @@ public static class ScreeningCalculator
         if (quality != null && row.Discount != null && row.Coverage >= 80)
             row.Score = Math.Round(row.Pillars.Sum(p => (p.Score ?? 0) * p.Weight) / 100, 1);
         row.Verdict = row.Score is null ? "Neúplné hodnocení" : row.Risks.Any(r => r.StartsWith("Ztráta") || r.StartsWith("Záporný")) ? "Nutná revize rizik" : row.Score >= 70 ? "K hlubší analýze" : row.Score >= 50 ? "Sledovat" : "Slabší souběh faktorů";
+        row.Entry = EntryCalculator.Evaluate(row, valid, today);
         return row;
     }
 
