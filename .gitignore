@@ -369,3 +369,7 @@ tmp/screening-*.json
 tmp/screening-*.log
 tmp/screening-*.txt
 tmp/planner-layout-check/
+
+# Locally installed Neon agent skills
+.agents/
+skills-lock.json
