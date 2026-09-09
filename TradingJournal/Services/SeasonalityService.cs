@@ -669,11 +669,13 @@ public sealed class SeasonalityService
             foreach (var asset in Assets.Where(a => !onlyMissing || !cached.ContainsKey(a.Key)))
             {
                 var existing = cached.GetValueOrDefault(asset.Key) ?? [];
+                var existingDates = existing.Select(p => p.Date).ToHashSet();
                 var period1 = existing.Count == 0 ? 0 : new DateTimeOffset(existing.Max(p => p.Date).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero).AddDays(-1).ToUnixTimeSeconds();
                 try
                 {
                     var yahoo = await client.GetStringAsync($"https://query1.finance.yahoo.com/v8/finance/chart/{Uri.EscapeDataString(asset.YahooSymbol)}?period1={period1}&period2={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}&interval=1d&events=history", cancellationToken);
-                    await _turso.UpsertAsync(asset.Key, "Yahoo", ParseYahoo(yahoo), cancellationToken);
+                    var fresh = ParseYahoo(yahoo).Where(p => existingDates.Add(p.Date)).ToList();
+                    await _turso.UpsertAsync(asset.Key, "Yahoo", fresh, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -681,7 +683,8 @@ public sealed class SeasonalityService
                     try
                     {
                         var csv = await client.GetStringAsync($"https://stooq.com/q/d/l/?s={asset.StooqSymbol}&i=d", cancellationToken);
-                        await _turso.UpsertAsync(asset.Key, "Stooq", ParseStooq(csv), cancellationToken);
+                        var fresh = ParseStooq(csv).Where(p => existingDates.Add(p.Date)).ToList();
+                        await _turso.UpsertAsync(asset.Key, "Stooq", fresh, cancellationToken);
                     }
                     catch (Exception fallbackException) { _logger.LogError(fallbackException, "Seasonality data load failed for {Asset}.", asset.Key); }
                 }
