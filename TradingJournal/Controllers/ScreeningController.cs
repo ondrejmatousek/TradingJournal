@@ -16,8 +16,13 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
     public async Task<IActionResult> UpdateStatus([FromServices] Microsoft.Extensions.Options.IOptions<ScreeningSchedule> schedule, CancellationToken ct)
         => Json(new { schedule = schedule.Value, run = await store.ReadAsync<ScreeningUpdateRun>(ScreeningUpdateHostedService.StateKey, ct) });
     [HttpGet]
-    public Task<IActionResult> Data(CancellationToken ct) => ReadScreeningAsync(async () =>
-        Json(new { rows = await service.LoadAsync(UserKey, ct), macro = await ContextAsync(ct) }), ct);
+    public Task<IActionResult> Data(CancellationToken ct = default, int page = 1, int pageSize = 25) => ReadScreeningAsync(async () =>
+    {
+        page = Math.Clamp(page, 1, 1000); pageSize = Math.Clamp(pageSize, 1, 50);
+        var allSymbols = InvestmentUniverse.All.Select(x => x.Symbol).ToArray();
+        var symbols = allSymbols.Skip((page - 1) * pageSize).Take(pageSize).ToArray();
+        return Json(new { rows = await service.LoadAsync(UserKey, ct, symbols), total = allSymbols.Length, page, pageSize, macro = await ContextAsync(ct) });
+    }, ct);
 
     private async Task<IActionResult> ReadScreeningAsync(Func<Task<IActionResult>> read, CancellationToken ct)
     {

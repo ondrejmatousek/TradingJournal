@@ -9,8 +9,14 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
 {
     private static readonly SemaphoreSlim RefreshGate = new(3, 3);
     public async Task<List<ScreeningRow>> LoadAsync(string user, CancellationToken ct)
+        => await LoadAsync(user, ct, null);
+
+    public async Task<List<ScreeningRow>> LoadAsync(string user, CancellationToken ct, IReadOnlyCollection<string>? requestedSymbols)
     {
-        var keys = InvestmentUniverse.All.Select(s => s.Symbol).ToArray();
+        var stocks = requestedSymbols is null
+            ? InvestmentUniverse.All
+            : InvestmentUniverse.All.Where(s => requestedSymbols.Contains(s.Symbol, StringComparer.OrdinalIgnoreCase)).ToArray();
+        var keys = stocks.Select(s => s.Symbol).ToArray();
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var historyStart = today.AddYears(-15);
         Dictionary<string, IReadOnlyList<SeasonalityPrice>> bySymbol;
@@ -23,7 +29,7 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
         }
         var macro = await ContextAsync(ct);
         var rows = new List<ScreeningRow>();
-        foreach (var stock in InvestmentUniverse.All)
+        foreach (var stock in stocks)
         {
             var cache = await store.ReadAsync<ScreeningMarketCache>("market-" + stock.Symbol, ct);
             var research = await store.ReadAsync<ScreeningResearch>("research-" + user + "-" + stock.Symbol, ct) ?? new();

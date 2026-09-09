@@ -32,21 +32,20 @@
         $('screen-count').textContent = `${visible.length} / ${rows.length}`;
         $('screen-rated').textContent = rows.filter(r => r.score != null).length;
         $('screen-discount').textContent = rows.filter(r => r.discount > 0).length;
-        const pages = Math.max(1, Math.ceil(visible.length / 25));
+        const pages = Math.max(1, Math.ceil((window.screeningTotal ?? visible.length) / 25));
         page = Math.max(1, Math.min(page, pages));
         $('screen-page').textContent = `Strana ${page} / ${pages} · 25 akcií na stránku`;
         $('screen-prev').disabled = page <= 1;
         $('screen-next').disabled = page >= pages;
-        visible = visible.slice((page - 1) * 25, page * 25);
         $('screen-rows').innerHTML = visible.length ? visible.map(r => `<tr><td><button type="button" data-symbol="${esc(r.symbol)}">${esc(r.symbol)} ↗</button><small title="${esc(r.name)}">${esc(r.name)}</small><small>${esc(r.sector)}</small></td><td>${number(r.price, 2)}<small>${esc(r.priceDate || 'chybí cena')}</small></td><td>${r.valuation ? `${number(r.valuation.low)}–${number(r.valuation.high)}` : '—'}<small>${r.valuation ? `základ ${number(r.valuation.base)}` : 'chybí ocenění'}</small></td><td class="${r.discount > 0 ? 'screen-positive' : ''}">${pct(r.discount)}</td>${['quality','macro','seasonality','technical','geopolitics','analysts'].map(k => `<td>${number(pillar(r,k),0)}${k === 'seasonality' ? `<small>${r.seasonality[1]?.years || 0} let · ${pct(r.seasonality[1]?.median)}</small>` : ''}</td>`).join('')}<td><strong>${number(r.score)} / 100</strong><small>pokrytí ${r.coverage} %</small><small>${esc(r.verdict)}</small></td></tr>`).join('') : '<tr><td colspan="11">Pro tento filtr nejsou žádné akcie.</td></tr>';
     }
-    async function load() {
+    async function load(targetPage = page) {
         request('/UpdateStatus').then(({schedule, run}) => {
             const time = `${String(schedule.hour).padStart(2, '0')}:${String(schedule.minute).padStart(2, '0')}`;
             const last = run ? ` Poslední běh: ${new Date(run.startedAt).toLocaleString('cs-CZ')}, ${run.processed} akcií, ${run.incomplete} neúplných. ${run.completedAt ? 'Dokončen.' : 'Zatím nedokončen.'}` : ' První aktualizace proběhne automaticky.';
             $('screen-schedule').textContent = (schedule.external ? 'Aktualizaci zajišťuje externí denní úloha; stav jejího nastavení je v GitHub Actions.' : schedule.enabled ? `Automatická aktualizace denně v ${time} (${schedule.timeZone}), pokud aplikace běží.` : 'Automatická aktualizace je vypnutá.') + last;
         }).catch(() => { $('screen-schedule').textContent = 'Stav automatické aktualizace není dostupný.'; });
-        const data = await request('/Data'); rows = data.rows; macroText(data.macro);
+        const data = await request(`/Data?page=${targetPage}&pageSize=25`); rows = data.rows; page = data.page; window.screeningTotal = data.total; macroText(data.macro);
         const sector = $('screen-sector').value;
         $('screen-sector').innerHTML = '<option value="">Všechny sektory</option>' + [...new Set(rows.map(r => r.sector))].sort().map(s => `<option>${esc(s)}</option>`).join('');
         $('screen-sector').value = sector; render();
@@ -63,7 +62,7 @@
     $('screen-rows').addEventListener('click', e => { const b = e.target.closest('[data-symbol]'); if (b) open(b.dataset.symbol); });
     $('detail-close').onclick = () => $('screen-detail').close();
     ['screen-search','screen-sector','screen-filter','screen-sort'].forEach(id => $(id).addEventListener('input', () => { page=1; render(); }));
-    $('screen-prev').onclick=()=>{page--;render();}; $('screen-next').onclick=()=>{page++;render();};
+    $('screen-prev').onclick=()=>{if(page>1) load(page-1);}; $('screen-next').onclick=()=>{load(page+1);};
     $('screen-refresh').onclick = async () => {
         if (refreshing) return; refreshing = true; stopping = false;
         $('screen-refresh').disabled = true; $('screen-stop').hidden = false;
