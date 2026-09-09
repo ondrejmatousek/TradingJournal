@@ -54,11 +54,26 @@ public sealed class TursoSeasonalityStore
     public async Task UpsertAsync(string assetKey, string source, IReadOnlyList<SeasonalityPrice> prices, CancellationToken cancellationToken = default)
     {
         if (!IsConfigured || prices.Count == 0) return;
-        var requests = prices.DistinctBy(x => x.Date).Select(price => new Request("INSERT INTO \"SeasonalityPrices\" (\"AssetKey\", \"Date\", \"Close\", \"Source\", \"UpdatedAt\") VALUES (?, ?, ?, ?, ?) ON CONFLICT(\"AssetKey\", \"Date\") DO UPDATE SET \"Close\"=excluded.\"Close\", \"Source\"=excluded.\"Source\", \"UpdatedAt\"=excluded.\"UpdatedAt\"", [TextArg(assetKey), TextArg(price.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), FloatArg(price.Close), TextArg(source), TextArg(DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture))])).ToList();
-        // A full daily history can contain several thousand rows. Keep each
-        // HTTP pipeline small enough to stay below Turso and HttpClient timeouts.
-        foreach (var batch in requests.Chunk(100))
-            await ExecuteBatchAsync(batch, cancellationToken);
+        var rows = prices.DistinctBy(x => x.Date).ToArray();
+        // SQLite limits bound variables to roughly 999 per statement. Five
+        // columns therefore means at most 100 rows per bulk upsert.
+        var requests = new List<Request>();
+        foreach (var rowBatch in rows.Chunk(100))
+        {
+            var values = string.Join(",", rowBatch.Select(_ => "(?, ?, ?, ?, ?)"));
+            var args = rowBatch.SelectMany(price => new[]
+            {
+                TextArg(assetKey),
+                TextArg(price.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+                FloatArg(price.Close),
+                TextArg(source),
+                TextArg(DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture))
+            }).ToArray();
+            requests.Add(new Request($"INSERT INTO \"SeasonalityPrices\" (\"AssetKey\", \"Date\", \"Close\", \"Source\", \"UpdatedAt\") VALUES {values} ON CONFLICT(\"AssetKey\", \"Date\") DO UPDATE SET \"Close\"=excluded.\"Close\", \"Source\"=excluded.\"Source\", \"UpdatedAt\"=excluded.\"UpdatedAt\"", args));
+        }
+        // Pipeline several statements per HTTP request to reduce round trips.
+        foreach (var requestBatch in requests.Chunk(10))
+            await ExecuteBatchAsync(requestBatch, cancellationToken);
     }
 
     private async Task<JsonElement> ExecuteAsync(string sql, IReadOnlyList<JsonElement> args, CancellationToken cancellationToken)
