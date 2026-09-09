@@ -63,6 +63,14 @@
     $('detail-close').onclick = () => $('screen-detail').close();
     ['screen-search','screen-sector','screen-filter','screen-sort'].forEach(id => $(id).addEventListener('input', () => { page=1; render(); }));
     $('screen-prev').onclick=()=>{if(page>1) load(page-1);}; $('screen-next').onclick=()=>{load(page+1);};
+    document.querySelectorAll('[data-preset]').forEach(button => button.onclick = () => {
+        const preset = button.dataset.preset;
+        const filter = $('screen-filter'), sort = $('screen-sort');
+        filter.value = preset === 'opportunity' ? 'discount' : preset === 'season' ? 'season' : preset === 'complete' ? 'rated' : 'all';
+        sort.value = preset === 'quality' ? 'score' : preset === 'opportunity' ? 'discount' : preset === 'season' ? 'season' : preset === 'complete' ? 'coverage' : 'coverage';
+        document.querySelectorAll('[data-preset]').forEach(item => item.classList.toggle('is-active', item === button));
+        page = 1; render();
+    });
     $('screen-refresh').onclick = async () => {
         if (refreshing) return; refreshing = true; stopping = false;
         $('screen-refresh').disabled = true; $('screen-stop').hidden = false;
