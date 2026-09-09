@@ -54,7 +54,7 @@ public sealed class TursoSeasonalityStore
     public async Task UpsertAsync(string assetKey, string source, IReadOnlyList<SeasonalityPrice> prices, CancellationToken cancellationToken = default)
     {
         if (!IsConfigured || prices.Count == 0) return;
-        var requests = prices.DistinctBy(x => x.Date).Select(price => new Request("INSERT INTO SeasonalityPrices (AssetKey, Date, Close, Source, UpdatedAt) VALUES (?, ?, ?, ?, ?) ON CONFLICT(AssetKey, Date) DO UPDATE SET Close=excluded.Close, Source=excluded.Source, UpdatedAt=excluded.UpdatedAt", [TextArg(assetKey), TextArg(price.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), FloatArg(price.Close), TextArg(source), TextArg(DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture))])).ToList();
+        var requests = prices.DistinctBy(x => x.Date).Select(price => new Request("INSERT INTO \"SeasonalityPrices\" (\"AssetKey\", \"Date\", \"Close\", \"Source\", \"UpdatedAt\") VALUES (?, ?, ?, ?, ?) ON CONFLICT(\"AssetKey\", \"Date\") DO UPDATE SET \"Close\"=excluded.\"Close\", \"Source\"=excluded.\"Source\", \"UpdatedAt\"=excluded.\"UpdatedAt\"", [TextArg(assetKey), TextArg(price.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), FloatArg(price.Close), TextArg(source), TextArg(DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture))])).ToList();
         await ExecuteBatchAsync(requests, cancellationToken);
     }
 
@@ -72,10 +72,11 @@ public sealed class TursoSeasonalityStore
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
         var response = await _httpClientFactory.CreateClient().SendAsync(request, cancellationToken);
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
-        if (!response.IsSuccessStatusCode) throw new HttpRequestException($"Turso request failed ({(int)response.StatusCode}).");
+        if (!response.IsSuccessStatusCode) throw new HttpRequestException($"Turso request failed ({(int)response.StatusCode}): {body[..Math.Min(body.Length, 500)]}");
         using var document = JsonDocument.Parse(body);
         foreach (var result in document.RootElement.GetProperty("results").EnumerateArray())
-            if (result.GetProperty("type").GetString() == "error") throw new InvalidOperationException("Turso rejected a seasonality statement.");
+            if (result.GetProperty("type").GetString() == "error")
+                throw new InvalidOperationException($"Turso rejected a seasonality statement: {result.GetProperty("error").ToString()[..Math.Min(result.GetProperty("error").ToString().Length, 500)]}");
         return document.RootElement.Clone();
     }
 
