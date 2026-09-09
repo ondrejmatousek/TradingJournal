@@ -25,4 +25,14 @@ public sealed class ScreeningMacroFallbackTests
         Assert.Equal(4.3m, result.PriorValue);
         Assert.Contains("bls.gov", result.Source);
     }
+
+    [Fact]
+    public void Bls_SkipsMissingDashValues()
+    {
+        const string json = """
+        {"status":"REQUEST_SUCCEEDED","Results":{"series":[{"seriesID":"LNS14000000","data":[{"year":"2026","period":"M08","value":"-"},{"year":"2026","period":"M05","value":"4.3"},{"year":"2025","period":"M08","value":"4.1"}]}]}}
+        """;
+        var result = ScreeningDataProvider.ParseOfficialMacro("UNRATE", json, new(2026, 9, 7));
+        Assert.Equal(4.3m, result.Value);
+    }
 }

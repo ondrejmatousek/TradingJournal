@@ -178,8 +178,9 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
             {
                 var period = item.GetProperty("period").GetString()!;
                 if (period.Length != 3 || period[0] != 'M' || !int.TryParse(period[1..], out var month) || month is < 1 or > 12) continue;
-                points.Add((new DateOnly(int.Parse(item.GetProperty("year").GetString()!, CultureInfo.InvariantCulture), month, 1),
-                    decimal.Parse(item.GetProperty("value").GetString()!, CultureInfo.InvariantCulture)));
+                if (!decimal.TryParse(item.GetProperty("value").GetString(), NumberStyles.Any,
+                    CultureInfo.InvariantCulture, out var parsedValue)) continue;
+                points.Add((new DateOnly(int.Parse(item.GetProperty("year").GetString()!, CultureInfo.InvariantCulture), month, 1), parsedValue));
             }
             source = "https://api.bls.gov/publicAPI/v2/timeseries/data/LNS14000000";
         }
