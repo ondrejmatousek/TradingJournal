@@ -6,6 +6,8 @@ using TradingJournal.Services;
 using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
+var localBackgroundRefreshEnabled = builder.Configuration.GetValue("DataRefresh:Enabled", true)
+    && string.IsNullOrWhiteSpace(builder.Configuration["WEBSITE_SITE_NAME"]);
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -33,10 +35,10 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<SeasonalityService>();
 builder.Services.AddSingleton<SeasonalityUpdateState>();
-if (builder.Configuration.GetValue("DataRefresh:Enabled", true))
+if (localBackgroundRefreshEnabled)
     builder.Services.AddHostedService<SeasonalityUpdateHostedService>();
 builder.Services.AddScoped<CotDataService>();
-if (builder.Configuration.GetValue("DataRefresh:Enabled", true))
+if (localBackgroundRefreshEnabled)
     builder.Services.AddHostedService<CotUpdateHostedService>();
 builder.Services.AddSingleton<AppClock>();
 builder.Services.AddSingleton<MuckaRubricProvider>();
@@ -84,7 +86,7 @@ builder.Services.AddOptions<TradingJournal.Services.Screening.ScreeningSchedule>
     .Validate(o => o.Hour is >= 0 and <= 23 && o.Minute is >= 0 and <= 59, "Invalid screening schedule time.")
     .Validate(o => TimeZoneInfo.TryFindSystemTimeZoneById(o.TimeZone, out _), "Invalid screening time zone.")
     .ValidateOnStart();
-if (builder.Configuration.GetValue("DataRefresh:Enabled", true))
+if (localBackgroundRefreshEnabled)
     builder.Services.AddHostedService<TradingJournal.Services.Screening.ScreeningUpdateHostedService>();
 builder.Services.AddControllersWithViews();
 
