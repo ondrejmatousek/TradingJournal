@@ -45,6 +45,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(o =>
         o.UseSqlServer(connection, sql => sql.EnableRetryOnFailure(3));
 });
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<TursoSeasonalityStore>();
 builder.Services.AddSingleton<ScreeningStore>();
 builder.Services.AddScoped<ScreeningDataProvider>();
 builder.Services.AddScoped<SeasonalityService>();

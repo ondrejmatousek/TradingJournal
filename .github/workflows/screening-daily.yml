@@ -94,6 +94,8 @@ jobs:
           ConnectionStrings__DefaultConnection: ${{ secrets.SCREENING_SQL_CONNECTION_STRING }}
           Screening__SecUserAgent: ${{ secrets.SCREENING_SEC_USER_AGENT }}
           AlphaVantage__ApiKey: ${{ secrets.SCREENING_ALPHA_VANTAGE_API_KEY }}
+          Turso__DatabaseUrl: ${{ secrets.TURSO_DATABASE_URL }}
+          Turso__AuthToken: ${{ secrets.TURSO_AUTH_TOKEN }}
           FORCE: ${{ inputs.force }}
         shell: bash
         run: |

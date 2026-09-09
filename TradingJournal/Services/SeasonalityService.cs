@@ -535,6 +535,7 @@ public sealed class SeasonalityService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<SeasonalityService> _logger;
     private readonly ApplicationDbContext? _context;
+    private readonly TursoSeasonalityStore? _turso;
 
     public SeasonalityService(IHttpClientFactory httpClientFactory, ILogger<SeasonalityService> logger)
         : this(httpClientFactory, logger, null)
@@ -542,14 +543,22 @@ public sealed class SeasonalityService
     }
 
     public SeasonalityService(IHttpClientFactory httpClientFactory, ILogger<SeasonalityService> logger, ApplicationDbContext? context)
+        : this(httpClientFactory, logger, context, null)
+    {
+    }
+
+    public SeasonalityService(IHttpClientFactory httpClientFactory, ILogger<SeasonalityService> logger, ApplicationDbContext? context, TursoSeasonalityStore? turso)
     {
         _httpClientFactory = httpClientFactory;
         _logger = logger;
         _context = context;
+        _turso = turso;
     }
 
     public async Task<SeasonalityViewModel> LoadAsync(CancellationToken cancellationToken = default)
     {
+        if (_turso?.IsConfigured == true)
+            return new SeasonalityViewModel { Assets = Assets, Prices = await _turso.LoadAllAsync(cancellationToken) };
         if (_context is not null)
         {
             return new SeasonalityViewModel { Assets = Assets, Prices = await LoadAllCachedPricesAsync(cancellationToken) };
@@ -572,6 +581,14 @@ public sealed class SeasonalityService
 
     public async Task UpdateMissingAsync(CancellationToken cancellationToken = default)
     {
+        if (_turso?.IsConfigured == true)
+        {
+            await _turso.EnsureSchemaAsync(cancellationToken);
+            var tursoKeys = (await _turso.LoadAllAsync(cancellationToken)).Keys;
+            if (Assets.All(asset => tursoKeys.Contains(asset.Key, StringComparer.OrdinalIgnoreCase))) return;
+            await UpdateAsync(cancellationToken, onlyMissing: true);
+            return;
+        }
         if (_context is null) throw new InvalidOperationException("Seasonality database context is not configured.");
 
         var cachedKeys = await _context.SeasonalityPrices
@@ -588,6 +605,11 @@ public sealed class SeasonalityService
 
     private async Task UpdateAsync(CancellationToken cancellationToken, bool onlyMissing)
     {
+        if (_turso?.IsConfigured == true)
+        {
+            await UpdateTursoAsync(cancellationToken, onlyMissing);
+            return;
+        }
         if (_context is null) throw new InvalidOperationException("Seasonality database context is not configured.");
         await UpdateGate.WaitAsync(cancellationToken);
         try
@@ -635,6 +657,39 @@ public sealed class SeasonalityService
         }
     }
 
+    private async Task UpdateTursoAsync(CancellationToken cancellationToken, bool onlyMissing)
+    {
+        await UpdateGate.WaitAsync(cancellationToken);
+        try
+        {
+            await _turso!.EnsureSchemaAsync(cancellationToken);
+            var cached = await _turso.LoadAllAsync(cancellationToken);
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("TradingJournal-Seasonality/1.0");
+            foreach (var asset in Assets.Where(a => !onlyMissing || !cached.ContainsKey(a.Key)))
+            {
+                var existing = cached.GetValueOrDefault(asset.Key) ?? [];
+                var period1 = existing.Count == 0 ? 0 : new DateTimeOffset(existing.Max(p => p.Date).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero).AddDays(-1).ToUnixTimeSeconds();
+                try
+                {
+                    var yahoo = await client.GetStringAsync($"https://query1.finance.yahoo.com/v8/finance/chart/{Uri.EscapeDataString(asset.YahooSymbol)}?period1={period1}&period2={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}&interval=1d&events=history", cancellationToken);
+                    await _turso.UpsertAsync(asset.Key, "Yahoo", ParseYahoo(yahoo), cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Yahoo seasonality data load failed for {Asset}; trying Stooq.", asset.Key);
+                    try
+                    {
+                        var csv = await client.GetStringAsync($"https://stooq.com/q/d/l/?s={asset.StooqSymbol}&i=d", cancellationToken);
+                        await _turso.UpsertAsync(asset.Key, "Stooq", ParseStooq(csv), cancellationToken);
+                    }
+                    catch (Exception fallbackException) { _logger.LogError(fallbackException, "Seasonality data load failed for {Asset}.", asset.Key); }
+                }
+            }
+        }
+        finally { UpdateGate.Release(); }
+    }
+
     private async Task<SeasonalityViewModel> DownloadAsync(CancellationToken cancellationToken)
     {
         var client = _httpClientFactory.CreateClient();
@@ -667,10 +722,12 @@ public sealed class SeasonalityService
 
     public async Task<IReadOnlyList<SeasonalityPrice>> LoadCachedPricesAsync(string assetKey, CancellationToken cancellationToken = default)
     {
-        if (_context is null || string.IsNullOrWhiteSpace(assetKey))
+        if (string.IsNullOrWhiteSpace(assetKey))
         {
             return [];
         }
+        if (_turso?.IsConfigured == true) return await _turso.LoadAsync(assetKey, cancellationToken);
+        if (_context is null) return [];
 
         return await _context.SeasonalityPrices
             .AsNoTracking()

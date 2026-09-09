@@ -33,6 +33,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<TursoSeasonalityStore>();
 builder.Services.AddScoped<SeasonalityService>();
 builder.Services.AddSingleton<SeasonalityUpdateState>();
 if (localBackgroundRefreshEnabled)
