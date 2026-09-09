@@ -87,7 +87,17 @@ public sealed class TursoSeasonalityStore
     {
         var execute = result.GetProperty("response").GetProperty("result");
         foreach (var row in execute.GetProperty("rows").EnumerateArray())
-            yield return row.EnumerateArray().Select(cell => cell.TryGetProperty("value", out var value) ? value.GetString() ?? "" : cell.ToString()).ToArray();
+            yield return row.EnumerateArray().Select(cell =>
+            {
+                if (!cell.TryGetProperty("value", out var value)) return cell.ToString();
+                return value.ValueKind switch
+                {
+                    JsonValueKind.String => value.GetString() ?? "",
+                    JsonValueKind.Number => value.GetRawText(),
+                    JsonValueKind.Null => "",
+                    _ => value.ToString()
+                };
+            }).ToArray();
     }
 
     private static JsonElement TextArg(string value) => JsonSerializer.SerializeToElement(new { type = "text", value });
