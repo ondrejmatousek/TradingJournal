@@ -199,6 +199,60 @@ body.app-section-shell {
   overflow: hidden;
 }
 
+.home-welcome {
+  align-items: center;
+  background:
+    radial-gradient(circle at 70% 25%, rgba(32, 199, 185, 0.2), transparent 24rem),
+    radial-gradient(circle at 30% 80%, rgba(111, 99, 255, 0.18), transparent 24rem);
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  min-height: 0;
+  padding: clamp(1rem, 4vw, 3rem);
+  position: relative;
+}
+
+.home-welcome::before {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 72px 72px;
+  content: "";
+  inset: 0;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 85%);
+  pointer-events: none;
+  position: absolute;
+}
+
+.home-welcome-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--tj-border);
+  border-radius: 26px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+  display: grid;
+  gap: 1rem;
+  max-width: 620px;
+  padding: clamp(1.5rem, 5vw, 3rem);
+  position: relative;
+  text-align: center;
+  width: 100%;
+}
+
+.home-welcome-card .home-command-brand {
+  justify-content: center;
+}
+
+.home-welcome-card h1 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  margin: 0;
+}
+
+.home-welcome-card p {
+  color: var(--tj-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
 .hero-stage {
   display: grid;
   align-items: center;
