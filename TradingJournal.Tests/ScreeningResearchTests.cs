@@ -19,7 +19,7 @@ public sealed class ScreeningResearchTests
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
         public IFileProvider WebRootFileProvider { get; set; } = new NullFileProvider();
     }
-    private static ScreeningController Controller(ScreeningStore store, string user) => new(null!, store, null!)
+    private static ScreeningController Controller(ScreeningStore store, string user) => new(new InvestmentScreeningService(null!, store, null!, null!), store, null!)
     {
         ControllerContext = new() { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, user)], "test")) } }
     };

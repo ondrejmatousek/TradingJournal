@@ -136,7 +136,7 @@ public static class ScreeningCalculator
 
     public static ScreeningRow Evaluate(InvestmentSymbol stock, IReadOnlyList<SeasonalityPrice> prices,
         FundamentalInput? fundamentals, IReadOnlyList<MacroObservation> macro, ScreeningResearch research, DateOnly today,
-        ValuationResult? persistedValuation = null)
+        ValuationResult? persistedValuation = null, bool allowLegacyCalculation = true)
     {
         var valid = prices.Where(p => p.Date <= today && p.Close > 0).DistinctBy(p => p.Date).OrderBy(p => p.Date).ToArray();
         var latest = valid.LastOrDefault();
@@ -158,7 +158,7 @@ public static class ScreeningCalculator
                 + Math.Clamp((1 - f.Liabilities / f.Assets) * 100, 0, 100) * .2m;
             if (f.NetIncome < 0 || f.OperatingCashFlow <= 0) row.Risks.Add("Ztráta nebo nekladný provozní cash flow: nutná individuální revize.");
             if (f.Liabilities > f.Assets) row.Risks.Add("Záporný vlastní kapitál: prověřit rozvahu a buybacky.");
-            row.Valuation = Reprice(persistedValuation ?? Value(f, stock.Sector, macro.FirstOrDefault(m => m.Series == "DGS10" && today.DayNumber - m.Date.DayNumber is >= 0 and <= 10)?.Value), latest?.Close);
+            row.Valuation = Reprice(persistedValuation ?? (allowLegacyCalculation ? Value(f, stock.Sector, macro.FirstOrDefault(m => m.Series == "DGS10" && today.DayNumber - m.Date.DayNumber is >= 0 and <= 10)?.Value) : null), latest?.Close);
             row.ValuationScore = row.Valuation?.ValuationScore;
             row.ValuationConfidence = row.Valuation?.Confidence;
             row.ValuationStatus = row.Valuation?.Status ?? "N/A";

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TradingJournal.Data;
 using TradingJournal.Services;
+using TradingJournal.Services.Valuation;
 
 using Microsoft.AspNetCore.HttpOverrides;
 
@@ -68,6 +69,7 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
 }
 
 builder.Services.AddSingleton<TradingJournal.Services.Screening.ScreeningStore>();
+builder.Services.AddValuationV2(builder.Configuration);
 builder.Services.AddScoped<TradingJournal.Services.Screening.ScreeningDataProvider>();
 builder.Services.AddScoped<TradingJournal.Services.Screening.InvestmentScreeningService>();
 builder.Services.AddScoped<TradingJournal.Services.Insiders.InsiderSecProvider>();

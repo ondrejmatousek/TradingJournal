@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using TradingJournal.Data;
 using TradingJournal.Services;
 using TradingJournal.Services.Screening;
+using TradingJournal.Services.Valuation;
 using TradingJournal.Services.Insiders;
 using Npgsql;
 
@@ -47,6 +48,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(o =>
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<TursoSeasonalityStore>();
 builder.Services.AddSingleton<ScreeningStore>();
+builder.Services.AddValuationV2(builder.Configuration);
 builder.Services.AddScoped<ScreeningDataProvider>();
 builder.Services.AddScoped<SeasonalityService>();
 builder.Services.AddScoped<CotDataService>();

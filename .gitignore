@@ -373,3 +373,6 @@ tmp/planner-layout-check/
 # Locally installed Neon agent skills
 .agents/
 skills-lock.json
+
+# Disposable valuation verification artifacts and runtime logs
+tmp/valuation/

@@ -66,7 +66,7 @@ public sealed class ScreeningUpdateHostedService(IServiceScopeFactory scopes, Sc
         catch (Exception ex) when (!ct.IsCancellationRequested)
         { logger.LogWarning(ex, "Scheduled macro refresh failed; retaining previous data."); }
         var results = new List<ScreeningRow>();
-        foreach (var stock in InvestmentUniverse.All)
+        foreach (var stock in await service.UniverseAsync(ct))
         {
             ct.ThrowIfCancellationRequested();
             var incomplete = true;
@@ -91,7 +91,7 @@ public sealed class ScreeningUpdateHostedService(IServiceScopeFactory scopes, Sc
         // against price without duplicating fundamentals or requesting providers again.
         foreach (var result in results.Where(r => r.Valuation != null))
             await store.WriteValuationAsync(result.Symbol, due, result, ct);
-        await store.WriteAsync(ScreeningSnapshot.Key, new ScreeningSnapshot(DateTimeOffset.UtcNow, results, context), ct);
+        await store.WriteAsync(ScreeningSnapshot.Key, new ScreeningSnapshot(DateTimeOffset.UtcNow, results.Select(ScreeningSnapshot.Compact).ToList(), context), ct);
         // Completed means the entire universe was attempted, not that every provider returned complete data.
         run = run with { CompletedAt = DateTimeOffset.UtcNow };
         await store.WriteAsync(StateKey, run, ct);

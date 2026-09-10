@@ -12,16 +12,21 @@ public static class EntryCalculator
         var v = row.Valuation;
         var f = row.Fundamentals;
         if (row.Price is not > 0 || row.PriceDate is null || today.DayNumber - row.PriceDate.Value.DayNumber is < 0 or > 7
-            || v is null || v.Model is not ("DCF-5-composite" or "DCF-10-v2") || v.Base <= 0 || f is null || f.Revenue <= 0
+            || v is null || v.Model is not ("DCF-5-composite" or "DCF-10-v2" or "ValuationV2.0") || v.Base <= 0 || f is null || f.Revenue <= 0
             || f.PeriodEnd > today || f.Filed > today || f.Filed < f.PeriodEnd || today.DayNumber - f.PeriodEnd.DayNumber > 460)
         {
             reasons.Add("Chybí aktuální cena nebo použitelné ocenění; nákupní závěr nelze vytvořit.");
             return Result("insufficient", "Nedostatek dat");
         }
         reasons.Add(FormattableString.Invariant($"Cena {row.Price:0.00} USD, základní odhad {v.Base:0.00} USD; odchylka {(1 - row.Price.Value / v.Base) * 100:0.0} %."));
-        reasons.Add(FormattableString.Invariant($"Požadovaná rezerva {v.MarginOfSafety:0.0} %. Cenový limit {v.BuyBelow:0.00} USD je nižší z konzervativního scénáře a základního odhadu po odečtení rezervy."));
-        reasons.Add("Model vychází z jednoho ročního cash flow; budoucí financování, ředění a termín výsledků nejsou ověřeny. Nejde o živou kotaci ani kompletní rozbor rizik.");
+        reasons.Add(FormattableString.Invariant($"Požadovaná rezerva {v.MarginOfSafety:0.0} %. Cenový limit {v.BuyBelow:0.00} USD je základní odhad po odečtení rezervy pro V2 (legacy používá minimum s bear scénářem)."));
+        reasons.Add("Ocenění používá uložené předpoklady; termín výsledků a intradenní obraz nejsou ověřeny. Nejde o živou kotaci ani kompletní rozbor rizik.");
         var quality = row.Pillars.FirstOrDefault(p => p.Key == "quality")?.Score;
+        if(v.Model=="ValuationV2.0" && v.Confidence<60)
+        {
+            reasons.Add("Kvalita podkladů ocenění je pod 60/100; modelový odhad je pouze orientační a není podkladem pro nákupní závěr.");
+            return Result("insufficient","Ocenění vyžaduje lepší data");
+        }
         if (quality is null) return Result("insufficient", "Chybí hodnocení kvality");
         reasons.Add(FormattableString.Invariant($"Kvalita {quality:0}/100 (požadováno alespoň 60); čistá marže {f.NetIncome / f.Revenue * 100:0.0} %, FCF marže {(f.OperatingCashFlow - f.CapitalExpenditure) / f.Revenue * 100:0.0} %."));
         if (quality < 60 || f.NetIncome <= 0 || f.OperatingCashFlow <= f.CapitalExpenditure || f.Liabilities >= f.Assets)

@@ -88,6 +88,8 @@ public sealed class ScreeningStore(IWebHostEnvironment environment, IServiceScop
     {
         var valuation = row.Valuation;
         if (valuation == null) return;
+        // V2 is append-only in ValuationRuns. Never overwrite a same-day legacy valuation.
+        if (valuation.Model == "ValuationV2.0") return;
         if (scopes != null)
         {
             try
@@ -141,5 +143,9 @@ public sealed class ScreeningStore(IWebHostEnvironment environment, IServiceScop
 }
 public sealed record ScreeningMarketCache(DateTimeOffset RetrievedAt, List<TradingJournal.Models.SeasonalityPrice> Prices, FundamentalInput? Fundamentals, string? Message)
 {
+    public TradingJournal.Services.Valuation.FinancialDataset? Financials { get; init; }
+    public string? ValuationRunId { get; init; }
+    public string? ValuationInputKey { get; init; }
+    public string? ValuationFailure { get; init; }
     public ValuationResult? Valuation { get; init; }
 }

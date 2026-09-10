@@ -9,6 +9,9 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
     private static readonly SemaphoreSlim SecGate = new(1, 1);
     private static DateTimeOffset secRetryAfter;
     public async Task<FundamentalInput?> FundamentalsAsync(string symbol, CancellationToken ct)
+        => (await CompanyFinancialsAsync(symbol, ct)).Fundamentals;
+
+    public async Task<(FundamentalInput? Fundamentals, TradingJournal.Services.Valuation.FinancialDataset? Financials)> CompanyFinancialsAsync(string symbol, CancellationToken ct)
     {
         using var client = factory.CreateClient();
         client.Timeout = TimeSpan.FromSeconds(20);
@@ -22,12 +25,13 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
             if (mapping == null || !mapping.ContainsKey(symbol))
             {
                 var fallback = await store.ReadAsync<Dictionary<string, long>>("sec-tickers-fallback-v1", ct);
-                if (fallback == null)
+                if (fallback == null || !fallback.ContainsKey(symbol))
                 {
                     try
                     {
                         using var tickers = JsonDocument.Parse(await client.GetStringAsync("https://www.sec.gov/files/company_tickers.json", ct));
                         mapping = tickers.RootElement.EnumerateObject().Select(p => p.Value).ToDictionary(p => p.GetProperty("ticker").GetString()!, p => p.GetProperty("cik_str").GetInt64());
+                        fallback = null;
                     }
                     catch (Exception ex) when (!ct.IsCancellationRequested && ex is HttpRequestException or OperationCanceledException)
                     {
@@ -38,20 +42,20 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
                 }
                 if (fallback != null)
                 {
-                    if (!fallback.TryGetValue(symbol, out var candidateCik)) return null;
+                    if (!fallback.TryGetValue(symbol, out var candidateCik)) return (null, null);
                     // Bundled identifiers are only hints. Confirm the ticker with SEC before using financial facts.
                     using var submission = JsonDocument.Parse(await client.GetStringAsync($"https://data.sec.gov/submissions/CIK{candidateCik:0000000000}.json", ct));
                     if (!submission.RootElement.TryGetProperty("tickers", out var listed) || !listed.EnumerateArray().Any(t => t.GetString() == symbol))
-                        return null;
+                        return (null, null);
                     mapping ??= [];
                     mapping[symbol] = candidateCik;
                 }
                 await store.WriteAsync("sec-tickers-v1", mapping, ct);
             }
-            if (mapping == null || !mapping.TryGetValue(symbol, out var cik)) return null;
+            if (mapping == null || !mapping.TryGetValue(symbol, out var cik)) return (null, null);
             var url = $"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:0000000000}.json";
             using var facts = JsonDocument.Parse(await client.GetStringAsync(url, ct));
-            return ParseFundamentals(facts.RootElement, url, DateOnly.FromDateTime(DateTime.UtcNow));
+            return ParseCompanyFinancials(facts.RootElement, url, DateOnly.FromDateTime(DateTime.UtcNow));
         }
         catch (HttpRequestException ex) when (ex.StatusCode is null or System.Net.HttpStatusCode.Forbidden or System.Net.HttpStatusCode.TooManyRequests || (int?)ex.StatusCode >= 500)
         {
@@ -64,6 +68,13 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
             throw;
         }
         finally { SecGate.Release(); }
+    }
+
+    public static (FundamentalInput? Fundamentals, TradingJournal.Services.Valuation.FinancialDataset Financials) ParseCompanyFinancials(JsonElement root, string source, DateOnly today)
+    {
+        var financials = TradingJournal.Services.Valuation.SecFinancialParser.Parse(root, source, today);
+        var fundamentals = ParseFundamentals(root, source, today);
+        return (fundamentals, financials);
     }
 
     public static FundamentalInput? ParseFundamentals(JsonElement root, string source, DateOnly today)
@@ -105,14 +116,18 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
         // Use the latest reported actual share count, not weighted-average diluted shares from a different split basis.
         var shareRows = facts.TryGetProperty("dei", out var dei) ? Read(dei, "shares", "EntityCommonStockSharesOutstanding") : [];
         var shares = shareRows.Where(r => r.Start == r.End && today.DayNumber - r.End.DayNumber <= 180).OrderByDescending(r => r.End).ThenByDescending(r => r.Filed).FirstOrDefault();
-        if (cash == null || capex == null || income == null || assets == null || liabilities == null || shares.Value <= 0 || previous.Value <= 0) return null;
+        var shareCount=shares.Value;
+        if(shareCount<=0) shareCount=Read(gaap,"shares","WeightedAverageNumberOfDilutedSharesOutstanding")
+            .Where(r=>r.Start==current.Start && r.End==current.End).OrderByDescending(r=>r.Filed).Select(r=>r.Value).FirstOrDefault();
+        if (cash == null || capex == null || income == null || assets == null || liabilities == null || shareCount <= 0 || previous.Value <= 0) return null;
         var annualHistory = revenue.GroupBy(r => r.End).Select(g => g.OrderByDescending(r => r.Filed).First())
             .OrderByDescending(r => r.End).Take(6).Select(r => new { periodEnd = r.End, filed = r.Filed, revenue = r.Value,
                 fcf = Read(gaap, "USD", "NetCashProvidedByUsedInOperatingActivities").Where(x => x.End == r.End && x.Start == r.Start).OrderByDescending(x => x.Filed).Select(x => (decimal?)x.Value).FirstOrDefault()
                     - Read(gaap, "USD", "PaymentsToAcquirePropertyPlantAndEquipment").Where(x => x.End == r.End && x.Start == r.Start).OrderByDescending(x => x.Filed).Select(x => (decimal?)x.Value).FirstOrDefault(),
                 netIncome = Read(gaap, "USD", "NetIncomeLoss").Where(x => x.End == r.End && x.Start == r.Start).OrderByDescending(x => x.Filed).Select(x => (decimal?)x.Value).FirstOrDefault() });
-        return new(current.End, current.Filed, current.Value, previous.Value, cash.Value, capex.Value, income.Value, assets.Value, liabilities.Value, shares.Value, source)
-        { CashAndEquivalents = cashBalance, TotalDebt = debtBalance,
+        return new(current.End, current.Filed, current.Value, previous.Value, cash.Value, capex.Value, income.Value, assets.Value, liabilities.Value, shareCount, source)
+        { ValuationFinancials = TradingJournal.Services.Valuation.SecFinancialParser.Parse(root, source, today),
+          CashAndEquivalents = cashBalance, TotalDebt = debtBalance,
           Ebitda = operatingIncome is > 0 ? operatingIncome + (depreciation ?? 0m) : null,
           HistoricalRevenueJson = JsonSerializer.Serialize(annualHistory), HistoricalFinancialsJson = JsonSerializer.Serialize(annualHistory) };
     }

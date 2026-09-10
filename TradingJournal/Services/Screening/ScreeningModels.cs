@@ -35,6 +35,7 @@ public sealed record FundamentalInput(DateOnly PeriodEnd, DateOnly Filed, decima
     decimal OperatingCashFlow, decimal CapitalExpenditure, decimal NetIncome, decimal Assets, decimal Liabilities,
     decimal Shares, string Source, string Currency = "USD")
 {
+    public TradingJournal.Services.Valuation.FinancialDataset? ValuationFinancials { get; init; }
     public decimal? CashAndEquivalents { get; init; }
     public decimal? TotalDebt { get; init; }
     // Compact JSON keeps historical annual observations in the existing cache without a second provider or table.
@@ -45,6 +46,8 @@ public sealed record FundamentalInput(DateOnly PeriodEnd, DateOnly Filed, decima
 }
 public sealed record ValuationResult(decimal Low, decimal Base, decimal High, decimal Growth, decimal DiscountRate, decimal TerminalGrowth)
 {
+    public string? RunId { get; init; }
+    public string? Uncertainty { get; init; }
     public string Model { get; init; } = "Legacy DCF";
     public decimal MarginOfSafety { get; init; }
     public decimal BuyBelow { get; init; }
@@ -84,6 +87,7 @@ public sealed class ScreeningResearch
 }
 public sealed class ScreeningRow
 {
+    public string? ValuationRunId { get; set; }
     public string Symbol { get; set; } = "";
     public string Name { get; set; } = "";
     public string Sector { get; set; } = "";

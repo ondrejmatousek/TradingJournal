@@ -183,7 +183,9 @@ body.app-section-shell {
 
 .marketing-shell,
 .auth-shell {
-  background: var(--tj-bg);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(111, 99, 255, 0.16), transparent 32rem),
+    var(--tj-bg);
   color: var(--tj-text);
   margin-bottom: 0;
 }
@@ -1431,19 +1433,20 @@ body.app-section-shell {
 
 .auth-stage {
   align-items: center;
-  display: grid;
-  gap: 3rem;
-  grid-template-columns: minmax(360px, 480px) minmax(320px, 1fr);
+  display: flex;
+  justify-content: center;
   min-height: calc(100vh - 64px);
-  padding: clamp(2rem, 6vw, 5rem) clamp(1.25rem, 8vw, 8rem);
+  padding: clamp(1.5rem, 4vw, 3.5rem) 1.25rem;
 }
 
 .auth-card {
-  background: #ffffff;
-  border-radius: 28px;
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.42);
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 22px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
   color: #202327;
-  padding: clamp(1.4rem, 4vw, 2.5rem);
+  padding: clamp(1.25rem, 3vw, 2rem);
+  width: min(100%, 420px);
 }
 
 .auth-brand {
@@ -1451,11 +1454,11 @@ body.app-section-shell {
   display: flex;
   font-weight: 800;
   gap: 0.7rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.45rem;
 }
 
 .auth-card h1 {
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(1.8rem, 4vw, 2.35rem);
   font-weight: 850;
   letter-spacing: 0;
   margin: 0;
@@ -1473,12 +1476,12 @@ body.app-section-shell {
   border-radius: 999px;
   color: #202124;
   display: flex;
-  font-size: clamp(1.05rem, 2vw, 1.3rem);
-  font-weight: 750;
-  gap: 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  gap: 0.75rem;
   justify-content: center;
-  min-height: 64px;
-  padding: 0.85rem 1.15rem;
+  min-height: 52px;
+  padding: 0.7rem 1rem;
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
   width: 100%;
 }
@@ -1491,8 +1494,8 @@ body.app-section-shell {
 
 .google-signin-button svg {
   flex: 0 0 auto;
-  height: 34px;
-  width: 34px;
+  height: 24px;
+  width: 24px;
 }
 
 .auth-divider {

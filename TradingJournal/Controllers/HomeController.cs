@@ -29,6 +29,9 @@ namespace TradingJournal.Controllers
 
         public IActionResult Index()
         {
+            if (User.Identity?.IsAuthenticated == true)
+                return RedirectToAction("Index", "Screening");
+
             return View();
         }
 

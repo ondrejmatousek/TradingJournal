@@ -33,6 +33,16 @@ namespace TradingJournal.Data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            builder.Entity<TradingJournal.Services.Valuation.ValuationInputEntity>().ToTable("ValuationInputs").HasKey(x=>x.Id);
+            builder.Entity<TradingJournal.Services.Valuation.ValuationInputEntity>().Property(x=>x.Id).HasMaxLength(64);
+            var vr=builder.Entity<TradingJournal.Services.Valuation.ValuationRunEntity>();
+            vr.ToTable("ValuationRuns").HasKey(x=>x.Id);
+            vr.Property(x=>x.Id).HasMaxLength(64);vr.Property(x=>x.InputHash).HasMaxLength(64);
+            vr.Property(x=>x.Symbol).HasMaxLength(32);vr.Property(x=>x.BaseFairValue).HasPrecision(28,10);
+            vr.HasIndex(x=>new {x.Symbol,x.CreatedAt});
+            vr.HasOne<TradingJournal.Services.Valuation.ValuationInputEntity>().WithMany().HasForeignKey(x=>x.InputHash).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<TradingJournal.Services.Valuation.InvestmentListing>().ToTable("InvestmentListings").HasKey(x=>x.Symbol);
+            builder.Entity<TradingJournal.Services.Valuation.InvestmentListing>().Property(x=>x.Symbol).HasMaxLength(32);
             builder.Entity<ScreeningDocument>().Property(x => x.Id).HasMaxLength(64).IsUnicode(false);
             builder.Entity<ScreeningDocument>().Property(x => x.Json).IsRequired();
 

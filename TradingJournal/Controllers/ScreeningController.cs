@@ -11,7 +11,7 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
 {
     private string UserKey => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new InvalidOperationException("Missing user identity.");
     [HttpGet]
-    public IActionResult Index() => View("~/Views/Investments/Screener.cshtml", InvestmentUniverse.All.Count);
+    public async Task<IActionResult> Index(CancellationToken ct) => View("~/Views/Investments/Screener.cshtml", (await service.UniverseAsync(ct)).Count);
     [HttpGet]
     public async Task<IActionResult> UpdateStatus([FromServices] Microsoft.Extensions.Options.IOptions<ScreeningSchedule> schedule, CancellationToken ct)
         => Json(new { schedule = schedule.Value, run = await store.ReadAsync<ScreeningUpdateRun>(ScreeningUpdateHostedService.StateKey, ct) });
@@ -50,7 +50,7 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Refresh(string symbol, CancellationToken ct)
     {
-        if (!InvestmentUniverse.All.Any(s => s.Symbol == symbol)) return BadRequest("Neznámý ticker.");
+        if (!(await service.UniverseAsync(ct)).Any(s => s.Symbol == symbol)) return BadRequest("Neznámý ticker.");
         return await ReadScreeningAsync(async () => Json(await SavePersonalResultAsync(symbol, ct, true)), ct);
     }
     private async Task<ScreeningRow> SavePersonalResultAsync(string symbol, CancellationToken ct, bool refresh)
@@ -60,7 +60,7 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
         var shared = await store.ReadAsync<ScreeningSnapshot>(ScreeningSnapshot.Key, ct);
         var personal = await store.ReadAsync<ScreeningSnapshot>("screening-personal-" + UserKey, ct);
         var rows = personal != null && (shared == null || personal.CalculatedAt >= shared.CalculatedAt) ? personal.Rows : [];
-        rows.RemoveAll(r => r.Symbol == symbol); rows.Add(row);
+        rows.RemoveAll(r => r.Symbol == symbol); rows.Add(ScreeningSnapshot.Compact(row));
         await store.WriteAsync("screening-personal-" + UserKey, new ScreeningSnapshot(DateTimeOffset.UtcNow, rows, []), ct);
         return row;
     }
@@ -81,18 +81,29 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
     [HttpGet]
     public async Task<IActionResult> Research(string symbol, CancellationToken ct)
     {
-        if (!InvestmentUniverse.All.Any(s => s.Symbol == symbol)) return BadRequest();
+        if (!(await service.UniverseAsync(ct)).Any(s => s.Symbol == symbol)) return BadRequest();
         return Json(await store.ReadAsync<ScreeningResearch>("research-" + UserKey + "-" + symbol, ct) ?? new());
     }
 
     [HttpGet]
-    public async Task<IActionResult> ValuationHistory(string symbol, int days = 365, CancellationToken ct = default)
+    public async Task<IActionResult> ValuationDetail(string symbol, string id, [FromServices] TradingJournal.Services.Valuation.ValuationPersistence persistence, CancellationToken ct)
     {
-        if (!InvestmentUniverse.All.Any(s => s.Symbol == symbol)) return BadRequest();
+        if (string.IsNullOrEmpty(id) || id.Length!=64 || !(await service.UniverseAsync(ct)).Any(s=>s.Symbol==symbol)) return BadRequest();
+        var report=await persistence.ReadAsync(id,ct);
+        return report==null || report.Symbol!=symbol ? NotFound() : Json(new {report,financials=await persistence.InputAsync(report.InputHash,ct)});
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ValuationHistory(string symbol, [FromServices] TradingJournal.Services.Valuation.ValuationPersistence persistence, int days = 365, CancellationToken ct = default)
+    {
+        if (!(await service.UniverseAsync(ct)).Any(s => s.Symbol == symbol)) return BadRequest();
         days = Math.Clamp(days, 1, 3650);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var sqlHistory = await store.ReadValuationsAsync(symbol, today.AddDays(-days), ct);
-        if (sqlHistory is { Count: > 0 }) return Json(sqlHistory);
+        var v2History=await persistence.HistoryAsync(symbol,DateTimeOffset.UtcNow.AddDays(-days),ct);
+        if (v2History.Count>0 || sqlHistory is {Count:>0})
+            return Json((sqlHistory??[]).Select(x=>new {date=x.ValuationDate.ToString("yyyy-MM-dd"),fairValueBase=(decimal?)x.FairValueBase,model="Legacy: "+x.Model})
+                .Concat(v2History.Select(x=>new {date=x.CreatedAt.ToString("yyyy-MM-dd"),fairValueBase=x.BaseFairValue,model=x.ModelVersion})).OrderBy(x=>x.date));
         var history = new List<(DateOnly date, ValuationResult value)>();
         for (var i = 0; i < days; i++)
         {
@@ -105,7 +116,7 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
     [HttpPost, ValidateAntiForgeryToken, RequestSizeLimit(65536)]
     public async Task<IActionResult> Research(string symbol, [FromBody] ScreeningResearch research, CancellationToken ct)
     {
-        if (!ModelState.IsValid || research == null || !InvestmentUniverse.All.Any(s => s.Symbol == symbol)) return BadRequest("Neplatný ticker nebo formát dat.");
+        if (!ModelState.IsValid || research == null || !(await service.UniverseAsync(ct)).Any(s => s.Symbol == symbol)) return BadRequest("Neplatný ticker nebo formát dat.");
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         static bool Url(string? value) => value?.Length <= 2000 && Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == "https" && string.IsNullOrEmpty(uri.UserInfo);
         if (research.Evidence == null || research.Evidence.Count > 30 || research.Evidence.Any(e => e == null || e.Pillar is not ("macro" or "geopolitics" or "analysts") || e.Score is < 0 or > 100

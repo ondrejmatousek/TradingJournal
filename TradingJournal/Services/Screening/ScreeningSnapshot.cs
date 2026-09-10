@@ -2,7 +2,12 @@ namespace TradingJournal.Services.Screening;
 
 public sealed record ScreeningSnapshot(DateTimeOffset CalculatedAt, List<ScreeningRow> Rows, List<MacroObservation> Macro)
 {
-    public const string Key = "screening-results-v1";
+    public static ScreeningRow Compact(ScreeningRow row)
+    {
+        if(row.Fundamentals is {} f) row.Fundamentals=f with {ValuationFinancials=null,HistoricalFinancialsJson="",HistoricalRevenueJson=""};
+        return row;
+    }
+    public const string Key = "screening-results-v2";
     public static object Page(ScreeningSnapshot snapshot, int page, int pageSize, string? search, string? sector, string? filter, string? sort,
         decimal? minDiscount = null, decimal? minScore = null, decimal? minConfidence = null)
     {
@@ -29,7 +34,7 @@ public sealed record ScreeningSnapshot(DateTimeOffset CalculatedAt, List<Screeni
         return new { rows = matches.Skip((page - 1) * pageSize).Take(pageSize), total = matches.Length,
             universeTotal = snapshot.Rows.Count, rated = snapshot.Rows.Count(r => r.Score != null),
             discounted = snapshot.Rows.Count(r => r.Discount > 0), page, pageSize,
-            sectors = InvestmentUniverse.All.Select(s => s.Sector).Distinct().Order().ToArray(),
+            sectors = snapshot.Rows.Select(s => s.Sector).Distinct().Order().ToArray(),
             macro = snapshot.Macro, calculatedAt = snapshot.CalculatedAt };
     }
 }
