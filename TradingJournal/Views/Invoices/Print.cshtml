@@ -363,6 +363,14 @@
             text-align: left;
         }
 
+        @@media screen and (max-width: 800px) {
+            body { margin: 0; padding: 8px; }
+            .toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
+            .sheet { width: 100%; min-height: 0; padding: 8px; box-sizing: border-box; }
+            .invoice { width: 100%; min-height: 0; box-sizing: border-box; overflow-wrap: anywhere; }
+            .header-grid, .top-title { grid-template-columns: minmax(0, 1fr); }
+            .items { display: block; max-width: 100%; overflow-x: auto; }
+        }
         @@media print {
             body {
                 background: #fff;

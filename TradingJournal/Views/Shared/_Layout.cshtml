@@ -25,17 +25,17 @@
 </head>
 <body class="@($"{bodyClass} {(showSidebar ? "app-section-shell" : string.Empty)}".Trim())">
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm app-navbar">
+        <nav class="navbar navbar-expand-lg app-navbar">
             <div class="container-fluid">
                 <a class="navbar-brand app-brand" asp-area="" asp-controller="Home" asp-action="Index">
                     <span class="brand-mark">ED</span>
                     <span>EdgeDesk</span>
                 </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#app-navigation" aria-controls="app-navigation"
+                        aria-expanded="false" aria-label="Otevřít nebo zavřít menu">
+                    <span class="app-menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                <div id="app-navigation" class="navbar-collapse collapse justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         @if (SignInManager.IsSignedIn(User))
                         {
@@ -50,6 +50,10 @@
                             </li>
                         }
                     </ul>
+                    @if (showSidebar)
+                    {
+                        <div class="app-mobile-sections"><partial name="_SectionNavigation" /></div>
+                    }
                     <partial name="_LoginPartial" />
                 </div>
             </div>
@@ -59,31 +63,7 @@
         @if (showSidebar)
         {
             <aside class="app-sidebar">
-                @if (isTradingSection)
-                {
-                    <div class="sidebar-title">Trading</div>
-                    <a class="sidebar-link @(controller == "JournalEntries" && action == "Index" ? "active" : "")" asp-controller="JournalEntries" asp-action="Index">Journal</a>
-                    <a class="sidebar-link @(controller == "JournalEntries" && action == "Strategy" ? "active" : "")" asp-controller="JournalEntries" asp-action="Strategy">Strategie</a>
-                    <a class="sidebar-link @(controller == "JournalEntries" && action == "SetupReview" ? "active" : "")" asp-controller="JournalEntries" asp-action="SetupReview">Setup Review</a>
-                    <a class="sidebar-link @(controller == "Cot" ? "active" : "")" asp-controller="Cot" asp-action="Index">COT Dashboard</a>
-                    <a class="sidebar-link @(controller == "Seasonality" ? "active" : "")" asp-controller="Seasonality" asp-action="Index">Seasonality</a>
-                    <a class="sidebar-link @(controller == "JournalEntries" && action == "TradeQuality" ? "active" : "")" asp-controller="JournalEntries" asp-action="TradeQuality">Kvalita tradu</a>
-                    <a class="sidebar-link @(controller == "JournalEntries" && action == "Analysis" ? "active" : "")" asp-controller="JournalEntries" asp-action="Analysis">Analýza</a>
-                }
-                else if (isProgrammingSection)
-                {
-                    var isCompanyAction = action.Contains("Company") || action == "Companies";
-                    <div class="sidebar-title">Programování</div>
-                    <a class="sidebar-link @(!isCompanyAction ? "active" : "")" asp-controller="Invoices" asp-action="Index">Fakturace</a>
-                    <a class="sidebar-link @(isCompanyAction ? "active" : "")" asp-controller="Invoices" asp-action="Companies">Firmy</a>
-                }
-                else if (isInvestmentSection)
-                {
-                    <div class="sidebar-title">Investování</div>
-                    <a class="sidebar-link @(action == "Planner" ? "active" : "")" asp-controller="Investments" asp-action="Planner">Investiční plánovač</a>
-                    <a class="sidebar-link @(controller == "Screening" ? "active" : "")" asp-controller="Screening" asp-action="Index">Akciový screener</a>
-                    <a class="sidebar-link @(controller == "Insiders" ? "active" : "")" asp-controller="Insiders" asp-action="Index">Insiders</a>
-                }
+                <partial name="_SectionNavigation" />
             </aside>
         }
         <main role="main" class="@(showSidebar ? "app-workspace-main" : "pb-3")">
@@ -96,6 +76,7 @@
             &copy; 2026 - EdgeDesk - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
+    <link rel="stylesheet" href="~/css/responsive.css" asp-append-version="true" />
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
