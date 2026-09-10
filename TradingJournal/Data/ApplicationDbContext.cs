@@ -24,6 +24,7 @@ namespace TradingJournal.Data
         public DbSet<InsiderReportingOwner> InsiderReportingOwners => Set<InsiderReportingOwner>();
         public DbSet<InsiderTransaction> InsiderTransactions => Set<InsiderTransaction>();
         public DbSet<InsiderImportRun> InsiderImportRuns => Set<InsiderImportRun>();
+        public DbSet<CompanyValuation> CompanyValuations => Set<CompanyValuation>();
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -384,6 +385,20 @@ namespace TradingJournal.Data
             builder.Entity<SeasonalityPriceEntity>()
                 .Property(p => p.Close)
                 .HasPrecision(20, 8);
+
+            builder.Entity<CompanyValuation>().HasIndex(x => new { x.Symbol, x.ValuationDate }).IsUnique();
+            builder.Entity<CompanyValuation>().Property(x => x.Symbol).HasMaxLength(16).IsUnicode(false);
+            builder.Entity<CompanyValuation>().Property(x => x.Status).HasMaxLength(40);
+            builder.Entity<CompanyValuation>().Property(x => x.Model).HasMaxLength(80);
+            builder.Entity<CompanyValuation>().Property(x => x.DataQuality).HasMaxLength(240);
+            builder.Entity<CompanyValuation>().Property(x => x.FairValueLow).HasPrecision(20, 8);
+            builder.Entity<CompanyValuation>().Property(x => x.FairValueBase).HasPrecision(20, 8);
+            builder.Entity<CompanyValuation>().Property(x => x.FairValueHigh).HasPrecision(20, 8);
+            builder.Entity<CompanyValuation>().Property(x => x.CurrentPrice).HasPrecision(20, 8);
+            builder.Entity<CompanyValuation>().Property(x => x.UpsidePercent).HasPrecision(12, 4);
+            builder.Entity<CompanyValuation>().Property(x => x.MarginOfSafetyPercent).HasPrecision(12, 4);
+            builder.Entity<CompanyValuation>().Property(x => x.ValuationScore).HasPrecision(8, 3);
+            builder.Entity<CompanyValuation>().Property(x => x.Confidence).HasPrecision(8, 3);
         }
     }
 }

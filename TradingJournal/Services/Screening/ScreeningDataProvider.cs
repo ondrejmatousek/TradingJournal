@@ -97,12 +97,24 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
         var cash = Annual("NetCashProvidedByUsedInOperatingActivities");
         var capex = Annual("PaymentsToAcquirePropertyPlantAndEquipment");
         var income = Annual("NetIncomeLoss");
+        var operatingIncome = Annual("OperatingIncomeLoss");
+        var depreciation = Annual("DepreciationDepletionAndAmortization", "DepreciationDepletionAndAmortizationPropertyPlantAndEquipment");
         var assets = Instant("Assets"); var liabilities = Instant("Liabilities");
+        var cashBalance = Instant("CashAndCashEquivalentsAtCarryingValue", "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents");
+        var debtBalance = Instant("LongTermDebtAndFinanceLeaseObligationsCurrent", "LongTermDebtNoncurrent", "LongTermDebtCurrent");
         // Use the latest reported actual share count, not weighted-average diluted shares from a different split basis.
         var shareRows = facts.TryGetProperty("dei", out var dei) ? Read(dei, "shares", "EntityCommonStockSharesOutstanding") : [];
         var shares = shareRows.Where(r => r.Start == r.End && today.DayNumber - r.End.DayNumber <= 180).OrderByDescending(r => r.End).ThenByDescending(r => r.Filed).FirstOrDefault();
         if (cash == null || capex == null || income == null || assets == null || liabilities == null || shares.Value <= 0 || previous.Value <= 0) return null;
-        return new(current.End, current.Filed, current.Value, previous.Value, cash.Value, capex.Value, income.Value, assets.Value, liabilities.Value, shares.Value, source);
+        var annualHistory = revenue.GroupBy(r => r.End).Select(g => g.OrderByDescending(r => r.Filed).First())
+            .OrderByDescending(r => r.End).Take(6).Select(r => new { periodEnd = r.End, filed = r.Filed, revenue = r.Value,
+                fcf = Read(gaap, "USD", "NetCashProvidedByUsedInOperatingActivities").Where(x => x.End == r.End && x.Start == r.Start).OrderByDescending(x => x.Filed).Select(x => (decimal?)x.Value).FirstOrDefault()
+                    - Read(gaap, "USD", "PaymentsToAcquirePropertyPlantAndEquipment").Where(x => x.End == r.End && x.Start == r.Start).OrderByDescending(x => x.Filed).Select(x => (decimal?)x.Value).FirstOrDefault(),
+                netIncome = Read(gaap, "USD", "NetIncomeLoss").Where(x => x.End == r.End && x.Start == r.Start).OrderByDescending(x => x.Filed).Select(x => (decimal?)x.Value).FirstOrDefault() });
+        return new(current.End, current.Filed, current.Value, previous.Value, cash.Value, capex.Value, income.Value, assets.Value, liabilities.Value, shares.Value, source)
+        { CashAndEquivalents = cashBalance, TotalDebt = debtBalance,
+          Ebitda = operatingIncome is > 0 ? operatingIncome + (depreciation ?? 0m) : null,
+          HistoricalRevenueJson = JsonSerializer.Serialize(annualHistory), HistoricalFinancialsJson = JsonSerializer.Serialize(annualHistory) };
     }
 
     public async Task<List<MacroObservation>> MacroAsync(CancellationToken ct)

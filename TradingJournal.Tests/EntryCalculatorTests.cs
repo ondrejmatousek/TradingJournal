@@ -68,7 +68,7 @@ public class EntryCalculatorTests
         var row = ScreeningCalculator.Evaluate(new("TEST", "Test", "Technology"), History(), F, [], new(), Today);
         var json = System.Text.Json.JsonSerializer.Serialize(row);
         var restored = System.Text.Json.JsonSerializer.Deserialize<ScreeningRow>(json)!;
-        Assert.Equal("DCF-10-v2", restored.Valuation!.Model);
+        Assert.Equal("DCF-5-composite", restored.Valuation!.Model);
         Assert.NotEmpty(restored.Entry!.Reasons);
         Assert.Equal(row.Entry!.Status, restored.Entry.Status);
     }

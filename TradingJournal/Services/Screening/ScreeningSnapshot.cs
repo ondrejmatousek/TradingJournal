@@ -3,7 +3,8 @@ namespace TradingJournal.Services.Screening;
 public sealed record ScreeningSnapshot(DateTimeOffset CalculatedAt, List<ScreeningRow> Rows, List<MacroObservation> Macro)
 {
     public const string Key = "screening-results-v1";
-    public static object Page(ScreeningSnapshot snapshot, int page, int pageSize, string? search, string? sector, string? filter, string? sort)
+    public static object Page(ScreeningSnapshot snapshot, int page, int pageSize, string? search, string? sector, string? filter, string? sort,
+        decimal? minDiscount = null, decimal? minScore = null, decimal? minConfidence = null)
     {
         var rows = snapshot.Rows.Where(r => (string.IsNullOrWhiteSpace(search) || $"{r.Symbol} {r.Name}".Contains(search.Trim(), StringComparison.OrdinalIgnoreCase))
             && (string.IsNullOrEmpty(sector) || r.Sector == sector));
@@ -13,10 +14,11 @@ public sealed record ScreeningSnapshot(DateTimeOffset CalculatedAt, List<Screeni
             "rated" => r.Score != null, "discount" => r.Discount > 0,
             "ema" => r.EmaDistance < 0,
             _ => true
-        });
+        } && (!minDiscount.HasValue || r.Discount >= minDiscount) && (!minScore.HasValue || r.ValuationScore >= minScore)
+            && (!minConfidence.HasValue || r.ValuationConfidence >= minConfidence));
         decimal? Metric(ScreeningRow r) => sort switch
         {
-            "score" => r.Score, "discount" => r.Discount,
+            "score" => r.Score, "discount" => r.Discount, "confidence" => r.ValuationConfidence, "upside" => r.Discount,
             "quality" => r.Pillars.FirstOrDefault(p => p.Key == "quality")?.Score,
             _ => r.Coverage
         };

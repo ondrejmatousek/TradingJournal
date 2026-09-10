@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using TradingJournal.Data;
 using TradingJournal.Services.Screening;
+using TradingJournal.Models;
 
 namespace TradingJournal.Tests;
 
@@ -61,6 +62,26 @@ public sealed class ScreeningSqlStoreTests
         Assert.Equal(new[] { "A" }, await web.ReadAsync<string[]>("research-user-a-MSFT", default));
         Assert.Equal(new[] { "B" }, await web.ReadAsync<string[]>("research-user-b-MSFT", default));
         Assert.Equal(run, await fixture.Store("restarted").ReadAsync<ScreeningUpdateRun>(ScreeningUpdateHostedService.StateKey, default));
+    }
+
+    [Fact]
+    public async Task ValuationHistory_IsUpsertedBySymbolAndDateAndHasJsonFallback()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var valuation = ScreeningCalculator.Value(new(new(2025, 12, 31), new(2026, 2, 15), 1100, 1000, 250, 50, 150, 1500, 500, 100, "https://sec.gov"), "Technology")!;
+        var row = new ScreeningRow { Symbol = "MSFT", Price = 100, Valuation = ScreeningCalculator.Reprice(valuation, 100) };
+        await fixture.Store("worker").WriteValuationAsync("MSFT", new(2026, 9, 10), row, default);
+        var updatedRow = new ScreeningRow { Symbol = "MSFT", Price = 101, Valuation = ScreeningCalculator.Reprice(valuation, 101) };
+        await fixture.Store("worker").WriteValuationAsync("MSFT", new(2026, 9, 10), updatedRow, default);
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var entities = await db.CompanyValuations.Where(x => x.Symbol == "MSFT").ToListAsync();
+        Assert.Single(entities);
+        Assert.Equal(101, entities[0].CurrentPrice);
+        Assert.Contains("dcfFairValue", entities[0].MethodsJson, StringComparison.OrdinalIgnoreCase);
+        var history = await fixture.Store("reader").ReadAsync<ValuationResult>("valuation-history-MSFT-20260910", default);
+        Assert.NotNull(history);
+        Assert.Equal(valuation.Base, history!.Base);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Data.Common;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -82,5 +83,63 @@ public sealed class ScreeningStore(IWebHostEnvironment environment, IServiceScop
         }
         finally { gate.Release(); }
     }
+
+    public async Task WriteValuationAsync(string symbol, DateOnly date, ScreeningRow row, CancellationToken ct)
+    {
+        var valuation = row.Valuation;
+        if (valuation == null) return;
+        if (scopes != null)
+        {
+            try
+            {
+                using var scope = scopes.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var existing = await db.CompanyValuations.SingleOrDefaultAsync(x => x.Symbol == symbol && x.ValuationDate == date, ct);
+                var entity = existing ?? new CompanyValuation { Symbol = symbol, ValuationDate = date };
+                entity.CalculatedAt = DateTimeOffset.UtcNow; entity.CurrentPrice = row.Price;
+                entity.FairValueLow = valuation.Low; entity.FairValueBase = valuation.Base; entity.FairValueHigh = valuation.High;
+                entity.UpsidePercent = row.Price > 0 ? (valuation.Base / row.Price.Value - 1) * 100 : null;
+                entity.MarginOfSafetyPercent = valuation.MarginOfSafety; entity.ValuationScore = valuation.ValuationScore; entity.Confidence = valuation.Confidence;
+                entity.Status = valuation.Status; entity.Model = valuation.Model; entity.DataQuality = valuation.DataQuality;
+            entity.MethodsJson = JsonSerializer.Serialize(new { valuation.DcfFairValue, valuation.RelativeFairValue, valuation.FcfFairValue, valuation.EvEbitdaFairValue, valuation.ForwardPeFairValue, valuation.CompositeFairValue, valuation.RelativeMultiple, valuation.Weights });
+                entity.AssumptionsJson = JsonSerializer.Serialize(new { valuation.Growth, valuation.DiscountRate, valuation.TerminalGrowth, valuation.RiskFreeRate, valuation.Beta, valuation.EquityRiskPremium, valuation.CostOfDebt, valuation.TaxRate, valuation.WaccFallbackUsed });
+                if (existing == null) db.CompanyValuations.Add(entity);
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbException) when (!ct.IsCancellationRequested)
+            {
+                // SQL Server/local databases without the Postgres migration continue using the JSON cache.
+            }
+        }
+        await WriteAsync($"valuation-history-{symbol}-{date:yyyyMMdd}", valuation, ct);
+    }
+
+    public async Task<List<CompanyValuation>?> ReadValuationsAsync(string symbol, DateOnly from, CancellationToken ct)
+    {
+        if (scopes == null) return null;
+        try
+        {
+            using var scope = scopes.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            return await db.CompanyValuations.AsNoTracking().Where(x => x.Symbol == symbol && x.ValuationDate >= from)
+                .OrderBy(x => x.ValuationDate).ToListAsync(ct);
+        }
+        catch (DbException) when (!ct.IsCancellationRequested) { return null; }
+    }
+
+    public async Task<decimal?> ReadHistoricalRelativeMultipleAsync(string symbol, DateOnly before, CancellationToken ct)
+    {
+        var rows = await ReadValuationsAsync(symbol, before.AddYears(-5), ct);
+        if (rows == null) return null;
+        var values = rows.Where(x => x.ValuationDate < before).Select(x =>
+        {
+            try { return JsonDocument.Parse(x.MethodsJson).RootElement.TryGetProperty("relativeMultiple", out var p) && p.TryGetDecimal(out var v) ? (decimal?)v : null; }
+            catch (JsonException) { return null; }
+        }).Where(x => x is > 3 and < 60).Select(x => x!.Value).Order().ToArray();
+        return values.Length == 0 ? null : ScreeningCalculator.Median(values);
+    }
 }
-public sealed record ScreeningMarketCache(DateTimeOffset RetrievedAt, List<TradingJournal.Models.SeasonalityPrice> Prices, FundamentalInput? Fundamentals, string? Message);
+public sealed record ScreeningMarketCache(DateTimeOffset RetrievedAt, List<TradingJournal.Models.SeasonalityPrice> Prices, FundamentalInput? Fundamentals, string? Message)
+{
+    public ValuationResult? Valuation { get; init; }
+}

@@ -12,7 +12,7 @@ public static class EntryCalculator
         var v = row.Valuation;
         var f = row.Fundamentals;
         if (row.Price is not > 0 || row.PriceDate is null || today.DayNumber - row.PriceDate.Value.DayNumber is < 0 or > 7
-            || v is null || v.Model != "DCF-10-v2" || v.Base <= 0 || f is null || f.Revenue <= 0
+            || v is null || v.Model is not ("DCF-5-composite" or "DCF-10-v2") || v.Base <= 0 || f is null || f.Revenue <= 0
             || f.PeriodEnd > today || f.Filed > today || f.Filed < f.PeriodEnd || today.DayNumber - f.PeriodEnd.DayNumber > 460)
         {
             reasons.Add("Chybí aktuální cena nebo použitelné ocenění; nákupní závěr nelze vytvořit.");

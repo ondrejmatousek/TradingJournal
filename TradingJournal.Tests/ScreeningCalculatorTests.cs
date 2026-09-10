@@ -78,4 +78,102 @@ public class ScreeningCalculatorTests
         var row = ScreeningCalculator.Evaluate(Stock,Prices(),Fundamentals with{PeriodEnd=Today.AddYears(-3)},[],new(),Today);
         Assert.Null(row.Valuation); Assert.Null(row.Pillars.Single(p=>p.Key=="quality").Score);
     }
+
+    [Fact]
+    public void CompositeValuation_ExposesIndependentMethodsAndConfidence()
+    {
+        var value = ScreeningCalculator.Value(Fundamentals, "Technology")!;
+        Assert.NotNull(value.DcfFairValue);
+        Assert.NotNull(value.RelativeFairValue);
+        Assert.NotNull(value.FcfFairValue);
+        Assert.Equal(value.Base, value.CompositeFairValue);
+        Assert.InRange(value.Confidence, 0, 100);
+        Assert.InRange(value.ValuationScore!.Value, 0, 100);
+        Assert.Contains("DCF", value.Explanation);
+        Assert.Contains("DCF", value.Weights);
+    }
+
+    [Fact]
+    public void CompositeValuation_RejectsInvalidSharesAndNegativeFcf()
+    {
+        Assert.Null(ScreeningCalculator.Value(Fundamentals with { Shares = 0 }, "Technology"));
+        Assert.Null(ScreeningCalculator.Value(Fundamentals with { OperatingCashFlow = 10, CapitalExpenditure = 50 }, "Technology"));
+    }
+
+    [Fact]
+    public void Wacc_UsesCapmAndSafeFallbacks()
+    {
+        var assumptions = WaccCalculator.Calculate(4, 1.2m, 6, 25, 20);
+        Assert.Equal(.04m, assumptions.RiskFreeRate);
+        Assert.Equal(.20m, assumptions.DebtWeight);
+        Assert.InRange(WaccCalculator.Rate(assumptions), .09m, .20m);
+        Assert.True(WaccCalculator.Calculate(null).UsedFallback);
+        Assert.True(WaccCalculator.Rate(new(.02m, 1, .05m, .04m, .21m, .9m, .1m, false)) > .02m);
+    }
+
+    [Fact]
+    public void Growth_UsesHistoricalRevenueCagrWithGuardrails()
+    {
+        var history = "[{\"periodEnd\":\"2021-12-31\",\"filed\":\"2022-02-01\",\"revenue\":500},{\"periodEnd\":\"2023-12-31\",\"filed\":\"2024-02-01\",\"revenue\":800}]";
+        var value = ScreeningCalculator.Value(Fundamentals with { Revenue = 1100, HistoricalRevenueJson = history }, "Technology")!;
+        Assert.InRange(value.Growth, 5m, 10m);
+    }
+
+    [Fact]
+    public void RelativeAndFcfMethodsRejectUnsupportedInputs()
+    {
+        Assert.Equal(33m, RelativeValuationCalculator.FairValue(Fundamentals, "Technology"));
+        Assert.Equal(33.333333333333333333333333333m, FcfValuationCalculator.FairValue(Fundamentals));
+        Assert.Null(RelativeValuationCalculator.FairValue(Fundamentals with { NetIncome = -1 }, "Technology"));
+        Assert.Null(FcfValuationCalculator.FairValue(Fundamentals with { OperatingCashFlow = 0 }));
+    }
+
+    [Fact]
+    public void RelativeValuation_PrefersHistoricalMultipleWhenValid()
+    {
+        var value = RelativeValuationCalculator.FairValue(Fundamentals, "Technology", 12m);
+        Assert.Equal(18m, value);
+        Assert.Equal(33m, RelativeValuationCalculator.FairValue(Fundamentals, "Technology", null));
+        Assert.Equal(33m, RelativeValuationCalculator.FairValue(Fundamentals, "Technology", 100m));
+    }
+
+    [Fact]
+    public void OptionalForwardAndEnterpriseMethodsAreUsedWhenInputsExist()
+    {
+        var input = Fundamentals with { Ebitda = 300m, ForwardEps = 4m, CashAndEquivalents = 100m, TotalDebt = 50m };
+        Assert.Equal(48.5m, EnterpriseValuationCalculator.FairValue(input, "Technology"));
+        Assert.Equal(80m, ForwardEarningsValuationCalculator.FairValue(input, "Technology"));
+        var value = ScreeningCalculator.Value(input, "Technology")!;
+        Assert.Equal(48.5m, value.EvEbitdaFairValue);
+        Assert.Equal(80m, value.ForwardPeFairValue);
+        Assert.Contains("EV/EBITDA", value.Explanation);
+    }
+
+    [Fact]
+    public void Evaluate_ReusesPersistedFundamentalValuation()
+    {
+        var persisted = ScreeningCalculator.Value(Fundamentals, "Technology")! with { Base = 123m };
+        var row = ScreeningCalculator.Evaluate(Stock, Prices(), Fundamentals, [], new(), Today, persisted);
+        Assert.Equal(123m, row.Valuation!.Base);
+    }
+
+    [Fact]
+    public void Reprice_UsesCurrentMarketPriceForStatusAndScore()
+    {
+        var value = ScreeningCalculator.Value(Fundamentals, "Technology")!;
+        var cheap = ScreeningCalculator.Reprice(value, value.Base * .5m)!;
+        var expensive = ScreeningCalculator.Reprice(value, value.Base * 2m)!;
+        Assert.Equal("Strongly Undervalued", cheap.Status);
+        Assert.True(cheap.ValuationScore > expensive.ValuationScore);
+        Assert.Equal("Strongly Overvalued", expensive.Status);
+    }
+
+    [Fact]
+    public void Value_UsesFiveYearCompositeModelAndNeutralPrePriceStatus()
+    {
+        var value = ScreeningCalculator.Value(Fundamentals, "Technology")!;
+        Assert.Equal("DCF-5-composite", value.Model);
+        Assert.Equal("N/A", value.Status);
+        Assert.Equal(50m * value.Confidence / 100m, value.ValuationScore);
+    }
 }

@@ -33,12 +33,44 @@ public sealed record ScreeningPillar(string Key, string Label, int Weight, decim
 public sealed record SeasonalWindow(int Days, int Years, decimal? Median, decimal? WinRate, decimal? Worst, decimal? RecentMedian);
 public sealed record FundamentalInput(DateOnly PeriodEnd, DateOnly Filed, decimal Revenue, decimal PreviousRevenue,
     decimal OperatingCashFlow, decimal CapitalExpenditure, decimal NetIncome, decimal Assets, decimal Liabilities,
-    decimal Shares, string Source, string Currency = "USD");
+    decimal Shares, string Source, string Currency = "USD")
+{
+    public decimal? CashAndEquivalents { get; init; }
+    public decimal? TotalDebt { get; init; }
+    // Compact JSON keeps historical annual observations in the existing cache without a second provider or table.
+    public string HistoricalRevenueJson { get; init; } = "";
+    public string HistoricalFinancialsJson { get; init; } = "";
+    public decimal? Ebitda { get; init; }
+    public decimal? ForwardEps { get; init; }
+}
 public sealed record ValuationResult(decimal Low, decimal Base, decimal High, decimal Growth, decimal DiscountRate, decimal TerminalGrowth)
 {
     public string Model { get; init; } = "Legacy DCF";
     public decimal MarginOfSafety { get; init; }
     public decimal BuyBelow { get; init; }
+    public decimal? DcfFairValue { get; init; }
+    public decimal? RelativeFairValue { get; init; }
+    public decimal? FcfFairValue { get; init; }
+    public decimal? EvEbitdaFairValue { get; init; }
+    public decimal? ForwardPeFairValue { get; init; }
+    public decimal? RelativeMultiple { get; init; }
+    public decimal? CompositeFairValue { get; init; }
+    public decimal? ValuationScore { get; init; }
+    public decimal Confidence { get; init; }
+    public string Status { get; init; } = "N/A";
+    public decimal RiskFreeRate { get; init; }
+    public decimal EquityRiskPremium { get; init; } = 0.05m;
+    public decimal Beta { get; init; } = 1m;
+    public decimal CostOfDebt { get; init; }
+    public decimal TaxRate { get; init; }
+    public bool WaccFallbackUsed { get; init; }
+    public decimal? Cash { get; init; }
+    public decimal? Debt { get; init; }
+    public decimal? DilutedShares { get; init; }
+    public string DataQuality { get; init; } = "";
+    // JSON strings keep record equality deterministic for cache/tests while remaining inspectable in the detail view.
+    public string Weights { get; init; } = "";
+    public string Explanation { get; init; } = "";
 }
 public sealed record EntryAssessment(string Status, string Label, decimal? ZoneLow, decimal? ZoneHigh,
     decimal? Support, decimal? Momentum, List<string> Reasons);
@@ -67,6 +99,9 @@ public sealed class ScreeningRow
     public FundamentalInput? Fundamentals { get; set; }
     public ValuationResult? Valuation { get; set; }
     public decimal? Discount { get; set; }
+    public decimal? ValuationScore { get; set; }
+    public decimal? ValuationConfidence { get; set; }
+    public string ValuationStatus { get; set; } = "N/A";
     public EntryAssessment? Entry { get; set; }
     public List<ResearchEvidence> Evidence { get; set; } = [];
     public string? RefreshMessage { get; set; }

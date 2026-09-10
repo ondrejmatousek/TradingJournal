@@ -28,4 +28,18 @@ public class ScreeningSnapshotTests
         Assert.Equal(0, result.GetProperty("total").GetInt32());
         Assert.Equal(1, result.GetProperty("rated").GetInt32());
     }
+
+    [Fact]
+    public void ValuationFiltersUseMinimumThresholdsAndCanSortByConfidence()
+    {
+        var rows = new List<ScreeningRow>
+        {
+            new() { Symbol = "LOW", Discount = 25, ValuationScore = 80, ValuationConfidence = 65 },
+            new() { Symbol = "BEST", Discount = 30, ValuationScore = 85, ValuationConfidence = 90 },
+            new() { Symbol = "RISK", Discount = 50, ValuationScore = 95, ValuationConfidence = 40 }
+        };
+        var result = JsonSerializer.SerializeToElement(ScreeningSnapshot.Page(new(DateTimeOffset.UtcNow, rows, []), 1, 25, null, null, null, "confidence", 20, 70, 70));
+        Assert.Equal(1, result.GetProperty("total").GetInt32());
+        Assert.Equal("BEST", result.GetProperty("rows")[0].GetProperty("Symbol").GetString());
+    }
 }

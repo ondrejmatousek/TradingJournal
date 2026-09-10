@@ -24,7 +24,12 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
             var cache = await store.ReadAsync<ScreeningMarketCache>("market-" + stock.Symbol, ct);
             var research = await store.ReadAsync<ScreeningResearch>("research-" + user + "-" + stock.Symbol, ct) ?? new();
             var prices = Merge(await LoadRecentAsync(stock.Symbol, today, ct), Recent(cache?.Prices ?? [], today));
-            var row = ScreeningCalculator.Evaluate(stock, prices, cache?.Fundamentals, macro, research, DateOnly.FromDateTime(DateTime.UtcNow));
+            var historicalPe = await store.ReadHistoricalRelativeMultipleAsync(stock.Symbol, today, ct);
+            // User-supplied fundamentals supersede the persisted valuation because they are a new input set.
+            var persisted = research.Fundamentals == null
+                ? cache?.Valuation ?? (cache?.Fundamentals == null ? null : ScreeningCalculator.Value(cache.Fundamentals, stock.Sector, macro.FirstOrDefault(m => m.Series == "DGS10")?.Value, historicalPe))
+                : ScreeningCalculator.Value(research.Fundamentals, stock.Sector, macro.FirstOrDefault(m => m.Series == "DGS10")?.Value, historicalPe);
+            var row = ScreeningCalculator.Evaluate(stock, prices, cache?.Fundamentals, macro, research, DateOnly.FromDateTime(DateTime.UtcNow), persisted);
             row.RefreshMessage = cache?.Message;
             rows.Add(row);
         }
@@ -59,10 +64,12 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
                     else messages.Add("SEC neposkytla úplné srovnatelné roční výkazy v USD; předchozí výkazy zůstaly zachované.");
                 }
                 catch (Exception) when (!ct.IsCancellationRequested) { messages.Add("Stažení výkazů SEC selhalo nebo platí dočasný limit poskytovatele; předchozí výkazy zůstaly zachované."); }
-                await store.WriteAsync("market-" + symbol, new ScreeningMarketCache(DateTimeOffset.UtcNow, prices, fundamental, string.Join(" ", messages)), ct);
+                var historicalPe = await store.ReadHistoricalRelativeMultipleAsync(symbol, today, ct);
+                var valuation = fundamental == null ? old?.Valuation : ScreeningCalculator.Value(fundamental, InvestmentUniverse.All.Single(s => s.Symbol == symbol).Sector, null, historicalPe);
+                await store.WriteAsync("market-" + symbol, new ScreeningMarketCache(DateTimeOffset.UtcNow, prices, fundamental, string.Join(" ", messages)) { Valuation = valuation }, ct);
             }
             else if (old.Message != null) messages.Add(old.Message);
-            return new ScreeningMarketCache(DateTimeOffset.UtcNow, prices, fundamental, string.Join(" ", messages));
+            return new ScreeningMarketCache(DateTimeOffset.UtcNow, prices, fundamental, string.Join(" ", messages)) { Valuation = old?.Valuation };
         }
         finally { RefreshGate.Release(); }
     }
@@ -74,7 +81,7 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
         var seasonal = await LoadRecentAsync(symbol, DateOnly.FromDateTime(DateTime.UtcNow), ct);
         var research = await store.ReadAsync<ScreeningResearch>("research-" + user + "-" + symbol, ct) ?? new();
         var macro = await ContextAsync(ct);
-        var result = ScreeningCalculator.Evaluate(stock, Merge(seasonal, market.Prices), market.Fundamentals, macro, research, DateOnly.FromDateTime(DateTime.UtcNow));
+        var result = ScreeningCalculator.Evaluate(stock, Merge(seasonal, market.Prices), market.Fundamentals, macro, research, DateOnly.FromDateTime(DateTime.UtcNow), market.Valuation);
         result.RefreshMessage = market.Message;
         return result;
     }

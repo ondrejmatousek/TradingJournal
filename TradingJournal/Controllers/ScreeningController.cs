@@ -17,14 +17,15 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
         => Json(new { schedule = schedule.Value, run = await store.ReadAsync<ScreeningUpdateRun>(ScreeningUpdateHostedService.StateKey, ct) });
     [HttpGet]
     public Task<IActionResult> Data(CancellationToken ct = default, int page = 1, int pageSize = 25,
-        string? search = null, string? sector = null, string? filter = null, string? sort = null) => ReadScreeningAsync(async () =>
+        string? search = null, string? sector = null, string? filter = null, string? sort = null,
+        decimal? minDiscount = null, decimal? minScore = null, decimal? minConfidence = null) => ReadScreeningAsync(async () =>
     {
         var snapshot = await store.ReadAsync<ScreeningSnapshot>(ScreeningSnapshot.Key, ct);
         if (snapshot == null) return StatusCode(503, "Hodnocení zatím není připravené. Spusť denní aktualizaci dat v GitHub Actions.");
         var personal = await store.ReadAsync<ScreeningSnapshot>("screening-personal-" + UserKey, ct);
         if (personal != null && personal.CalculatedAt >= snapshot.CalculatedAt)
             snapshot = snapshot with { Rows = snapshot.Rows.Select(r => personal.Rows.FirstOrDefault(p => p.Symbol == r.Symbol) ?? r).ToList() };
-        return Json(ScreeningSnapshot.Page(snapshot, page, pageSize, search, sector, filter, sort));
+        return Json(ScreeningSnapshot.Page(snapshot, page, pageSize, search, sector, filter, sort, minDiscount, minScore, minConfidence));
     }, ct);
 
     private async Task<IActionResult> ReadScreeningAsync(Func<Task<IActionResult>> read, CancellationToken ct)
@@ -82,6 +83,24 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
     {
         if (!InvestmentUniverse.All.Any(s => s.Symbol == symbol)) return BadRequest();
         return Json(await store.ReadAsync<ScreeningResearch>("research-" + UserKey + "-" + symbol, ct) ?? new());
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ValuationHistory(string symbol, int days = 365, CancellationToken ct = default)
+    {
+        if (!InvestmentUniverse.All.Any(s => s.Symbol == symbol)) return BadRequest();
+        days = Math.Clamp(days, 1, 3650);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var sqlHistory = await store.ReadValuationsAsync(symbol, today.AddDays(-days), ct);
+        if (sqlHistory is { Count: > 0 }) return Json(sqlHistory);
+        var history = new List<(DateOnly date, ValuationResult value)>();
+        for (var i = 0; i < days; i++)
+        {
+            var date = today.AddDays(-i);
+            var value = await store.ReadAsync<ValuationResult>($"valuation-history-{symbol}-{date:yyyyMMdd}", ct);
+            if (value != null) history.Add((date, value));
+        }
+        return Json(history.OrderBy(x => x.date).Select(x => new { date = x.date, value = x.value }));
     }
     [HttpPost, ValidateAntiForgeryToken, RequestSizeLimit(65536)]
     public async Task<IActionResult> Research(string symbol, [FromBody] ScreeningResearch research, CancellationToken ct)

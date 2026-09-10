@@ -87,6 +87,10 @@ public sealed class ScreeningUpdateHostedService(IServiceScopeFactory scopes, Sc
         var context = await store.ReadAsync<List<MacroObservation>>("macro-v1", ct) ?? [];
         var geo = await store.ReadAsync<MacroObservation>("macro-geopolitics-v1", ct);
         if (geo != null) context.Add(geo);
+        // Keep an immutable daily valuation point so the UI can later chart fair value
+        // against price without duplicating fundamentals or requesting providers again.
+        foreach (var result in results.Where(r => r.Valuation != null))
+            await store.WriteValuationAsync(result.Symbol, due, result, ct);
         await store.WriteAsync(ScreeningSnapshot.Key, new ScreeningSnapshot(DateTimeOffset.UtcNow, results, context), ct);
         // Completed means the entire universe was attempted, not that every provider returned complete data.
         run = run with { CompletedAt = DateTimeOffset.UtcNow };
