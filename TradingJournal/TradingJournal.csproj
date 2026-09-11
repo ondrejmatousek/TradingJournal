@@ -29,8 +29,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Data\Migrations\**" />
-    <None Include="Data\Migrations\**" />
+    <Compile Remove="Data\Migrations\ApplicationDbContextModelSnapshot.cs" />
+    <None Include="Data\Migrations\ApplicationDbContextModelSnapshot.cs" />
   </ItemGroup>
 
 </Project>
+

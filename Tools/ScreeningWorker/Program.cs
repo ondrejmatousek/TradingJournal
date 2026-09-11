@@ -19,20 +19,31 @@ if (args.Length == 0 || args.Contains("--help"))
     Console.WriteLine("ScreeningWorker --check | --run [--force]\nRequires ConnectionStrings__DefaultConnection and Screening__SecUserAgent. SQL schema must already be deployed by the web app. No web server or migrations are started.");
     return 0;
 }
-if (args.Any(a => a is not ("--check" or "--run" or "--force")) || args.Contains("--check") == args.Contains("--run"))
+if (args.Any(a => a is not ("--check" or "--run" or "--force" or "--local")) || args.Contains("--check") == args.Contains("--run"))
 {
     Console.Error.WriteLine("Use --check or --run [--force].");
     return 1;
 }
 var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { ContentRootPath = AppContext.BaseDirectory });
-var connection = PostgresConnectionString.Normalize(builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty);
-if (string.IsNullOrWhiteSpace(connection) || string.IsNullOrWhiteSpace(builder.Configuration["Screening:SecUserAgent"]))
+if (args.Contains("--local"))
 {
-    Console.Error.WriteLine("Missing ConnectionStrings__DefaultConnection or Screening__SecUserAgent. Configure secrets; do not pass credentials as command arguments.");
+    builder.Configuration.AddUserSecrets(typeof(ApplicationDbContext).Assembly, optional: true);
+    LocalDatabaseConfiguration.Apply(builder.Configuration);
+}
+var connection = PostgresConnectionString.Normalize(builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty);
+if (string.IsNullOrWhiteSpace(connection))
+{
+    Console.Error.WriteLine("Missing ConnectionStrings__DefaultConnection. Use --local for the local SQL Server database.");
+    return 1;
+}
+if (args.Contains("--run") && string.IsNullOrWhiteSpace(builder.Configuration["Screening:SecUserAgent"]))
+{
+    Console.Error.WriteLine("Missing Screening:SecUserAgent: configure a contact email for SEC in the web project's User Secrets. Local database configuration is present. --check can verify the database without this contact.");
     return 1;
 }
 builder.Logging.ClearProviders();
-builder.Logging.AddSimpleConsole();
+builder.Logging.AddSimpleConsole(o => { o.SingleLine = true; o.TimestampFormat = "[HH:mm:ss] "; });
+builder.Logging.AddFilter("TradingJournal.Services", LogLevel.Information);
 builder.Logging.SetMinimumLevel(LogLevel.Warning);
 builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.None);
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
@@ -111,14 +122,42 @@ catch (Exception ex)
 
 static async Task RunUpdateAsync(IHost host, IServiceScope scope, CancellationToken cancellationToken, bool force)
 {
-    await scope.ServiceProvider.GetRequiredService<SeasonalityService>().UpdateAsync(cancellationToken);
-    await scope.ServiceProvider.GetRequiredService<CotDataService>().UpdateAsync(force, cancellationToken);
-    await host.Services.GetRequiredService<ScreeningUpdateHostedService>().RunIfDueAsync(DateTimeOffset.UtcNow, cancellationToken, force);
+    await StageAsync("1/4 Sezonalita", () => scope.ServiceProvider.GetRequiredService<SeasonalityService>().UpdateAsync(cancellationToken));
+    await StageAsync("2/4 COT", () => scope.ServiceProvider.GetRequiredService<CotDataService>().UpdateAsync(force, cancellationToken));
+    await StageAsync("3/4 Makro, geopolitika a akcie", () => host.Services.GetRequiredService<ScreeningUpdateHostedService>().RunIfDueAsync(DateTimeOffset.UtcNow, cancellationToken, force));
     var dueDate = host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ScreeningSchedule>>().Value.DueDate(DateTimeOffset.UtcNow);
-    var insiderRun = await scope.ServiceProvider.GetRequiredService<InsiderUpdateService>().RunAsync(dueDate, cancellationToken, force);
+    TradingJournal.Models.InsiderImportRun insiderRun = null!;
+    await StageAsync("4/4 Insiders", async () => { insiderRun = await scope.ServiceProvider.GetRequiredService<InsiderUpdateService>().RunAsync(dueDate, cancellationToken, force); });
     var run = await host.Services.GetRequiredService<ScreeningStore>().ReadAsync<ScreeningUpdateRun>(ScreeningUpdateHostedService.StateKey, cancellationToken);
     var summary = run == null ? "No completed update." : $"Stocks: {run.Processed}/{InvestmentUniverse.All.Count}; incomplete: {run.Incomplete}; macro: {run.MacroUpdated}. Insider filings: {insiderRun.FilingsImported}; transactions: {insiderRun.TransactionsImported}; issuer failures: {insiderRun.IssuersFailed}; completed: {insiderRun.CompletedAt:O}.";
     Console.WriteLine(summary);
+    async Task StageAsync(string name, Func<Task> work)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {name}: začátek");
+        using var stop = new CancellationTokenSource();
+        var heartbeat = PulseAsync();
+        try
+        {
+            await work();
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {name}: krok ukončen za {watch.Elapsed:hh\\:mm\\:ss} (případná varování viz výše)");
+        }
+        finally
+        {
+            stop.Cancel();
+            await heartbeat;
+        }
+        async Task PulseAsync()
+        {
+            try
+            {
+                using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+                while (await timer.WaitForNextTickAsync(stop.Token))
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {name}: stále běží nebo čeká na odpověď; uplynulo {watch.Elapsed:hh\\:mm\\:ss}. Poslední ticker viz výše.");
+            }
+            catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+        }
+    }
     var summaryPath = Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY");
     if (!string.IsNullOrEmpty(summaryPath)) await File.AppendAllTextAsync(summaryPath, summary + Environment.NewLine, cancellationToken);
 }
@@ -132,3 +171,7 @@ sealed class WorkerEnvironment : IWebHostEnvironment
     public string WebRootPath { get; set; } = "";
     public IFileProvider WebRootFileProvider { get; set; } = new NullFileProvider();
 }
+
+
+
+

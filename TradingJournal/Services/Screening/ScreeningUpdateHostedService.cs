@@ -66,9 +66,11 @@ public sealed class ScreeningUpdateHostedService(IServiceScopeFactory scopes, Sc
         catch (Exception ex) when (!ct.IsCancellationRequested)
         { logger.LogWarning(ex, "Scheduled macro refresh failed; retaining previous data."); }
         var results = new List<ScreeningRow>();
-        foreach (var stock in await service.UniverseAsync(ct))
+        var universe = await service.UniverseAsync(ct);
+        foreach (var stock in universe)
         {
             ct.ThrowIfCancellationRequested();
+            logger.LogInformation("Akcie {Index}/{Total}: {Ticker}", run.Processed + 1, universe.Count, stock.Symbol);
             var incomplete = true;
             try
             {
@@ -82,6 +84,7 @@ public sealed class ScreeningUpdateHostedService(IServiceScopeFactory scopes, Sc
             results.AddRange(await service.LoadAsync("system", ct, [stock.Symbol]));
             run = run with { Processed = run.Processed + 1, Incomplete = run.Incomplete + (incomplete ? 1 : 0) };
             await store.WriteAsync(StateKey, run, ct);
+            logger.LogInformation("Akcie {Ticker}: zpracována, neúplná data: {Incomplete}.", stock.Symbol, incomplete);
             await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
         }
         var context = await store.ReadAsync<List<MacroObservation>>("macro-v1", ct) ?? [];
@@ -99,3 +102,4 @@ public sealed class ScreeningUpdateHostedService(IServiceScopeFactory scopes, Sc
             run.Processed, run.Incomplete, run.MacroUpdated);
     }
 }
+

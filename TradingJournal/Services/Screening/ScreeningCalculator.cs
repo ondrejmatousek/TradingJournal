@@ -163,10 +163,12 @@ public static class ScreeningCalculator
             row.ValuationConfidence = row.Valuation?.Confidence;
             row.ValuationStatus = row.Valuation?.Status ?? "N/A";
         }
-        Add("quality", "Kvalita", 25, quality, "Roční růst tržeb 30 %, čistá marže 25 %, FCF marže 25 %, podíl vlastního kapitálu 20 %. Heuristika, nikoli sektorově kalibrovaný rating.");
+        // The decision score contains only company quality, valuation and entry timing.
+        // Macro and geopolitics remain context and valuation inputs, not false precision.
+        Add("quality", "Kvalita", 35, quality, "Roční růst tržeb 30 %, čistá marže 25 %, FCF marže 25 %, podíl vlastního kapitálu 20 %. Heuristika, nikoli sektorově kalibrovaný rating.");
         if (row.Valuation != null && fresh && row.Price > 0)
             row.Discount = (1 - row.Price.Value / row.Valuation.Base) * 100;
-        Add("valuation", "Ocenění", 30, row.Discount is {} discount ? 50 + discount : null,
+        Add("valuation", "Ocenění", 45, row.Discount is {} discount ? 50 + discount : null,
             "DCF CFO − capex na akcii: 5 let s útlumem růstu, tři scénáře. Diskont CAPM/WACC (min. 9 %), při chybějících vstupech konzervativní fallback. Odhad se porovnává s aktuální cenou až při načtení snapshotu. Banky a REIT vyžadují jiný model.");
         if (row.Valuation is null) row.Risks.Add("Férová hodnota není dostupná: neúplné výkazy, nekladný FCF nebo nepodporovaný sektor.");
         var rates = macro.FirstOrDefault(m => m.Series == "DGS10" && today.DayNumber - m.Date.DayNumber is >= 0 and <= 10);
@@ -178,7 +180,7 @@ public static class ScreeningCalculator
             macroScore = 50 - (rates.Value - rates.PriorValue.Value) * 15 * sensitive - (unemployment.Value - unemployment.PriorValue.Value) * 25;
         }
         var macroEvidence = EvidenceScore(research.Evidence, "macro", today);
-        Add("macro", "Makro", 15, macroEvidence ?? macroScore, "Změna amerického 10letého výnosu a nezaměstnanosti proti cca 3 měsícům; vyšší citlivost růstových a úrokově citlivých sektorů. Datovaný vlastní rozbor má přednost. Nejde o úplný makromodel.");
+        Add("macro", "Makro kontext", 0, macroEvidence ?? macroScore, "Makro se používá jako kontext a pro diskontní sazbu ocenění. Samostatné makro skóre se do investičního rozhodnutí nezapočítává.");
         decimal? technical = null;
         if (valid.Length >= 252 && fresh)
         {
@@ -189,9 +191,9 @@ public static class ScreeningCalculator
         }
         Add("technical", "Načasování", 20, technical, "Stabilizace: 21denní momentum a trend vůči denní EMA200. Samotná hloubka propadu není bonus za levnou akcii.");
         var geopolitical = macro.FirstOrDefault(m => m.Series == "GEO_RISK" && today.DayNumber - m.Date.DayNumber is >= 0 and <= 3);
-        Add("geopolitics", "Geopolitika", 5, EvidenceScore(research.Evidence, "geopolitics", today) ?? geopolitical?.Value,
+        Add("geopolitics", "Geopolitický kontext", 0, EvidenceScore(research.Evidence, "geopolitics", today) ?? geopolitical?.Value,
             geopolitical is null ? "Chybí aktuální agregovaný geopolitický kontext." : "Široký index z veřejných geopolitických titulků GDELT; vyšší skóre znamená nižší zachycené riziko. Neurčuje expozici konkrétní firmy.");
-        Add("analysts", "Analýzy", 5, EvidenceScore(research.Evidence, "analysts", today), "Pouze rozbory s autorem a označenou prověřenou historií; deklarace uživatele není nezávislý audit autora. Duplicitní URL se počítá jednou.");
+        Add("analysts", "Analytický kontext", 0, EvidenceScore(research.Evidence, "analysts", today), "Pouze rozbory s autorem a označenou prověřenou historií; deklarace uživatele není nezávislý audit autora. Duplicitní URL se počítá jednou.");
         foreach (var key in new[] { "macro", "geopolitics", "analysts" })
             if (research.Evidence.Any(e => e.Pillar == key) && EvidenceScore(research.Evidence, key, today) == null)
                 row.Risks.Add($"Rozbory ({key}) nemají platný způsobilý záznam: ověř datum, horizont a historii autora.");

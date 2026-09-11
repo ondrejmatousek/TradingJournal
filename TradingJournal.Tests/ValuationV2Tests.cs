@@ -104,4 +104,15 @@ public sealed class ValuationV2Tests
         Assert.True(d.Latest!.IsTtm);Assert.Equal(140,d.Latest.Facts["Revenue"].Value);Assert.Equal(140,d.Latest.Facts["Ocf"].Value);
         Assert.Contains("TTM FY+YTD",d.Latest.Facts["Ocf"].Derivation);
     }
+    [Fact] public void ParserKeepsCompleteFyWhenTtmDropsPreviouslyAvailableFact()
+    {
+        object Fact(decimal v,string s,string e,string filed)=>new{val=v,start=s,end=e,filed,accn="fixture"};
+        object Tag(params object[] rows)=>new{units=new Dictionary<string,object>{{"USD",rows}}};
+        var revenue=new[]{Fact(100,"2024-01-01","2024-12-31","2025-02-01"),Fact(40,"2024-01-01","2024-06-30","2024-08-01"),Fact(50,"2025-01-01","2025-06-30","2025-08-01"),Fact(70,"2026-01-01","2026-06-30","2026-08-01")};
+        var capex=new[]{Fact(20,"2024-01-01","2024-12-31","2025-02-01")};
+        using var json=JsonDocument.Parse(JsonSerializer.Serialize(new{facts=new Dictionary<string,object>{{"us-gaap",new Dictionary<string,object>{{"Revenues",Tag(revenue)},{"PaymentsToAcquirePropertyPlantAndEquipment",Tag(capex)}}}}}));
+        var d=SecFinancialParser.Parse(json.RootElement,"https://example.com",new(2026,9,1));
+        Assert.False(d.Latest!.IsTtm);Assert.Contains("TTM incomplete",d.Warnings.Single());
+        Assert.True(d.Latest.Facts.ContainsKey("CapEx"));
+    }
 }

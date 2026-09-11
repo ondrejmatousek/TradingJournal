@@ -91,7 +91,17 @@ public static class SecFinancialParser
                             : a.Value+b.Value-c.Value;
                         result[key] = b with { Value = value, Start = prior.End.AddDays(1), Kind = "Derived", Derivation = $"TTM FY+YTD-priorYTD; {ValuationJson.Serialize(new[] { a,b,c })}" };
                     }
-                    latest = new(prior.End.AddDays(1), ytd.End, true, result);
+                    // Publish a derived TTM only when it has at least the same
+                    // coverage as the latest FY. Otherwise the engine would
+                    // silently switch from a complete annual period to a
+                    // partial TTM and report avoidable "missing" valuations.
+                    // Keeping the complete FY is preferable to mixing periods;
+                    // the engine records that the valuation is FY based.
+                    var lostCoverage = latest.Facts.Keys.Except(result.Keys).ToArray();
+                    if (lostCoverage.Length == 0)
+                        latest = new(prior.End.AddDays(1), ytd.End, true, result);
+                    else
+                        warnings.Add($"TTM incomplete; latest complete FY retained (missing: {string.Join(", ", lostCoverage)}).");
                 }
                 else warnings.Add("Comparable prior YTD unavailable; latest FY retained.");
             }

@@ -619,8 +619,11 @@ public sealed class SeasonalityService
         var cachedKeys = onlyMissing
             ? await _context.SeasonalityPrices.AsNoTracking().Select(item => item.AssetKey).Distinct().ToListAsync(cancellationToken)
             : [];
-        foreach (var asset in Assets.Where(asset => !onlyMissing || !cachedKeys.Contains(asset.Key, StringComparer.OrdinalIgnoreCase)))
+        var pendingAssets = Assets.Where(asset => !onlyMissing || !cachedKeys.Contains(asset.Key, StringComparer.OrdinalIgnoreCase)).ToArray();
+        var processedAssets = 0;
+        foreach (var asset in pendingAssets)
         {
+            _logger.LogInformation("Sezonalita {Index}/{Total}: {Ticker}", ++processedAssets, pendingAssets.Length, asset.Key);
             var cached = await _context.SeasonalityPrices
                 .Where(item => item.AssetKey == asset.Key)
                 .ToDictionaryAsync(item => item.Date, cancellationToken);
@@ -770,7 +773,8 @@ public sealed class SeasonalityService
                 });
             }
         }
-        await _context!.SaveChangesAsync(cancellationToken);
+        var changes = await _context!.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Sezonalita {Ticker}: přijato {Received} cen od {Source}, uloženo {Changes} změn.", assetKey, prices.Count, source, changes);
     }
 
     public static IReadOnlyList<SeasonalityPrice> ParseStooq(string csv)
@@ -805,3 +809,4 @@ public sealed class SeasonalityService
         return result.Where(item => item.Close > 0).DistinctBy(item => item.Date).OrderBy(item => item.Date).ToList();
     }
 }
+

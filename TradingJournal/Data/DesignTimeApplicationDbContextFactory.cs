@@ -14,9 +14,11 @@ public sealed class DesignTimeApplicationDbContextFactory : IDesignTimeDbContext
         var connection = PostgresConnectionString.Normalize(
             Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
             ?? "Host=localhost;Database=TradingJournal;Username=postgres;Password=design-time");
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+        var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
+        var options = connection.StartsWith("Host=", StringComparison.OrdinalIgnoreCase) ? optionsBuilder
             .UseNpgsql(connection, npgsql => npgsql.EnableRetryOnFailure())
-            .Options;
+            .Options : optionsBuilder.UseSqlServer(connection).Options;
         return new ApplicationDbContext(options);
     }
 }
+

@@ -68,9 +68,10 @@ public class ScreeningCalculatorTests
     {
         var macro = new List<MacroObservation>{new("DGS10",Today.AddDays(-2),4,4,"https://fred.stlouisfed.org"),new("UNRATE",Today.AddDays(-30),4,4,"https://fred.stlouisfed.org")};
         var row = ScreeningCalculator.Evaluate(Stock,Prices(),Fundamentals,macro,new(),Today);
-        Assert.Equal(90,row.Coverage);
+        Assert.Equal(100,row.Coverage);
         Assert.NotNull(row.Score);
         Assert.Equal(Math.Round(row.Pillars.Sum(p=>(p.Score??0)*p.Weight)/100,1),row.Score);
+        Assert.Equal(0, row.Pillars.Single(p => p.Key == "macro").Weight);
     }
     [Fact]
     public void StaleFundamentals_DoNotCreateQualityOrValue()

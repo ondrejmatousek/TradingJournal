@@ -17,12 +17,6 @@
         if (!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('Relace vypršela. Přihlas se znovu.');
         return response.json();
     }
-    function macroText(macro) {
-        $('screen-macro').replaceChildren();
-        $('screen-macro').append(document.createTextNode('MAKRO · '));
-        if (!macro.length) { $('screen-macro').append(document.createTextNode('Bez uložených dat. Aktualizuj data nebo přidej doložený vlastní rozbor.')); return; }
-        macro.forEach(m => { const span = document.createElement('span'); const label = m.series === 'DGS10' ? 'Výnos US 10Y' : m.series === 'UNRATE' ? 'Nezaměstnanost USA' : 'Geopolitické riziko'; span.innerHTML = `${safeLink(m.source, label)}: ${pct(m.value)} · ${esc(m.date)}${m.priorValue == null ? '' : ` · před 3 měsíci ${pct(m.priorValue)}`}　`; $('screen-macro').append(span); });
-    }
     function render() {
         const visible = rows;
         const pages = Math.max(1, Math.ceil((window.screeningTotal ?? visible.length) / 25));
@@ -43,7 +37,7 @@
         const query = new URLSearchParams({ page: targetPage, pageSize: 25, search: $('screen-search').value, sector: $('screen-sector').value, filter: $('screen-filter').value, sort: $('screen-sort').value, minDiscount: $('screen-min-discount').value, minScore: $('screen-min-score').value, minConfidence: $('screen-min-confidence').value });
         const data = await request(`/Data?${query}`);
         if (version !== loadVersion) return;
-        rows = data.rows; page = data.page; window.screeningTotal = data.total; macroText(data.macro);
+        rows = data.rows; page = data.page; window.screeningTotal = data.total;
         $('screen-count').textContent = `${data.total} / ${data.universeTotal}`;
         $('screen-rated').textContent = data.rated;
         $('screen-discount').textContent = data.discounted;
@@ -111,13 +105,12 @@
     $('screen-refresh').onclick = async () => {
         if (refreshing) return; refreshing = true; stopping = false;
         $('screen-refresh').disabled = true; $('screen-stop').hidden = false;
-        let done = 0, failed = 0, incomplete = 0, macroError = '';
+        let done = 0, failed = 0, incomplete = 0;
         try {
             if (!rows.length) {
                 $('screen-status').textContent = 'Znovu načítám uložený screening…';
                 await load();
             }
-            try { macroText(await request('/RefreshMacro', {})); } catch(e) { macroError = e.message; }
             // Sequential batches preserve predictable provider load and allow stopping without losing completed rows.
             for (const row of [...rows]) {
                 if (stopping) break;
@@ -125,7 +118,7 @@
                 try { const result = await request(`/Refresh?symbol=${encodeURIComponent(row.symbol)}`, {}); rows[rows.findIndex(r => r.symbol === result.symbol)] = result; if (result.refreshMessage || !result.fundamentals) incomplete++; } catch { failed++; }
                 done++; render();
             }
-            $('screen-status').textContent = `${stopping ? 'Zastaveno' : 'Dokončeno'}: ${done}/${rows.length}, chyb požadavků ${failed}, neúplných dat ${incomplete}. Výkazy ${rows.filter(r => r.fundamentals).length}/${rows.length}, ocenění ${rows.filter(r => r.valuation).length}/${rows.length}. ${macroError} Podrobnosti poskytovatelů jsou v detailu akcie.`;
+            $('screen-status').textContent = `${stopping ? 'Zastaveno' : 'Dokončeno'}: ${done}/${rows.length}, chyb požadavků ${failed}, neúplných dat ${incomplete}. Výkazy ${rows.filter(r => r.fundamentals).length}/${rows.length}, ocenění ${rows.filter(r => r.valuation).length}/${rows.length}. Podrobnosti poskytovatelů jsou v detailu akcie.`;
         } catch (error) {
             $('screen-status').textContent = error.message;
         } finally { refreshing = false; $('screen-refresh').disabled = false; $('screen-stop').hidden = true; }

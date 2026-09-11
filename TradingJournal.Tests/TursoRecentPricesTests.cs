@@ -32,7 +32,7 @@ public class TursoRecentPricesTests
         }
         using var transport = new SqlTransport(connection);
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-        { ["Turso:DatabaseUrl"] = "https://test.invalid", ["Turso:AuthToken"] = "test" }).Build();
+        { ["Turso:Enabled"] = "true", ["Turso:DatabaseUrl"] = "https://test.invalid", ["Turso:AuthToken"] = "test" }).Build();
         var store = new TursoSeasonalityStore(config, transport, NullLogger<TursoSeasonalityStore>.Instance);
         var recent = await store.LoadRecentAsync("MSFT", today);
         Assert.Equal(252, transport.ReturnedRows);

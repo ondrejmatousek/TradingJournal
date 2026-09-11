@@ -7,6 +7,7 @@ using TradingJournal.Services.Valuation;
 using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
+if (builder.Environment.IsDevelopment()) LocalDatabaseConfiguration.Apply(builder.Configuration);
 var localBackgroundRefreshEnabled = builder.Configuration.GetValue("DataRefresh:Enabled", true)
     && string.IsNullOrWhiteSpace(builder.Configuration["WEBSITE_SITE_NAME"]);
 
@@ -162,3 +163,4 @@ app.MapControllerRoute(
 
 app.MapRazorPages();
 app.Run();
+

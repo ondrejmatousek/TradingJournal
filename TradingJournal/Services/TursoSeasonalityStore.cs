@@ -14,6 +14,7 @@ public sealed class TursoSeasonalityStore
     private readonly ILogger<TursoSeasonalityStore> _logger;
     private readonly string? _endpoint;
     private readonly string? _token;
+    private readonly bool _enabled;
 
     public TursoSeasonalityStore(IConfiguration configuration, IHttpClientFactory httpClientFactory, ILogger<TursoSeasonalityStore> logger)
     {
@@ -21,6 +22,7 @@ public sealed class TursoSeasonalityStore
         _logger = logger;
         var url = configuration["Turso:DatabaseUrl"] ?? configuration["TURSO_DATABASE_URL"];
         _token = configuration["Turso:AuthToken"] ?? configuration["TURSO_AUTH_TOKEN"];
+        _enabled = configuration.GetValue("Turso:Enabled", false);
         if (!string.IsNullOrWhiteSpace(url) && !string.IsNullOrWhiteSpace(_token))
         {
             var normalized = url.Trim().Replace("libsql://", "https://", StringComparison.OrdinalIgnoreCase).TrimEnd('/');
@@ -28,7 +30,7 @@ public sealed class TursoSeasonalityStore
         }
     }
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_endpoint) && !string.IsNullOrWhiteSpace(_token);
+    public bool IsConfigured => _enabled && !string.IsNullOrWhiteSpace(_endpoint) && !string.IsNullOrWhiteSpace(_token);
 
     public async Task EnsureSchemaAsync(CancellationToken cancellationToken = default)
     {

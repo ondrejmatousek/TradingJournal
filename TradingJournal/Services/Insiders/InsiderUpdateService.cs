@@ -28,6 +28,7 @@ public sealed class InsiderUpdateService(ApplicationDbContext db, IInsiderSecPro
         foreach (var stock in InvestmentUniverse.All)
         {
             ct.ThrowIfCancellationRequested();
+            logger.LogInformation("Insiders {Index}/{Total}: {Ticker}", run.IssuersChecked + 1, InvestmentUniverse.All.Count, stock.Symbol);
             try
             {
                 var recent = await provider.RecentFilingsAsync(stock, since, ct);
@@ -40,6 +41,7 @@ public sealed class InsiderUpdateService(ApplicationDbContext db, IInsiderSecPro
                     imported.Add(filing);
                 }
                 await db.SaveChangesAsync(ct);
+                logger.LogInformation("Insiders {Ticker}: uloženo {Filings} nových hlášení, {Transactions} transakcí.", stock.Symbol, imported.Count, imported.Sum(x => x.Transactions.Count));
                 run.FilingsImported += imported.Count;
                 run.TransactionsImported += imported.Sum(x => x.Transactions.Count);
             }
@@ -60,3 +62,4 @@ public sealed class InsiderUpdateService(ApplicationDbContext db, IInsiderSecPro
         return run;
     }
 }
+
