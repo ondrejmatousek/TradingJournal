@@ -1,0 +1,15 @@
+@model TradingJournal.Models.TradingJournalBook
+@{ var editing = Model.Id > 0; ViewData["Title"] = editing ? "Upravit deník" : "Nový deník"; ViewData["BodyClass"] = "journal-shell"; }
+<div class="journal-page"><div class="journal-wrap">
+    <div class="journal-header"><div><div class="eyebrow">Trading Journal</div><h1>@ViewData["Title"]</h1></div><a asp-action="Index" class="btn btn-outline-secondary">Zpět na deníky</a></div>
+    <div class="app-card"><div class="card-body">
+        <form asp-action="@(editing ? "Edit" : "Create")" asp-route-id="@(editing ? Model.Id : (int?)null)" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="mb-3"><label asp-for="Name" class="form-label">Název deníku</label><input asp-for="Name" class="form-control" maxlength="120" placeholder="Například: Futures – účet 1" /><span asp-validation-for="Name" class="text-danger"></span></div>
+            <div class="mb-3"><label asp-for="Description" class="form-label">Popis (nepovinný)</label><textarea asp-for="Description" class="form-control" rows="4" maxlength="1000"></textarea><span asp-validation-for="Description" class="text-danger"></span></div>
+            <button class="btn btn-primary" type="submit">@(editing ? "Uložit změny" : "Vytvořit deník")</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Zrušit</a>
+        </form>
+    </div></div>
+</div></div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +13,7 @@ using System.Text.Json;
 namespace TradingJournal.Controllers
 {
     [Authorize]
+    [ServiceFilter(typeof(JournalScopeFilter))]
     public class JournalEntriesController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -43,6 +44,8 @@ namespace TradingJournal.Controllers
 
         private string CurrentUserId =>
             User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+        private int CurrentJournalId => ((TradingJournalBook)ViewData["CurrentJournal"]!).Id;
 
         // GET: JournalEntries/TradeQuality
         public IActionResult TradeQuality()
@@ -727,7 +730,7 @@ namespace TradingJournal.Controllers
 
             var entries = await _context.JournalEntries
                 .AsNoTracking()
-                .Where(e => e.UserId == userId)
+                .Where(e => e.UserId == userId && e.JournalId == CurrentJournalId)
                 .OrderBy(e => e.EntryTime ?? e.CreatedAt)
                 .ToListAsync();
 
@@ -899,7 +902,7 @@ namespace TradingJournal.Controllers
             var allUserEntries = await _context.JournalEntries
                 .AsNoTracking()
                 .Include(e => e.Images)
-                .Where(e => e.UserId == userId)
+                .Where(e => e.UserId == userId && e.JournalId == CurrentJournalId)
                 .ToListAsync();
 
             var filteredEntries = allUserEntries.AsEnumerable();
@@ -1060,7 +1063,7 @@ namespace TradingJournal.Controllers
             var entry = await _context.JournalEntries
                 .AsNoTracking()
                 .Include(e => e.Images)
-                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId);
+                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId && e.JournalId == CurrentJournalId);
 
             if (entry == null) return NotFound();
 
@@ -1075,7 +1078,7 @@ namespace TradingJournal.Controllers
 
             var entry = await _context.JournalEntries
                 .AsNoTracking()
-                .Where(e => e.Id == id && e.UserId == userId)
+                .Where(e => e.Id == id && e.UserId == userId && e.JournalId == CurrentJournalId)
                 .Select(e => new { e.ImageData, e.ImageContentType })
                 .FirstOrDefaultAsync();
 
@@ -1093,7 +1096,7 @@ namespace TradingJournal.Controllers
 
             var image = await _context.JournalEntryImages
                 .AsNoTracking()
-                .Where(i => i.Id == id && i.JournalEntry.UserId == userId)
+                .Where(i => i.Id == id && i.JournalEntry.UserId == userId && i.JournalEntry.JournalId == CurrentJournalId)
                 .Select(i => new { i.ImageData, i.ImageContentType })
                 .FirstOrDefaultAsync();
 
@@ -1112,7 +1115,7 @@ namespace TradingJournal.Controllers
 
             var image = await _context.JournalEntryImages
                 .Include(i => i.JournalEntry)
-                .FirstOrDefaultAsync(i => i.Id == id && i.JournalEntry.UserId == userId);
+                .FirstOrDefaultAsync(i => i.Id == id && i.JournalEntry.UserId == userId && i.JournalEntry.JournalId == CurrentJournalId);
 
             if (image == null)
                 return NotFound(new { message = "Obrázek se nepodařilo najít." });
@@ -1137,7 +1140,7 @@ namespace TradingJournal.Controllers
             var userId = CurrentUserId;
 
             var entry = await _context.JournalEntries
-                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId);
+                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId && e.JournalId == CurrentJournalId);
 
             if (entry == null)
                 return NotFound(new { message = "Záznam se nepodařilo najít." });
@@ -1174,6 +1177,7 @@ namespace TradingJournal.Controllers
 
             // Server-side vlastnictví + created timestamp
             entry.UserId = CurrentUserId;
+            entry.JournalId = CurrentJournalId;
             entry.CreatedAt = DateTimeOffset.UtcNow;
             NormalizeOpenTrade(entry);
 
@@ -1198,7 +1202,7 @@ namespace TradingJournal.Controllers
 
             var entry = await _context.JournalEntries
                 .Include(e => e.Images)
-                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId);
+                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId && e.JournalId == CurrentJournalId);
 
             if (entry == null) return NotFound();
 
@@ -1221,7 +1225,7 @@ namespace TradingJournal.Controllers
             // Načteme původní záznam patřící uživateli
             var entry = await _context.JournalEntries
                 .Include(e => e.Images)
-                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId);
+                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId && e.JournalId == CurrentJournalId);
 
             if (entry == null) return NotFound();
 
@@ -1253,10 +1257,10 @@ namespace TradingJournal.Controllers
         private async Task<int> CountEntryImagesAsync(int entryId, string userId)
         {
             var galleryCount = await _context.JournalEntryImages
-                .CountAsync(i => i.JournalEntryId == entryId && i.JournalEntry.UserId == userId);
+                .CountAsync(i => i.JournalEntryId == entryId && i.JournalEntry.UserId == userId && i.JournalEntry.JournalId == CurrentJournalId);
 
             var hasLegacyImage = await _context.JournalEntries
-                .AnyAsync(e => e.Id == entryId && e.UserId == userId && e.ImageData != null);
+                .AnyAsync(e => e.Id == entryId && e.UserId == userId && e.JournalId == CurrentJournalId && e.ImageData != null);
 
             return galleryCount + (hasLegacyImage ? 1 : 0);
         }
@@ -1271,7 +1275,7 @@ namespace TradingJournal.Controllers
             var entry = await _context.JournalEntries
                 .AsNoTracking()
                 .Include(e => e.Images)
-                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId);
+                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId && e.JournalId == CurrentJournalId);
 
             if (entry == null) return NotFound();
 
@@ -1287,7 +1291,7 @@ namespace TradingJournal.Controllers
 
             var entry = await _context.JournalEntries
                 .Include(e => e.Images)
-                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId);
+                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId && e.JournalId == CurrentJournalId);
 
             if (entry == null) return NotFound();
 

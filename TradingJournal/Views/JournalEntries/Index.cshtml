@@ -36,11 +36,13 @@
 }
 
 <div class="journal-page">
+<partial name="_JournalBreadcrumb" />
+
     <div class="journal-wrap">
         <div class="journal-header">
             <div>
                 <div class="eyebrow">Trading desk</div>
-                <h1>Journal</h1>
+                <h1>@(((TradingJournal.Models.TradingJournalBook)ViewData["CurrentJournal"]!).Name)</h1>
                 <p>Your trades, filtered insights, and process quality.</p>
             </div>
             <a asp-action="Create" class="btn btn-primary">New entry</a>

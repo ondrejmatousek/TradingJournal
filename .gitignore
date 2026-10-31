@@ -376,3 +376,6 @@ skills-lock.json
 
 # Disposable valuation verification artifacts and runtime logs
 tmp/valuation/
+
+# Local SDK and private billing verification artifacts
+tmp/invoice-*/

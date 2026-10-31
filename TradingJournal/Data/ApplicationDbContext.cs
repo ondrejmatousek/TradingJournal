@@ -7,10 +7,8 @@ namespace TradingJournal.Data
     public class ApplicationDbContext : IdentityDbContext
     {
         public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
+        public DbSet<TradingJournalBook> TradingJournals => Set<TradingJournalBook>();
         public DbSet<JournalEntryImage> JournalEntryImages => Set<JournalEntryImage>();
-        public DbSet<InvoiceCompany> InvoiceCompanies => Set<InvoiceCompany>();
-        public DbSet<Invoice> Invoices => Set<Invoice>();
-        public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
         public DbSet<MarketBias> MarketBiases => Set<MarketBias>();
         public DbSet<StrategyNote> StrategyNotes => Set<StrategyNote>();
         public DbSet<InvestmentEma200Snapshot> InvestmentEma200Snapshots => Set<InvestmentEma200Snapshot>();
@@ -34,6 +32,12 @@ namespace TradingJournal.Data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            builder.Entity<TradingJournalBook>().ToTable("TradingJournals");
+            builder.Entity<TradingJournalBook>().Property(j => j.UserId).HasMaxLength(450);
+            builder.Entity<TradingJournalBook>().HasIndex(j => new { j.UserId, j.Name });
+            builder.Entity<JournalEntry>().HasOne(e => e.Journal).WithMany(j => j.Entries)
+                .HasForeignKey(e => e.JournalId).OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<JournalEntry>().HasIndex(e => new { e.UserId, e.JournalId });
             builder.Entity<TradingJournal.Services.Valuation.ValuationInputEntity>().ToTable("ValuationInputs").HasKey(x=>x.Id);
             builder.Entity<TradingJournal.Services.Valuation.ValuationInputEntity>().Property(x=>x.Id).HasMaxLength(64);
             var vr=builder.Entity<TradingJournal.Services.Valuation.ValuationRunEntity>();
@@ -104,50 +108,6 @@ namespace TradingJournal.Data
             builder.Entity<JournalEntryImage>()
                 .Property(i => i.ImageData)
                 ;
-
-            builder.Entity<InvoiceCompany>()
-                .HasIndex(c => new { c.UserId, c.Name });
-
-            builder.Entity<InvoiceCompany>()
-                .Property(c => c.LastHourlyRate)
-                .HasPrecision(18, 2);
-
-            builder.Entity<Invoice>()
-                .HasIndex(i => new { i.UserId, i.IssueDate });
-
-            builder.Entity<Invoice>()
-                .HasIndex(i => new { i.UserId, i.InvoiceNumber })
-                .IsUnique();
-
-            builder.Entity<Invoice>()
-                .HasOne(i => i.SupplierCompany)
-                .WithMany()
-                .HasForeignKey(i => i.SupplierCompanyId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.Entity<Invoice>()
-                .HasOne(i => i.CustomerCompany)
-                .WithMany()
-                .HasForeignKey(i => i.CustomerCompanyId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.Entity<InvoiceItem>()
-                .HasOne(i => i.Invoice)
-                .WithMany(i => i.Items)
-                .HasForeignKey(i => i.InvoiceId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.Entity<InvoiceItem>()
-                .Property(i => i.Quantity)
-                .HasPrecision(18, 4);
-
-            builder.Entity<InvoiceItem>()
-                .Property(i => i.UnitPrice)
-                .HasPrecision(18, 2);
-
-            builder.Entity<InvoiceItem>()
-                .Property(i => i.VatRate)
-                .HasPrecision(5, 2);
 
             builder.Entity<MarketBias>()
                 .HasIndex(b => new { b.Symbol, b.BiasDate })

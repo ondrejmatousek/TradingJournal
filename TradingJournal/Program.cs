@@ -93,14 +93,22 @@ builder.Services.AddOptions<TradingJournal.Services.Screening.ScreeningSchedule>
 if (localBackgroundRefreshEnabled)
     builder.Services.AddHostedService<TradingJournal.Services.Screening.ScreeningUpdateHostedService>();
 builder.Services.AddControllersWithViews();
+builder.Services.AddScoped<JournalScopeFilter>();
 
 var app = builder.Build();
 
 // ✅ Safe migrations on startup (won't crash app)
+if (!app.Environment.IsEnvironment("Testing"))
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    // Neon transaction poolers must not carry schema migrations and their session locks.
+    using var migrationDb = db.Database.IsNpgsql()
+        ? new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql(DirectMigrationConnection(connectionString), options => options.EnableRetryOnFailure()).Options)
+        : null;
+    var schemaDb = migrationDb ?? db;
 
     try
     {
@@ -109,7 +117,7 @@ using (var scope = app.Services.CreateScope())
         {
             try
             {
-                db.Database.Migrate();
+                schemaDb.Database.Migrate();
                 SafeLog(() => logger.LogInformation("Database migration OK."));
                 break;
             }
@@ -125,6 +133,13 @@ using (var scope = app.Services.CreateScope())
         SafeLog(() => logger.LogError(ex, "Database migration failed. App will continue running."));
         // app poběží dál → žádné 500.30
     }
+}
+
+static string DirectMigrationConnection(string connection)
+{
+    var parsed = new Npgsql.NpgsqlConnectionStringBuilder(connection);
+    parsed.Host = parsed.Host?.Replace("-pooler.", ".", StringComparison.OrdinalIgnoreCase);
+    return parsed.ConnectionString;
 }
 
 static void SafeLog(Action writeLog)
@@ -158,9 +173,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
+    name: "journal",
+    pattern: "journals/{journalId:int}/{action=Index}/{id?}",
+    defaults: new { controller = "JournalEntries" });
+
+app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapRazorPages();
 app.Run();
+
+public partial class Program;
 

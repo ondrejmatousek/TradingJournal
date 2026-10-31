@@ -8,6 +8,11 @@ namespace TradingJournal.Models
     {
         public int Id { get; set; }
 
+        [BindNever, ValidateNever]
+        public int JournalId { get; set; }
+        [BindNever, ValidateNever]
+        public TradingJournalBook Journal { get; set; } = null!;
+
         [BindNever]
         [ValidateNever]
         public string UserId { get; set; } = null!;

@@ -1,0 +1,30 @@
+@model IReadOnlyList<TradingJournal.Controllers.JournalListItem>
+@{ ViewData["Title"] = "Trading Journals"; ViewData["BodyClass"] = "journal-shell"; }
+<div class="journal-page"><div class="journal-wrap">
+    <div class="journal-header">
+        <div><div class="eyebrow">Trading Journal</div><h1>Moje deníky</h1><p>Oddělte si strategie, účty nebo období. Každý deník má vlastní obchody a statistiky.</p></div>
+        <a asp-action="Create" class="btn btn-primary">Nový deník</a>
+    </div>
+    @if (Model.Count == 0)
+    {
+        <div class="app-card p-4"><h2>Vytvořte svůj první deník</h2><p>Zvolte název a začněte zapisovat obchody.</p><a asp-action="Create" class="btn btn-primary">Vytvořit deník</a></div>
+    }
+    else
+    {
+        <div class="row g-3">
+        @foreach (var journal in Model)
+        {
+            <div class="col-12 col-md-6 col-xl-4"><article class="app-card h-100"><div class="card-body h-100 d-flex flex-column gap-3">
+                <div><h2 class="h4 text-break"><a asp-route="journal" asp-route-journalId="@journal.Id" asp-route-action="Index" class="text-decoration-none text-reset">@journal.Name</a></h2>
+                    @if (!string.IsNullOrWhiteSpace(journal.Description)) { <p class="text-muted" style="white-space:pre-wrap;overflow-wrap:anywhere">@journal.Description</p> }
+                    <span class="text-muted">Počet obchodů: @journal.EntryCount</span></div>
+                <div class="d-flex flex-wrap gap-2 mt-auto">
+                    <a asp-route="journal" asp-route-journalId="@journal.Id" asp-route-action="Index" class="btn btn-primary">Otevřít</a>
+                    <a asp-action="Edit" asp-route-id="@journal.Id" class="btn btn-outline-secondary">Upravit</a>
+                    <a asp-action="Delete" asp-route-id="@journal.Id" class="btn btn-outline-danger">Smazat</a>
+                </div>
+            </div></article></div>
+        }
+        </div>
+    }
+</div></div>

@@ -1,27 +1,26 @@
 @{
     var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
     var action = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
-    var isTradingSection = controller is "JournalEntries" or "Cot" or "Seasonality";
-    var isProgrammingSection = controller == "Invoices";
+    var isTradingSection = controller is "TradingJournals" or "JournalEntries" or "Cot" or "Seasonality";
+    var currentJournal = ViewData["CurrentJournal"] as TradingJournal.Models.TradingJournalBook;
     var isInvestmentSection = controller is "Investments" or "Screening" or "Insiders";
 }
                 @if (isTradingSection)
                 {
                     <div class="sidebar-title">Trading</div>
-                    <a class="sidebar-link @(controller == "JournalEntries" && action == "Index" ? "active" : "")" asp-controller="JournalEntries" asp-action="Index">Journal</a>
+                    <a class="sidebar-link @(controller == "TradingJournals" ? "active" : "")" asp-controller="TradingJournals" asp-action="Index">Moje deníky</a>
+                    @if (currentJournal is not null)
+                    {
+                        <div class="sidebar-title text-break">@currentJournal.Name</div>
+                        <a class="sidebar-link @(action == "Index" ? "active" : "")" asp-route="journal" asp-route-journalId="@currentJournal.Id" asp-route-action="Index">Obchody a kalendář</a>
+                        <a class="sidebar-link @(action == "Analysis" ? "active" : "")" asp-route="journal" asp-route-journalId="@currentJournal.Id" asp-route-action="Analysis">Analýza deníku</a>
+                    }
+                    <div class="sidebar-title">Společné nástroje</div>
                     <a class="sidebar-link @(controller == "JournalEntries" && action == "Strategy" ? "active" : "")" asp-controller="JournalEntries" asp-action="Strategy">Strategie</a>
                     <a class="sidebar-link @(controller == "JournalEntries" && action == "SetupReview" ? "active" : "")" asp-controller="JournalEntries" asp-action="SetupReview">Setup Review</a>
                     <a class="sidebar-link @(controller == "Cot" ? "active" : "")" asp-controller="Cot" asp-action="Index">COT Dashboard</a>
                     <a class="sidebar-link @(controller == "Seasonality" ? "active" : "")" asp-controller="Seasonality" asp-action="Index">Seasonality</a>
                     <a class="sidebar-link @(controller == "JournalEntries" && action == "TradeQuality" ? "active" : "")" asp-controller="JournalEntries" asp-action="TradeQuality">Kvalita tradu</a>
-                    <a class="sidebar-link @(controller == "JournalEntries" && action == "Analysis" ? "active" : "")" asp-controller="JournalEntries" asp-action="Analysis">Analýza</a>
-                }
-                else if (isProgrammingSection)
-                {
-                    var isCompanyAction = action.Contains("Company") || action == "Companies";
-                    <div class="sidebar-title">Programování</div>
-                    <a class="sidebar-link @(!isCompanyAction ? "active" : "")" asp-controller="Invoices" asp-action="Index">Fakturace</a>
-                    <a class="sidebar-link @(isCompanyAction ? "active" : "")" asp-controller="Invoices" asp-action="Companies">Firmy</a>
                 }
                 else if (isInvestmentSection)
                 {

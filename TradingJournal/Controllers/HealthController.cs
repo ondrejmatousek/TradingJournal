@@ -24,6 +24,8 @@ namespace TradingJournal.Controllers
         }
 
         [HttpGet("live")]
+        [HttpHead("live")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public IActionResult Live()
         {
             return Ok(new
@@ -112,6 +114,7 @@ namespace TradingJournal.Controllers
             {
                 "AspNetUsers",
                 "JournalEntries",
+                "TradingJournals",
                 "JournalEntryImages",
                 "InvoiceCompanies",
                 "Invoices",
@@ -134,6 +137,9 @@ namespace TradingJournal.Controllers
             var requiredColumns = new[]
             {
                 ("JournalEntries", "UserId"),
+                ("JournalEntries", "JournalId"),
+                ("TradingJournals", "UserId"),
+                ("TradingJournals", "Name"),
                 ("JournalEntries", "EntryTime"),
                 ("JournalEntries", "ExitTime"),
                 ("JournalEntries", "ExitPrice"),
@@ -225,6 +231,7 @@ namespace TradingJournal.Controllers
                     var entry = new JournalEntry
                     {
                         UserId = healthUserId,
+                        Journal = new TradingJournalBook { UserId = healthUserId, Name = "Health check rollback journal" },
                         Asset = AssetSymbol.XAUUSD,
                         Side = PositionSide.Long,
                         CreatedAt = DateTimeOffset.UtcNow,
