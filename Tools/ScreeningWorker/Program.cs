@@ -57,12 +57,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(o =>
         o.UseSqlServer(connection, sql => sql.EnableRetryOnFailure(3));
 });
 builder.Services.AddHttpClient();
-builder.Services.AddSingleton<TursoSeasonalityStore>();
 builder.Services.AddSingleton<ScreeningStore>();
 builder.Services.AddValuationV2(builder.Configuration);
 builder.Services.AddScoped<ScreeningDataProvider>();
-builder.Services.AddScoped<SeasonalityService>();
-builder.Services.AddScoped<CotDataService>();
 builder.Services.AddScoped<IUnderEma200HistoryProvider, UnderEma200HistoryProvider>();
 builder.Services.AddScoped<InvestmentScreeningService>();
 builder.Services.AddScoped<InsiderSecProvider>();
@@ -122,12 +119,10 @@ catch (Exception ex)
 
 static async Task RunUpdateAsync(IHost host, IServiceScope scope, CancellationToken cancellationToken, bool force)
 {
-    await StageAsync("1/4 Sezonalita", () => scope.ServiceProvider.GetRequiredService<SeasonalityService>().UpdateAsync(cancellationToken));
-    await StageAsync("2/4 COT", () => scope.ServiceProvider.GetRequiredService<CotDataService>().UpdateAsync(force, cancellationToken));
-    await StageAsync("3/4 Makro, geopolitika a akcie", () => host.Services.GetRequiredService<ScreeningUpdateHostedService>().RunIfDueAsync(DateTimeOffset.UtcNow, cancellationToken, force));
+    await StageAsync("1/2 Makro, geopolitika a akcie", () => host.Services.GetRequiredService<ScreeningUpdateHostedService>().RunIfDueAsync(DateTimeOffset.UtcNow, cancellationToken, force));
     var dueDate = host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ScreeningSchedule>>().Value.DueDate(DateTimeOffset.UtcNow);
     TradingJournal.Models.InsiderImportRun insiderRun = null!;
-    await StageAsync("4/4 Insiders", async () => { insiderRun = await scope.ServiceProvider.GetRequiredService<InsiderUpdateService>().RunAsync(dueDate, cancellationToken, force); });
+    await StageAsync("2/2 Insiders", async () => { insiderRun = await scope.ServiceProvider.GetRequiredService<InsiderUpdateService>().RunAsync(dueDate, cancellationToken, force); });
     var run = await host.Services.GetRequiredService<ScreeningStore>().ReadAsync<ScreeningUpdateRun>(ScreeningUpdateHostedService.StateKey, cancellationToken);
     var summary = run == null ? "No completed update." : $"Stocks: {run.Processed}/{InvestmentUniverse.All.Count}; incomplete: {run.Incomplete}; macro: {run.MacroUpdated}. Insider filings: {insiderRun.FilingsImported}; transactions: {insiderRun.TransactionsImported}; issuer failures: {insiderRun.IssuersFailed}; completed: {insiderRun.CompletedAt:O}.";
     Console.WriteLine(summary);

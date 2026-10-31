@@ -115,6 +115,7 @@ namespace TradingJournal.Controllers
                 "AspNetUsers",
                 "JournalEntries",
                 "TradingJournals",
+                "MarketPrices",
                 "JournalEntryImages",
                 "InvoiceCompanies",
                 "Invoices",
@@ -123,8 +124,6 @@ namespace TradingJournal.Controllers
                 "StrategyNotes",
                 "TradeSetupReviews",
                 "TradeSetupReviewImages",
-                "CotReports",
-                "CotImportRuns",
                 "ScreeningDocuments"
             };
 
@@ -140,6 +139,9 @@ namespace TradingJournal.Controllers
                 ("JournalEntries", "JournalId"),
                 ("TradingJournals", "UserId"),
                 ("TradingJournals", "Name"),
+                ("MarketPrices", "AssetKey"),
+                ("MarketPrices", "Date"),
+                ("MarketPrices", "Close"),
                 ("JournalEntries", "EntryTime"),
                 ("JournalEntries", "ExitTime"),
                 ("JournalEntries", "ExitPrice"),
@@ -187,15 +189,6 @@ namespace TradingJournal.Controllers
                 ("TradeSetupReviewImages", "ImageData"),
                 ("TradeSetupReviewImages", "ImageContentType"),
                 ("TradeSetupReviewImages", "ImageFileName"),
-                ("CotReports", "SymbolKey"),
-                ("CotReports", "ReportDate"),
-                ("CotReports", "NetPosition"),
-                ("CotReports", "CotIndex52"),
-                ("CotReports", "Percentile52"),
-                ("CotReports", "ZScore"),
-                ("CotImportRuns", "StartedAt"),
-                ("CotImportRuns", "Success"),
-                ("CotImportRuns", "RowsImported")
             };
 
             foreach (var (table, column) in requiredColumns)

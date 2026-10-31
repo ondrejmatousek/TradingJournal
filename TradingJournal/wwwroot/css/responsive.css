@@ -22,12 +22,11 @@ img { max-width: 100%; }
     .app-nav-actions { align-items: stretch; }
     .app-navbar .navbar-nav, .app-navbar .nav-item { width: 100%; }
     .app-navbar .navbar-brand { word-break: normal; }
-    .journal-page, .screening-page, .insiders-page, .planner, .cot-page { padding: 16px; min-height: 0; }
-    .journal-wrap, .cot-wrap, .cot-dashboard-wrap { width: 100%; min-width: 0; }
+    .journal-page, .screening-page, .insiders-page, .planner{ padding: 16px; min-height: 0; }
+    .journal-wrap{ width: 100%; min-width: 0; }
     .page-header, .page-actions, .journal-toolbar, .planner-heading, .planner-toolbar, .planner-chart-heading,
     .screening-header, .insiders-header { flex-wrap: wrap; gap: 12px; }
-    .planner-grid, .detail-grid, .analysis-grid, .strategy-layout, .company-grid, .invoice-detail-grid,
-    .cot-grid, .cot-dashboard-grid, .auth-stage { grid-template-columns: minmax(0, 1fr); }
+    .planner-grid, .detail-grid, .analysis-grid, .strategy-layout, .company-grid, .invoice-detail-grid, .auth-stage { grid-template-columns: minmax(0, 1fr); }
     .planner { height: auto; }
     .planner-inputs { grid-row: auto; }
     .planner-main { min-height: 0; }
@@ -37,7 +36,7 @@ img { max-width: 100%; }
     dialog, .modal-dialog { max-width: calc(100vw - 24px); }
 }
 @media screen and (max-width: 600px) {
-    .journal-page, .screening-page, .insiders-page, .planner, .cot-page { padding: 12px; }
+    .journal-page, .screening-page, .insiders-page, .planner{ padding: 12px; }
     main h1 { font-size: clamp(24px, 7vw, 32px); overflow-wrap: anywhere; }
     main h2, main p, main dd, main legend { overflow-wrap: anywhere; }
     main input:not([type=checkbox]):not([type=radio]):not([type=range]), main select, main textarea { font-size: 16px; max-width: 100%; min-width: 0; }
@@ -53,7 +52,6 @@ img { max-width: 100%; }
     .screening-dialog-header button { flex-shrink: 0; }
     .screening-summary, .screening-pillars, .research-fields, .evidence-entry, .insiders-summary,
     .metric-grid, .form-grid, .analysis-grid.compact, .strategy-mini-grid, .strategy-workflow-grid,
-    .seasonality-stats, .seasonality-monthly-summary, .seasonality-detail-grid,
     .setup-review-analysis-grid, .quality-factor-grid.two { grid-template-columns: minmax(0, 1fr); }
     .planner-heading, .planner-chart-heading { flex-direction: column; align-items: stretch; }
     .planner-stats { grid-template-columns: minmax(0, 1fr); }
@@ -61,7 +59,6 @@ img { max-width: 100%; }
     .planner-scenarios { flex-wrap: wrap; }
     .planner-legend { flex-wrap: wrap; }
     .planner-field > div { flex-wrap: wrap; }
-    .seasonality-filter-row, .seasonality-filter-group { flex-wrap: wrap; min-width: 0; }
     .auth-stage, .auth-card { padding: 16px; min-width: 0; }
     .auth-card { width: 100%; }
     .invoice-form-grid, .invoice-form-grid.no-vat, .timesheet-import-head, .timesheet-import-row { grid-template-columns: minmax(0, 1fr); }

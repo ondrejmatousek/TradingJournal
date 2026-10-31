@@ -229,7 +229,7 @@ public sealed class ScreeningServiceTests
     }
 
     [Fact]
-    public async Task Load_UsesTradingSeasonalityWithoutExternalCalls_AndKeepsWholeUniverse()
+    public async Task Load_UsesSharedMarketPricesWithoutExternalCalls_AndKeepsWholeUniverse()
     {
         await using var fixture = await Fixture.CreateAsync();
         await fixture.SeedHistoryAsync();
@@ -361,7 +361,7 @@ public sealed class ScreeningServiceTests
             InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
         {
             if (ErrorFactory != null) throw ErrorFactory();
-            if (RequireBoundedPrices && command.CommandText.Contains("SeasonalityPrices"))
+            if (RequireBoundedPrices && command.CommandText.Contains("MarketPrices"))
             {
                 Assert.Contains("LIMIT", command.CommandText);
                 Assert.Contains(command.Parameters.Cast<DbParameter>(), p => Convert.ToString(p.Value) == "252");
@@ -398,7 +398,7 @@ public sealed class ScreeningServiceTests
         {
             for (var date = Today.AddYears(-8); date < Today; date = date.AddDays(1))
                 if (date.DayOfWeek is not DayOfWeek.Saturday and not DayOfWeek.Sunday)
-                    db.SeasonalityPrices.Add(new() { AssetKey = "MSFT", Date = date, Close = 100, Source = "test", UpdatedAt = DateTimeOffset.UtcNow });
+                    db.MarketPrices.Add(new() { AssetKey = "MSFT", Date = date, Close = 100, Source = "test", UpdatedAt = DateTimeOffset.UtcNow });
             await db.SaveChangesAsync();
         }
         public async ValueTask DisposeAsync()

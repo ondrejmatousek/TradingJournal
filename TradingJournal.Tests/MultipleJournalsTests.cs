@@ -24,6 +24,25 @@ namespace TradingJournal.Tests;
 public class MultipleJournalsTests
 {
     [Fact]
+    public async Task RetiredResearchModulesHaveNoRoutesAssetsNavigationOrDatabaseModels()
+    {
+        await using var app = new JournalApp();
+        using var client = await app.ClientAsync("owner");
+        foreach (var path in new[] { "/Cot", "/Cot/Update", "/Seasonality", "/Seasonality/Data", "/js/cot-chart.js", "/js/cot-page-refresh.js", "/js/seasonality.js", "/js/seasonality-geometry.js" })
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(path)).StatusCode);
+        var html = await client.GetStringAsync("/TradingJournals");
+        Assert.DoesNotContain("COT Dashboard", html);
+        Assert.DoesNotContain("/Seasonality", html);
+        Assert.DoesNotContain("cot-chart.js", html);
+        Assert.DoesNotContain("seasonality.js", html);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/JournalEntries/SetupReview")).StatusCode);
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        Assert.DoesNotContain(db.Model.GetEntityTypes(), e => e.ClrType.Name is "CotReport" or "CotImportRun" or "SeasonalityPriceEntity");
+        Assert.Equal("MarketPrices", db.Model.FindEntityType(typeof(MarketPriceEntity))!.GetTableName());
+    }
+
+    [Fact]
     public async Task JournalCrudAndEmptyStateWorkWithRealForms()
     {
         await using var app = new JournalApp();

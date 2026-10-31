@@ -1,6 +1,6 @@
 namespace TradingJournal.Models;
 
-public sealed class SeasonalityPriceEntity
+public sealed class MarketPriceEntity
 {
     public int Id { get; set; }
     public string AssetKey { get; set; } = string.Empty;

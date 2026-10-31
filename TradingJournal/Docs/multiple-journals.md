@@ -11,7 +11,7 @@ různé záložky prohlížeče mohou bezpečně pracovat s různými deníky.
 Přidání obchodu vždy použije deník z ověřené cesty. Úprava obchodu jej nemůže
 přesunout pod jiný účet nebo deník pomocí podvrženého formuláře.
 
-Strategie, poznámky ke strategiím, Setup Review, COT, sezónnost a materiály
+Strategie, poznámky ke strategiím, Setup Review a materiály
 ke kvalitě obchodování zůstávají společné nástroje pod uživatelským účtem.
 Investiční část není závislá na zvoleném deníku.
 

@@ -1,6 +1,5 @@
 # Lokální denní aktualizace
 
-Worker je jednorázový .NET proces. Webová aplikace i worker používají stejnou lokální SQL Server databázi (SSMS je pouze nástroj pro její správu). Turso je vypnuté, pokud není výslovně nastaveno `Turso:Enabled=true`.
 
 ## První nastavení
 
@@ -19,7 +18,7 @@ Připojení se načítá z `ConnectionStrings:DefaultConnection`. V Development 
 pwsh -File Tools/ScreeningWorker/Install-LocalTask.ps1
 ```
 
-Tím vznikne úloha **TradingJournal daily investment data**, která každý den v 06:00 spustí screening, seasonalitu, COT, makro, insiders a uloží výsledek do SQL Serveru. Mimořádný běh:
+Tím vznikne úloha **TradingJournal daily investment data**, která každý den v 06:00 spustí screening, makro, insiders a uloží výsledek do SQL Serveru. Mimořádný běh:
 
 ```powershell
 pwsh -File Tools/ScreeningWorker/run-local.ps1 -Force

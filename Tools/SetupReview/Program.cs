@@ -39,25 +39,8 @@ switch (action)
     case "import":
         await ImportResultsAsync(db, repoRoot);
         break;
-    case "cot-update":
-        await UpdateCotAsync(db);
-        break;
     default:
         throw new ArgumentException("Use 'export' or 'import'.");
-}
-
-static async Task UpdateCotAsync(ApplicationDbContext db)
-{
-    var services = new ServiceCollection();
-    services.AddHttpClient();
-    services.AddLogging(builder => builder.AddConsole());
-    using var provider = services.BuildServiceProvider();
-    var service = new CotDataService(
-        db,
-        provider.GetRequiredService<IHttpClientFactory>(),
-        provider.GetRequiredService<ILogger<CotDataService>>());
-    var result = await service.UpdateAsync(force: true);
-    Console.WriteLine(JsonSerializer.Serialize(result, GetJsonOptions()));
 }
 
 static async Task ExportPendingAsync(ApplicationDbContext db, string repoRoot)
@@ -112,7 +95,6 @@ static async Task ExportPendingAsync(ApplicationDbContext db, string repoRoot)
             direction = review.Direction,
             result = GetOutcomeLabel(review.Outcome),
             note = review.Notes,
-            cot = GetCotContext(db, review.Market, review.Direction),
             imageFiles,
             currentStatus = review.Status
         });
@@ -199,43 +181,6 @@ static string GetOutcomeLabel(string? outcome) => outcome?.Trim().ToLowerInvaria
     "3" => "Take profit",
     _ => outcome ?? string.Empty
 };
-
-static object? GetCotContext(ApplicationDbContext db, string? market, string? direction)
-{
-    var symbol = CotDataService.NormalizeSymbol(market);
-    if (symbol is null)
-        return null;
-
-    var report = db.CotReports
-        .AsNoTracking()
-        .Where(item => item.SymbolKey == symbol)
-        .OrderByDescending(item => item.ReportDate)
-        .FirstOrDefault();
-
-    if (report is null)
-        return null;
-
-    var aligned = (report.Bias == "Bullish" && direction?.Equals("LONG", StringComparison.OrdinalIgnoreCase) == true)
-        || (report.Bias == "Bearish" && direction?.Equals("SHORT", StringComparison.OrdinalIgnoreCase) == true);
-
-    return new
-    {
-        symbol = report.SymbolKey,
-        bias = report.Bias,
-        reportDate = report.ReportDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-        netPosition = report.NetPosition,
-        weeklyNetChange = report.WeeklyNetChange,
-        percentile52 = report.Percentile52,
-        zScore = report.ZScore,
-        summary = report.Summary,
-        isStale = DateTime.UtcNow.Date - report.ReportDate.ToDateTime(TimeOnly.MinValue).Date > TimeSpan.FromDays(10),
-        directionAssessment = report.Bias == "Neutral"
-            ? "Neutrální COT kontext."
-            : aligned
-                ? "Směr tradu je v souladu s COT biasem; představuje plusovou makro konfluenci."
-                : "Trade jde proti COT biasu; není to automaticky no-trade, ale je to slabina setupu."
-    };
-}
 
 static string NormalizeVerdict(string? verdict) => verdict?.Trim().ToLowerInvariant() switch
 {

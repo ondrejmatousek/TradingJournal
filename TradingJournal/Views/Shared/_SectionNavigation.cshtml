@@ -1,7 +1,7 @@
 @{
     var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
     var action = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
-    var isTradingSection = controller is "TradingJournals" or "JournalEntries" or "Cot" or "Seasonality";
+    var isTradingSection = controller is "TradingJournals" or "JournalEntries";
     var currentJournal = ViewData["CurrentJournal"] as TradingJournal.Models.TradingJournalBook;
     var isInvestmentSection = controller is "Investments" or "Screening" or "Insiders";
 }
@@ -18,8 +18,6 @@
                     <div class="sidebar-title">Společné nástroje</div>
                     <a class="sidebar-link @(controller == "JournalEntries" && action == "Strategy" ? "active" : "")" asp-controller="JournalEntries" asp-action="Strategy">Strategie</a>
                     <a class="sidebar-link @(controller == "JournalEntries" && action == "SetupReview" ? "active" : "")" asp-controller="JournalEntries" asp-action="SetupReview">Setup Review</a>
-                    <a class="sidebar-link @(controller == "Cot" ? "active" : "")" asp-controller="Cot" asp-action="Index">COT Dashboard</a>
-                    <a class="sidebar-link @(controller == "Seasonality" ? "active" : "")" asp-controller="Seasonality" asp-action="Index">Seasonality</a>
                     <a class="sidebar-link @(controller == "JournalEntries" && action == "TradeQuality" ? "active" : "")" asp-controller="JournalEntries" asp-action="TradeQuality">Kvalita tradu</a>
                 }
                 else if (isInvestmentSection)

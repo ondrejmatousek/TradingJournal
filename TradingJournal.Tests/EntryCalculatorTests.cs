@@ -7,8 +7,8 @@ public class EntryCalculatorTests
 {
     private static readonly DateOnly Today = new(2026, 9, 9);
     private static FundamentalInput F => new(Today.AddMonths(-8), Today.AddMonths(-6), 1100, 1000, 250, 50, 150, 1500, 500, 100, "https://example.com");
-    private static List<SeasonalityPrice> History(bool falling = false) => Enumerable.Range(0, 252)
-        .Select(i => new SeasonalityPrice(Today.AddDays(i - 251), falling ? 100m - i * .1m : 78m)).ToList();
+    private static List<MarketPrice> History(bool falling = false) => Enumerable.Range(0, 252)
+        .Select(i => new MarketPrice(Today.AddDays(i - 251), falling ? 100m - i * .1m : 78m)).ToList();
     private static ScreeningRow Row() => new()
     {
         Price = 78, PriceDate = Today, Fundamentals = F,

@@ -24,7 +24,7 @@ public static class InvestmentUniverse
             ["Utilities"] = "NEE DUK SO AEP SRE EXC XEL ED D PEG",
             ["Real Estate"] = "PLD AMT EQIX O WELL SPG DLR PSA CCI VICI AVB EQR"
         };
-        var names = SeasonalityService.Assets.GroupBy(a => a.YahooSymbol).ToDictionary(g => g.Key, g => g.First().Name);
+        var names = InvestmentAssetCatalog.Assets.GroupBy(a => a.YahooSymbol).ToDictionary(g => g.Key, g => g.First().Name);
         return sectors.SelectMany(s => s.Value.Split(' ').Select(t => new InvestmentSymbol(t, names.GetValueOrDefault(t, t), s.Key))).OrderBy(s => s.Symbol).ToArray();
     }
 }

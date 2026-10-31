@@ -18,7 +18,6 @@ namespace TradingJournal.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly MuckaRubricProvider _muckaRubricProvider;
-        private readonly CotDataService _cotDataService;
         private static readonly HashSet<string> StrategyNoteKeys = new(StringComparer.OrdinalIgnoreCase)
         {
             "mucka",
@@ -34,12 +33,10 @@ namespace TradingJournal.Controllers
 
         public JournalEntriesController(
             ApplicationDbContext context,
-            MuckaRubricProvider muckaRubricProvider,
-            CotDataService cotDataService)
+            MuckaRubricProvider muckaRubricProvider)
         {
             _context = context;
             _muckaRubricProvider = muckaRubricProvider;
-            _cotDataService = cotDataService;
         }
 
         private string CurrentUserId =>
@@ -515,7 +512,6 @@ namespace TradingJournal.Controllers
                 review.Outcome,
                 r = review.RMultiple,
                 review.IsValid,
-                cot = BuildCotContext(review),
                 review.Entry,
                 review.StopLoss,
                 review.TakeProfit,
@@ -546,29 +542,6 @@ namespace TradingJournal.Controllers
                     i.ImageFileName,
                     url = Url.Action(nameof(SetupReviewImage), "JournalEntries", new { id = i.Id })
                 }).ToList()
-            };
-        }
-
-        private object? BuildCotContext(TradeSetupReview review)
-        {
-            var context = _cotDataService.GetContextForMarket(review.Market);
-            if (context is null)
-                return null;
-
-            return new
-            {
-                symbol = context.SymbolKey,
-                displayName = context.DisplayName,
-                bias = context.Bias,
-                reportDate = context.ReportDate?.ToString("yyyy-MM-dd"),
-                netPosition = context.NetPosition,
-                weeklyNetChange = context.WeeklyNetChange,
-                percentile52 = context.Percentile52,
-                zScore = context.ZScore,
-                isStale = context.IsStale,
-                summary = context.Summary,
-                directionAssessment = context.DirectionAssessment(review.Direction),
-                usage = "Weekly makro kontext, ne intradenní entry signál."
             };
         }
 

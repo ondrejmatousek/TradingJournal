@@ -1,4 +1,4 @@
-﻿// Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
+// Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
 // for details on configuring this project to bundle and minify static web assets.
 
 (() => {
@@ -17,7 +17,7 @@
         });
     }
     // Keep table semantics and localize horizontal scrolling, including tables
-    // injected later by the journal, COT and invoice pages.
+    // injected later by the journal and invoice pages.
     function prepareTables() {
         const fieldLabels = { Description: 'Popis', Quantity: 'Množství', Unit: 'Měrná jednotka', UnitPrice: 'Cena za jednotku', VatRate: 'DPH %' };
         document.querySelectorAll('.invoice-item-input > input').forEach(input => {

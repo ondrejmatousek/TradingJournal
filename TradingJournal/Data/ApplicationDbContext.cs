@@ -14,9 +14,7 @@ namespace TradingJournal.Data
         public DbSet<InvestmentEma200Snapshot> InvestmentEma200Snapshots => Set<InvestmentEma200Snapshot>();
         public DbSet<TradeSetupReview> TradeSetupReviews => Set<TradeSetupReview>();
         public DbSet<TradeSetupReviewImage> TradeSetupReviewImages => Set<TradeSetupReviewImage>();
-        public DbSet<CotReport> CotReports => Set<CotReport>();
-        public DbSet<CotImportRun> CotImportRuns => Set<CotImportRun>();
-        public DbSet<SeasonalityPriceEntity> SeasonalityPrices => Set<SeasonalityPriceEntity>();
+        public DbSet<MarketPriceEntity> MarketPrices => Set<MarketPriceEntity>();
         public DbSet<ScreeningDocument> ScreeningDocuments => Set<ScreeningDocument>();
         public DbSet<InsiderFiling> InsiderFilings => Set<InsiderFiling>();
         public DbSet<InsiderReportingOwner> InsiderReportingOwners => Set<InsiderReportingOwner>();
@@ -270,29 +268,6 @@ namespace TradingJournal.Data
                 .Property(i => i.Label)
                 .HasMaxLength(80);
 
-            builder.Entity<CotReport>()
-                .HasIndex(r => new { r.SymbolKey, r.ReportDate, r.SourceDataset, r.TraderCategory })
-                .IsUnique();
-
-            builder.Entity<CotReport>()
-                .HasIndex(r => new { r.SymbolKey, r.ReportDate });
-
-            builder.Entity<CotReport>()
-                .Property(r => r.CotIndex26)
-                .HasPrecision(7, 3);
-
-            builder.Entity<CotReport>()
-                .Property(r => r.CotIndex52)
-                .HasPrecision(7, 3);
-
-            builder.Entity<CotReport>()
-                .Property(r => r.Percentile52)
-                .HasPrecision(7, 3);
-
-            builder.Entity<CotReport>()
-                .Property(r => r.ZScore)
-                .HasPrecision(9, 4);
-
             builder.Entity<InvestmentEma200Snapshot>()
                 .HasIndex(s => s.Symbol)
                 .IsUnique();
@@ -341,19 +316,19 @@ namespace TradingJournal.Data
                 .Property(s => s.DataSource)
                 .HasMaxLength(80);
 
-            builder.Entity<SeasonalityPriceEntity>()
+            builder.Entity<MarketPriceEntity>()
                 .HasIndex(p => new { p.AssetKey, p.Date })
                 .IsUnique();
 
-            builder.Entity<SeasonalityPriceEntity>()
+            builder.Entity<MarketPriceEntity>()
                 .Property(p => p.AssetKey)
                 .HasMaxLength(32);
 
-            builder.Entity<SeasonalityPriceEntity>()
+            builder.Entity<MarketPriceEntity>()
                 .Property(p => p.Source)
                 .HasMaxLength(40);
 
-            builder.Entity<SeasonalityPriceEntity>()
+            builder.Entity<MarketPriceEntity>()
                 .Property(p => p.Close)
                 .HasPrecision(20, 8);
 

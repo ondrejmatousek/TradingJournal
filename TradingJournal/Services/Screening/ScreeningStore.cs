@@ -141,7 +141,7 @@ public sealed class ScreeningStore(IWebHostEnvironment environment, IServiceScop
         return values.Length == 0 ? null : ScreeningCalculator.Median(values);
     }
 }
-public sealed record ScreeningMarketCache(DateTimeOffset RetrievedAt, List<TradingJournal.Models.SeasonalityPrice> Prices, FundamentalInput? Fundamentals, string? Message)
+public sealed record ScreeningMarketCache(DateTimeOffset RetrievedAt, List<TradingJournal.Models.MarketPrice> Prices, FundamentalInput? Fundamentals, string? Message)
 {
     public TradingJournal.Services.Valuation.FinancialDataset? Financials { get; init; }
     public string? ValuationRunId { get; init; }

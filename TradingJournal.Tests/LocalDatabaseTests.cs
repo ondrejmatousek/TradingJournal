@@ -6,12 +6,12 @@ using TradingJournal.Data;
 namespace TradingJournal.Tests;
 public class LocalDatabaseTests
 {
-    [Fact] public void LocalModeOverridesCloudConnectionAndDisablesTurso()
+    [Fact] public void LocalModeOverridesCloudConnectionAndDisablesBackgroundRefresh()
     {
-        var c = new ConfigurationManager(); c["ConnectionStrings:DefaultConnection"]="Host=cloud"; c["Turso:Enabled"]="true";
+        var c = new ConfigurationManager(); c["ConnectionStrings:DefaultConnection"]="Host=cloud"; c["DataRefresh:Enabled"]="true";
         LocalDatabaseConfiguration.Apply(c);
         Assert.Equal(LocalDatabaseConfiguration.DefaultConnection,c.GetConnectionString("DefaultConnection"));
-        Assert.False(c.GetValue<bool>("Turso:Enabled"));
+        Assert.False(c.GetValue<bool>("DataRefresh:Enabled"));
     }
     [Theory] [InlineData(true)] [InlineData(false)]
     public void MigrationHistoriesStaySeparated(bool sql)

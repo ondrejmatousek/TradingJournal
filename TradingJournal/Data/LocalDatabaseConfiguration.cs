@@ -12,7 +12,7 @@ public static class LocalDatabaseConfiguration
             throw new InvalidOperationException("Local database mode must not target Azure SQL.");
         configuration.AddInMemoryCollection(new Dictionary<string,string?> {
             ["ConnectionStrings:DefaultConnection"] = connection,
-            ["Turso:Enabled"] = "false", ["DataRefresh:Enabled"] = "false"
+            ["DataRefresh:Enabled"] = "false"
         });
     }
 }

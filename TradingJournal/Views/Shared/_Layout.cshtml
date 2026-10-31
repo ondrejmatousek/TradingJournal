@@ -6,7 +6,7 @@
     var isFullBleed = bodyClass.Contains("marketing-shell") || bodyClass.Contains("auth-shell") || bodyClass.Contains("journal-shell");
     var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
     var action = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
-    var isTradingSection = controller == "TradingJournals" || controller == "JournalEntries" || controller == "Cot" || controller == "Seasonality";
+    var isTradingSection = controller == "TradingJournals" || controller == "JournalEntries";
     var isInvestmentSection = controller == "Investments" || controller == "Screening" || controller == "Insiders";
     var showSidebar = SignInManager.IsSignedIn(User) && !bodyClass.Contains("marketing-shell") && !bodyClass.Contains("auth-shell") && (isTradingSection || isInvestmentSection);
 }
@@ -76,10 +76,6 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    <script src="~/js/cot-chart.js" asp-append-version="true"></script>
-    <script src="~/js/cot-page-refresh.js" asp-append-version="true"></script>
-    <script src="~/js/seasonality-geometry.js" asp-append-version="true"></script>
-    <script src="~/js/seasonality.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

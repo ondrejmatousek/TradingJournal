@@ -12,7 +12,7 @@ public static class ScreeningCalculator
         return a.Length % 2 == 0 ? (a[a.Length / 2 - 1] + a[a.Length / 2]) / 2 : a[a.Length / 2];
     }
 
-    public static SeasonalWindow Seasonality(IReadOnlyList<SeasonalityPrice> prices, DateOnly asOf, int days)
+    public static SeasonalWindow Seasonality(IReadOnlyList<MarketPrice> prices, DateOnly asOf, int days)
     {
         var sorted = prices.Where(p => p.Date <= asOf && p.Close > 0).DistinctBy(p => p.Date).OrderBy(p => p.Date).ToArray();
         var samples = new List<(int Year, decimal Return)>();
@@ -134,7 +134,7 @@ public static class ScreeningCalculator
     private sealed record RevenueObservation(DateOnly PeriodEnd, DateOnly Filed, decimal Revenue);
     private sealed record FinancialObservation(DateOnly PeriodEnd, DateOnly Filed, decimal Revenue, decimal? Fcf, decimal? NetIncome);
 
-    public static ScreeningRow Evaluate(InvestmentSymbol stock, IReadOnlyList<SeasonalityPrice> prices,
+    public static ScreeningRow Evaluate(InvestmentSymbol stock, IReadOnlyList<MarketPrice> prices,
         FundamentalInput? fundamentals, IReadOnlyList<MacroObservation> macro, ScreeningResearch research, DateOnly today,
         ValuationResult? persistedValuation = null, bool allowLegacyCalculation = true)
     {

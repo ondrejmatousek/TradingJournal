@@ -4,7 +4,7 @@ namespace TradingJournal.Services.Screening;
 
 public static class EntryCalculator
 {
-    public static EntryAssessment Evaluate(ScreeningRow row, IReadOnlyList<SeasonalityPrice> prices, DateOnly today)
+    public static EntryAssessment Evaluate(ScreeningRow row, IReadOnlyList<MarketPrice> prices, DateOnly today)
     {
         var reasons = new List<string>();
         EntryAssessment Result(string status, string label, decimal? low = null, decimal? high = null,

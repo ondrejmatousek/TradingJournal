@@ -8,9 +8,9 @@ public class ScreeningCalculatorTests
     private static readonly DateOnly Today = new(2026, 9, 6);
     private static readonly InvestmentSymbol Stock = new("TEST", "Test", "Technology");
     private static FundamentalInput Fundamentals => new(new(2025,12,31), new(2026,2,15), 1100,1000,250,50,150,1500,500,100,"https://www.sec.gov/filing");
-    private static List<SeasonalityPrice> Prices()
+    private static List<MarketPrice> Prices()
     {
-        var output = new List<SeasonalityPrice>();
+        var output = new List<MarketPrice>();
         for (var date = Today.AddYears(-16); date <= Today; date = date.AddDays(1))
             if (date.DayOfWeek is not DayOfWeek.Saturday and not DayOfWeek.Sunday) output.Add(new(date, 10 + output.Count * .001m));
         return output;

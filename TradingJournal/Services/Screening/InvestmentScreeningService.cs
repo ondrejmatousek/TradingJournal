@@ -6,7 +6,7 @@ using TradingJournal.Services;
 
 namespace TradingJournal.Services.Screening;
 
-public sealed class InvestmentScreeningService(ApplicationDbContext db, ScreeningStore store, ScreeningDataProvider provider, IUnderEma200HistoryProvider history, TursoSeasonalityStore? turso = null, IValuationEngine? engine = null, ValuationPersistence? valuations = null, InvestmentCatalog? catalog = null, ILogger<InvestmentScreeningService>? logger = null)
+public sealed class InvestmentScreeningService(ApplicationDbContext db, ScreeningStore store, ScreeningDataProvider provider, IUnderEma200HistoryProvider history, IValuationEngine? engine = null, ValuationPersistence? valuations = null, InvestmentCatalog? catalog = null, ILogger<InvestmentScreeningService>? logger = null)
 {
     private static readonly SemaphoreSlim RefreshGate = new(3, 3);
     public async Task<List<ScreeningRow>> LoadAsync(string user, CancellationToken ct)
@@ -55,7 +55,7 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
                 try
                 {
                     var fetched = await history.GetDailyPricesAsync(symbol, ct);
-                    if (fetched.Count > 0) prices = Recent(fetched.Select(p => new SeasonalityPrice(DateOnly.FromDateTime(p.Date), p.Close)), today);
+                    if (fetched.Count > 0) prices = Recent(fetched.Select(p => new MarketPrice(DateOnly.FromDateTime(p.Date), p.Close)), today);
                     else messages.Add("Cenový poskytovatel nevrátil historii; zachována dostupná data.");
                 }
                 catch (Exception) when (!ct.IsCancellationRequested) { messages.Add("Ceny se nepodařilo aktualizovat."); }
@@ -105,7 +105,7 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
 
     public Task<IReadOnlyList<InvestmentSymbol>> UniverseAsync(CancellationToken ct) => catalog?.AllAsync(ct) ?? Task.FromResult(InvestmentUniverse.All);
 
-    private static IReadOnlyList<SeasonalityPrice> Merge(IReadOnlyList<SeasonalityPrice> seasonal, IReadOnlyList<SeasonalityPrice> market)
+    private static IReadOnlyList<MarketPrice> Merge(IReadOnlyList<MarketPrice> seasonal, IReadOnlyList<MarketPrice> market)
     {
         // Never splice price levels from different providers: split adjustments may differ.
         if (market.Count == 0) return seasonal;
@@ -113,16 +113,15 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
         return market.Max(p => p.Date) >= seasonal.Max(p => p.Date) ? market : seasonal;
     }
 
-    private async Task<IReadOnlyList<SeasonalityPrice>> LoadRecentAsync(string symbol, DateOnly today, CancellationToken ct)
+    private async Task<IReadOnlyList<MarketPrice>> LoadRecentAsync(string symbol, DateOnly today, CancellationToken ct)
     {
-        if (turso?.IsConfigured == true) return await turso.LoadRecentAsync(symbol, today, ct);
-        var prices = await db.SeasonalityPrices.AsNoTracking().Where(p => p.AssetKey == symbol && p.Date <= today)
-            .OrderByDescending(p => p.Date).Take(252).Select(p => new SeasonalityPrice(p.Date, p.Close)).ToListAsync(ct);
+        var prices = await db.MarketPrices.AsNoTracking().Where(p => p.AssetKey == symbol && p.Date <= today)
+            .OrderByDescending(p => p.Date).Take(252).Select(p => new MarketPrice(p.Date, p.Close)).ToListAsync(ct);
         prices.Reverse();
         return prices;
     }
 
-    private static List<SeasonalityPrice> Recent(IEnumerable<SeasonalityPrice> prices, DateOnly today)
+    private static List<MarketPrice> Recent(IEnumerable<MarketPrice> prices, DateOnly today)
         => prices.Where(p => p.Date <= today && p.Close > 0).DistinctBy(p => p.Date).OrderBy(p => p.Date).TakeLast(252).ToList();
 
     private async Task<List<MacroObservation>> ContextAsync(CancellationToken ct)
