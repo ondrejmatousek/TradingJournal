@@ -1,0 +1,37 @@
+name: Daily pilot valuation data
+
+on:
+  schedule:
+    - cron: '17 23 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: screening-daily
+  cancel-in-progress: false
+
+jobs:
+  refresh-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ConnectionStrings__DefaultConnection: ${{ secrets.PRICE_LAB_CONNECTION_STRING }}
+      Screening__SecUserAgent: ${{ secrets.SCREENING_SEC_USER_AGENT }}
+      AlphaVantage__ApiKey: ${{ secrets.SCREENING_ALPHA_VANTAGE_API_KEY }}
+      FinancialModelingPrep__ApiKey: ${{ secrets.SCREENING_FMP_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate existing production configuration
+        shell: bash
+        run: |
+          test -n "$ConnectionStrings__DefaultConnection" || { echo '::error::Missing production database connection'; exit 1; }
+          test -n "$Screening__SecUserAgent" || { echo '::error::Missing SEC contact'; exit 1; }
+      - name: Publish worker
+        run: dotnet publish Tools/ScreeningWorker/ScreeningWorker.csproj --configuration Release --output worker --verbosity quiet
+      - name: Refresh and verify five pilot valuations
+        run: dotnet worker/ScreeningWorker.dll --run --pilot-only --force

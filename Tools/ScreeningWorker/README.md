@@ -40,3 +40,7 @@ dotnet tmp/coverage-refresh/ScreeningWorker.dll --audit --local
 ```
 
 Obnova používá stejný databázový zámek jako celý denní worker. Audit ukládá `coverage-audit.json` v pracovním adresáři. Dokončení obnovy znamená, že byly zpracovány všechny akcie; dostupnost a důvěryhodnost výsledků ukazuje až audit.
+
+Pilotní aktualizace:
+ScreeningWorker --run --pilot-only --force
+Aktualizuje makro kontext a pouze MSFT, META, AAPL, CTAS a RSG; ověří použitelná ocenění 5/5. Pravidelný běh řeší price-lab-daily.yml nad samostatným PRICE_LAB_CONNECTION_STRING. Neprovádí migrace ani import insiders.

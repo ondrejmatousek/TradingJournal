@@ -16,11 +16,11 @@ using Npgsql;
 
 if (args.Length == 0 || args.Contains("--help"))
 {
-    Console.WriteLine("ScreeningWorker --check | --audit | --run [--force] [--screening-only] [--local]\n--audit writes coverage-audit.json from stored data without external API refresh. --screening-only refreshes the stock screener without macro context or insiders. SQL schema must already exist.");
+    Console.WriteLine("ScreeningWorker --check | --audit | --run [--force] [--screening-only | --pilot-only] [--local]\n--audit writes coverage-audit.json from stored data without external API refresh. --screening-only refreshes the stock screener without macro context or insiders. SQL schema must already exist.");
     return 0;
 }
-if (args.Any(a => a is not ("--check" or "--run" or "--audit" or "--force" or "--local" or "--screening-only")) || args.Count(a => a is "--check" or "--run" or "--audit") != 1
-    || args.Contains("--screening-only") && !args.Contains("--run"))
+if (args.Any(a => a is not ("--check" or "--run" or "--audit" or "--force" or "--local" or "--screening-only" or "--pilot-only")) || args.Count(a => a is "--check" or "--run" or "--audit") != 1
+    || args.Contains("--screening-only") && !args.Contains("--run") || args.Contains("--pilot-only") && !args.Contains("--run"))
 {
     Console.Error.WriteLine("Use --check or --run [--force].");
     return 1;
@@ -106,7 +106,7 @@ try
         await using var acquire = new NpgsqlCommand("SELECT pg_try_advisory_lock(hashtextextended('EdgeDesk.ScreeningDaily', 0));", lease);
         if (!Convert.ToBoolean(await acquire.ExecuteScalarAsync(cancellation.Token)))
         { Console.WriteLine("Another screening worker is running; no duplicate work started."); return 0; }
-        await RunUpdateAsync(host, scope, cancellation.Token, args.Contains("--force"), args.Contains("--screening-only"));
+        await RunUpdateAsync(host, scope, cancellation.Token, args.Contains("--force"), args.Contains("--screening-only"), args.Contains("--pilot-only"));
     }
     else
     {
@@ -116,7 +116,7 @@ try
         acquire.CommandText = "DECLARE @result int; EXEC @result = sys.sp_getapplock @Resource=N'EdgeDesk.ScreeningDaily', @LockMode='Exclusive', @LockOwner='Session', @LockTimeout=0; SELECT @result;";
         if (Convert.ToInt32(await acquire.ExecuteScalarAsync(cancellation.Token)) < 0)
         { Console.WriteLine("Another screening worker is running; no duplicate work started."); return 0; }
-        await RunUpdateAsync(host, scope, cancellation.Token, args.Contains("--force"), args.Contains("--screening-only"));
+        await RunUpdateAsync(host, scope, cancellation.Token, args.Contains("--force"), args.Contains("--screening-only"), args.Contains("--pilot-only"));
     }
     return 0;
 }
@@ -132,8 +132,27 @@ catch (Exception ex)
     return 1;
 }
 
-static async Task RunUpdateAsync(IHost host, IServiceScope scope, CancellationToken cancellationToken, bool force, bool screeningOnly)
+static async Task RunUpdateAsync(IHost host, IServiceScope scope, CancellationToken cancellationToken, bool force, bool screeningOnly, bool pilotOnly)
 {
+    if (pilotOnly)
+    {
+        try { await scope.ServiceProvider.GetRequiredService<ScreeningDataProvider>().MacroAsync(cancellationToken); }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested) { Console.WriteLine("Macro refresh unavailable: " + ex.GetType().Name); }
+        var screening = scope.ServiceProvider.GetRequiredService<InvestmentScreeningService>();
+        var lab = scope.ServiceProvider.GetRequiredService<PriceLabService>();
+        var incomplete = new List<string>();
+        foreach (var symbol in PriceLabService.PilotSymbols)
+        {
+            Console.WriteLine("Pilot refresh: " + symbol);
+            await screening.RefreshAsync(symbol, "", cancellationToken, force: true);
+            var result = await lab.AnalyseAsync("", symbol, cancellationToken);
+            Console.WriteLine($"Pilot {symbol}: price {result.PriceDate:yyyy-MM-dd}, financials {result.FinancialPeriod:yyyy-MM-dd}, inputs {result.Report.DataQuality}/100, usable {result.ReturnPrice != null}.");
+            if (result.ReturnPrice == null) incomplete.Add(symbol);
+        }
+        if (incomplete.Count > 0) throw new InvalidOperationException("Pilot valuation inputs incomplete: " + string.Join(", ", incomplete));
+        Console.WriteLine("Pilot refresh verified: 5/5 usable valuation datasets.");
+        return;
+    }
     if (screeningOnly)
     {
         await StageAsync("Akciový screener", () => host.Services.GetRequiredService<ScreeningUpdateHostedService>().RunIfDueAsync(DateTimeOffset.UtcNow, cancellationToken, force, refreshContext: false));

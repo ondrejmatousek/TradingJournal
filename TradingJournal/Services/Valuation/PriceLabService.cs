@@ -5,7 +5,7 @@ namespace TradingJournal.Services.Valuation;
 public sealed class PriceLabService(ScreeningStore store, InvestmentCatalog catalog, IValuationEngine engine)
 {
     // Profitable nonfinancial businesses, checked against the available financial datasets.
-    public static IReadOnlyList<string> PilotSymbols { get; } = Array.AsReadOnly(new[] { "MSFT", "META", "CTAS", "RSG", "ZTS" });
+    public static IReadOnlyList<string> PilotSymbols { get; } = Array.AsReadOnly(new[] { "MSFT", "META", "AAPL", "CTAS", "RSG" });
     private static string Key(string user, string symbol) => "price-lab-" + user + "-" + symbol;
 
     public async Task<PriceLabResult> AnalyseAsync(string user, string symbol, CancellationToken ct, PriceLabSettings? supplied = null)
@@ -17,7 +17,7 @@ public sealed class PriceLabService(ScreeningStore store, InvestmentCatalog cata
         var validation = settings.Validate(today);
         if (validation != null) throw new ArgumentException(validation);
         var cache = await store.ReadAsync<ScreeningMarketCache>("market-" + symbol, ct);
-        var data = cache?.Financials ?? cache?.Fundamentals?.ValuationFinancials;
+        var data = PriceLabMath.SelectFinancials(cache?.Financials ?? cache?.Fundamentals?.ValuationFinancials, today);
         var price = cache?.Prices.Where(p => p.Date <= today && p.Close > 0).OrderBy(p => p.Date).LastOrDefault();
         var macro = await store.ReadAsync<List<MacroObservation>>("macro-v1", ct) ?? [];
         var rf = macro.FirstOrDefault(m => m.Series == "DGS10");

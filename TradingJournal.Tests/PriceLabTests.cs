@@ -15,6 +15,21 @@ public class PriceLabTests
         .Calculate("TEST", "Technology", ValuationV2Tests.Dataset(), 15, Today.AddDays(-1), Today, null, forecast);
 
     [Fact]
+    public void IncompleteTtmCanUseOnlyAnActualCompleteAndNonStaleAnnualPeriod()
+    {
+        var data = ValuationV2Tests.Dataset();
+        var partial = data.Latest! with { IsTtm = true, End = Today.AddDays(-1), Facts = new(data.Latest!.Facts) };
+        partial.Facts.Remove("Ebit");
+        var original = data with { Latest = partial };
+        var selected = PriceLabMath.SelectFinancials(original, Today)!;
+        Assert.False(selected.Latest!.IsTtm); Assert.True(selected.Latest.Facts.ContainsKey("Ebit"));
+        Assert.False(original.Latest!.Facts.ContainsKey("Ebit"));
+        Assert.Contains(selected.Warnings, w => w.Contains("Neúplný TTM"));
+        Assert.Same(original, PriceLabMath.SelectFinancials(original, Today.AddYears(2)));
+        Assert.Same(data, PriceLabMath.SelectFinancials(data, Today));
+    }
+
+    [Fact]
     public void EquityReturnDiscountsCashAfterInterestAndDoesNotSubtractDebtTwice()
     {
         var report = Report();

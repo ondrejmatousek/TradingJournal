@@ -1,7 +1,21 @@
+using TradingJournal.Services.Screening;
+
 namespace TradingJournal.Services.Valuation;
 
 public static class PriceLabMath
 {
+    public static FinancialDataset? SelectFinancials(FinancialDataset? data, DateOnly today)
+    {
+        if (data?.Latest is not { IsTtm: true } || FinancialDataMerge.HasValuationInputs(data)) return data;
+        var annual = data.History.Where(p => !p.IsTtm && p.End <= today && today.DayNumber - p.End.DayNumber <= 460)
+            .OrderByDescending(p => p.End).FirstOrDefault(p => FinancialDataMerge.HasValuationInputs(data with { Latest = p }));
+        return annual == null ? data : data with
+        {
+            Latest = annual,
+            Warnings = [.. data.Warnings, $"Neúplný TTM do {data.Latest.End:yyyy-MM-dd}; pro ocenění použit úplný roční výkaz do {annual.End:yyyy-MM-dd}. Žádné hodnoty nebyly odhadnuty ani doplněny nulou."]
+        };
+    }
+
     // FCFF is never discounted directly at a shareholder's required return.
     // Here debt stays constant in nominal terms and is refinanced; net borrowing is zero.
     // FCFE = FCFF - after-tax interest. Terminal interest is a constant perpetuity,

@@ -1,6 +1,6 @@
 # Ocenění pěti firem
 
-Na začátku screeneru je samostatné ocenění MSFT, META, CTAS, RSG a ZTS. Výběr vznikl kontrolou skutečně uložených datasetů celého katalogu dne 1. 11. 2026. Jde o technický pilot, ne doporučení těchto akcií. Úplnost dat není pravděpodobností správného ocenění.
+Na začátku screeneru je samostatné ocenění MSFT, META, AAPL, CTAS a RSG. Výběr vznikl kontrolou skutečně uložených datasetů celého katalogu dne 1. 11. 2026. Jde o technický pilot, ne doporučení těchto akcií. Úplnost dat není pravděpodobností správného ocenění.
 
 ## Co obrazovka počítá
 
@@ -30,7 +30,7 @@ Bez platného ocenění, aktuální ceny a kvality podkladů alespoň 60/100 se 
 
 ## Ověření skutečných dat 1. 11. 2026
 
-Kontrola proběhla nad izolovanou SQL kopií uložených finančních datasetů a cen z 30. 10. 2026. Zdrojová ani produkční databáze nebyla touto kontrolou změněna.
+První kontrola proběhla nad izolovanou SQL kopií uložených datasetů. Následně byly ceny a výkazy pilotních firem aktualizovány přes existující poskytovatele také v produkci a znovu ověřeny. Ceny pocházely z 30. 10. 2026.
 
 | Firma | Použité období | Roční historie | Úplnost modelových podkladů | Reverzní DCF |
 |---|---|---:|---:|---|
@@ -38,9 +38,9 @@ Kontrola proběhla nad izolovanou SQL kopií uložených finančních datasetů 
 | META | 30. 6. 2026 | 11 let | 65/100 | řešení nalezeno |
 | CTAS | 31. 8. 2026 | 11 let | 60/100 | řešení nalezeno |
 | RSG | 30. 9. 2026 | 11 let | 60/100 | řešení nalezeno |
-| ZTS | 31. 12. 2025 | 11 let | 60/100 | řešení nalezeno |
+| AAPL | 27. 6. 2026 | 11 let | 70/100 | řešení nalezeno |
 
-Původně zvažované GOOGL a PG chybí některé povinné vstupy, ADBE nesplňuje práh úplnosti. Nebyly doplněny umělými hodnotami ani vybrány místo funkčních kandidátů. Podrobné strojové výsledky jsou dočasný lokální ověřovací výstup, ne součást repozitáře.
+Po čerstvém stažení byl z výběru vyřazen také ZTS, protože zdroj neposkytl povinný EBIT; nahradil ho AAPL. Původně zvažované GOOGL a PG chybí některé povinné vstupy, ADBE nesplňuje práh úplnosti. Nebyly doplněny umělými hodnotami ani vybrány místo funkčních kandidátů. Podrobné strojové výsledky jsou dočasný lokální ověřovací výstup, ne součást repozitáře.
 
 Matematické testy ověřují mimo jiné nekonečný konstantní FCFE příklad, soulad s DCF u firmy bez dluhu, vliv požadovaného výnosu, zpětné nalezení známého růstu a odmítnutí více řešení. HTTP testy ověřují formuláře, antiforgery, validaci, reset, srovnávací ocenění a oddělení účtů.
 
@@ -49,3 +49,7 @@ Matematické testy ověřují mimo jiné nekonečný konstantní FCFE příklad,
 Výchozí růst a marže stále vycházejí z historie. Automatický konsenzus, výhled managementu, firemní beta a historické/oborové násobky vyžadují další zdrojovaná data. Technické ověření neprokazuje schopnost předpovídat výnosy. Historická kalibrace vyžaduje data skutečně dostupná k jednotlivým minulým datům, nikoliv dnešní výkazy dosazené zpětně. Banky, REIT a specifické cyklické modely se tímto pilotem neřeší.
 
 Metodické zdroje: [CFA Institute: FCFF a FCFE](https://www.cfainstitute.org/insights/professional-learning/refresher-readings/2026/free-cash-flow-valuation), [Damodaran: růst, marže a reinvestice](https://pages.stern.nyu.edu/~adamodar/New_Home_Page/littlebook/growthvaluedrivers.htm).
+
+## Pravidelná aktualizace
+
+Workflow `price-lab-daily.yml` aktualizuje pouze pět pilotních firem v pracovní dny ve 23:17 UTC a lze jej spustit ručně. Používá `ScreeningWorker --run --pilot-only --force`, existující distribuovaný zámek a ověřuje, že všech pět firem má použitelný limit. Neprovádí databázové migrace ani import insiders. Připojení je v samostatném GitHub Actions secretu `PRICE_LAB_CONNECTION_STRING`; původní ruční workflow celého katalogu se nemění.
