@@ -44,7 +44,7 @@ public sealed class ScreeningUpdateHostedService(IServiceScopeFactory scopes, Sc
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }
     }
 
-    public async Task RunIfDueAsync(DateTimeOffset now, CancellationToken ct, bool force = false)
+    public async Task RunIfDueAsync(DateTimeOffset now, CancellationToken ct, bool force = false, bool refreshContext = true)
     {
         if (!options.Value.Enabled) return;
         var due = options.Value.DueDate(now);
@@ -56,7 +56,7 @@ public sealed class ScreeningUpdateHostedService(IServiceScopeFactory scopes, Sc
         using var scope = scopes.CreateScope();
         var provider = scope.ServiceProvider.GetRequiredService<ScreeningDataProvider>();
         var service = scope.ServiceProvider.GetRequiredService<InvestmentScreeningService>();
-        try
+        if (refreshContext) try
         {
             await provider.MacroAsync(ct);
             try { await provider.GeopoliticsAsync(ct); } catch (Exception ex) when (!ct.IsCancellationRequested)

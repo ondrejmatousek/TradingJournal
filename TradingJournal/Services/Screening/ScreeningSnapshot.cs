@@ -15,7 +15,8 @@ public sealed record ScreeningSnapshot(DateTimeOffset CalculatedAt, List<Screeni
             && (string.IsNullOrEmpty(sector) || r.Sector == sector));
         rows = rows.Where(r => filter switch
         {
-            "candidate" => r.Entry?.Status == "candidate", "wait" => r.Entry?.Status == "wait",
+            "candidate" => r.Entry?.Status == "candidate", "wait" => r.Entry?.Status is "wait" or "expensive",
+            "risk" => r.Entry?.Status == "risk", "missing" => r.Entry == null || r.Entry.Status == "insufficient",
             "rated" => r.Score != null, "discount" => r.Discount > 0,
             "ema" => r.EmaDistance < 0,
             _ => true

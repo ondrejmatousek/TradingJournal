@@ -4,7 +4,7 @@ using System.Xml.Linq;
 
 namespace TradingJournal.Services.Screening;
 
-public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfiguration configuration, ScreeningStore store, IWebHostEnvironment? environment = null)
+public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfiguration configuration, ScreeningStore store, IWebHostEnvironment? environment = null, FmpFinancialProvider? fmp = null)
 {
     private static readonly SemaphoreSlim SecGate = new(1, 1);
     private static DateTimeOffset secRetryAfter;
@@ -12,6 +12,38 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
         => (await CompanyFinancialsAsync(symbol, ct)).Fundamentals;
 
     public async Task<(FundamentalInput? Fundamentals, TradingJournal.Services.Valuation.FinancialDataset? Financials)> CompanyFinancialsAsync(string symbol, CancellationToken ct)
+    {
+        var result = await FetchFinancialsAsync(symbol, ct);
+        return (result.Fundamentals, result.Financials);
+    }
+
+    public async Task<FinancialFetchResult> FetchFinancialsAsync(string symbol, CancellationToken ct)
+    {
+        var issues = new List<DataIssue>();
+        FinancialFetchResult primary;
+        try
+        {
+            var sec = await SecFinancialsAsync(symbol, ct);
+            primary = new(sec.Fundamentals, sec.Financials, issues);
+            if (sec.Financials?.Latest == null)
+                issues.Add(new("missing", "SEC", "SEC nevrátila použitelné výkazy pro tento ticker."));
+            if (sec.Financials != null)
+                issues.AddRange(sec.Financials.Warnings.Where(w => w.StartsWith("Unsupported taxonomy"))
+                    .Select(w => new DataIssue("unsupported", "SEC", w)));
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested && ex is HttpRequestException or OperationCanceledException or JsonException or InvalidOperationException)
+        {
+            issues.Add(DataIssue.FromException("SEC", ex));
+            primary = new(null, null, issues);
+        }
+        if (primary.Fundamentals != null && FinancialDataMerge.HasValuationInputs(primary.Financials)) return primary;
+        var secondary = fmp == null
+            ? new FinancialFetchResult(null, null, [new("configuration", "FMP", "Záložní zdroj není registrovaný.")])
+            : await fmp.FetchDetailedAsync(symbol, DateOnly.FromDateTime(DateTime.UtcNow), ct);
+        return FinancialDataMerge.Combine(primary, secondary);
+    }
+
+    private async Task<(FundamentalInput? Fundamentals, TradingJournal.Services.Valuation.FinancialDataset? Financials)> SecFinancialsAsync(string symbol, CancellationToken ct)
     {
         using var client = factory.CreateClient();
         client.Timeout = TimeSpan.FromSeconds(20);
@@ -55,7 +87,8 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
             if (mapping == null || !mapping.TryGetValue(symbol, out var cik)) return (null, null);
             var url = $"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:0000000000}.json";
             using var facts = JsonDocument.Parse(await client.GetStringAsync(url, ct));
-            return ParseCompanyFinancials(facts.RootElement, url, DateOnly.FromDateTime(DateTime.UtcNow));
+            var parsed = ParseCompanyFinancials(facts.RootElement, url, DateOnly.FromDateTime(DateTime.UtcNow));
+            return parsed;
         }
         catch (HttpRequestException ex) when (ex.StatusCode is null or System.Net.HttpStatusCode.Forbidden or System.Net.HttpStatusCode.TooManyRequests || (int?)ex.StatusCode >= 500)
         {
@@ -111,6 +144,10 @@ public sealed class ScreeningDataProvider(IHttpClientFactory factory, IConfigura
         var operatingIncome = Annual("OperatingIncomeLoss");
         var depreciation = Annual("DepreciationDepletionAndAmortization", "DepreciationDepletionAndAmortizationPropertyPlantAndEquipment");
         var assets = Instant("Assets"); var liabilities = Instant("Liabilities");
+        // Both reported components must exist for the same balance-sheet date.
+        if (liabilities == null && Instant("LiabilitiesCurrent") is {} currentLiabilities
+            && Instant("LiabilitiesNoncurrent") is {} noncurrentLiabilities)
+            liabilities = currentLiabilities + noncurrentLiabilities;
         var cashBalance = Instant("CashAndCashEquivalentsAtCarryingValue", "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents");
         var debtBalance = Instant("LongTermDebtAndFinanceLeaseObligationsCurrent", "LongTermDebtNoncurrent", "LongTermDebtCurrent");
         // Use the latest reported actual share count, not weighted-average diluted shares from a different split basis.

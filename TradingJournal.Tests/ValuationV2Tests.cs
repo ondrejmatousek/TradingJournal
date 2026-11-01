@@ -115,4 +115,21 @@ public sealed class ValuationV2Tests
         Assert.False(d.Latest!.IsTtm);Assert.Contains("TTM incomplete",d.Warnings.Single());
         Assert.True(d.Latest.Facts.ContainsKey("CapEx"));
     }
+
+    [Fact] public void ParserDerivesEbitWhenIssuerOmitsOperatingIncomeTag()
+    {
+        object Fact(decimal v,string s,string e,string filed)=>new{val=v,start=s,end=e,filed,accn="fixture"};
+        object Tag(params object[] rows)=>new{units=new Dictionary<string,object>{{"USD",rows}}};
+        var revenue=new[]{Fact(100,"2025-01-01","2025-12-31","2026-02-01")};
+        var pretax=new[]{Fact(36,"2025-01-01","2025-12-31","2026-02-01")};
+        var interest=new[]{Fact(7,"2025-01-01","2025-12-31","2026-02-01")};
+        using var json=JsonDocument.Parse(JsonSerializer.Serialize(new{facts=new Dictionary<string,object>{{"us-gaap",new Dictionary<string,object>
+        {{"Revenues",Tag(revenue)},
+          {"IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",Tag(pretax)},
+          {"InterestExpenseNonOperating",Tag(interest)}}}}}));
+        var d=SecFinancialParser.Parse(json.RootElement,"https://example.com",new(2026,9,1));
+        Assert.Equal(43m,d.Latest!.Facts["Ebit"].Value);
+        Assert.Equal("DerivedEbit",d.Latest.Facts["Ebit"].Tag);
+        Assert.Contains("Pretax income + positive interest",d.Latest.Facts["Ebit"].Derivation);
+    }
 }

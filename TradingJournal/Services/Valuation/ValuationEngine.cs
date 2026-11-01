@@ -40,6 +40,8 @@ public static class ValuationMath
         ? ar+(Get(p,"Inventory") ?? 0)-ap : null;
     public static decimal? Debt(FinancialPeriod p)
     {
+        // A provider's verified total debt already includes short-term borrowings.
+        if (Get(p,"TotalDebt") is {} total) return total;
         // Aggregate term debt and current/noncurrent decomposition are alternatives, not additive.
         var term = Get(p,"DebtAggregate");
         if (term == null && Get(p,"LongDebt") is {} ld && Get(p,"CurrentDebt") is {} cd) term = ld+cd;
@@ -83,7 +85,7 @@ public sealed class ValuationEngine(IOptions<ValuationOptions> settings, IFinanc
             return Fail("Nonpositive operating earnings or invalid expense signs; turnaround forecast requires analyst input.","InvalidData");
         var debt=ValuationMath.Debt(p);
         if(debt==null) return Fail("Debt completeness cannot be established; absent debt is not zero.");
-        if(new[]{"DebtAggregate","LongDebt","CurrentDebt","ShortDebt","CommercialPaper","ShortInvestments","LongInvestments"}.Any(k=>ValuationMath.Get(p,k)<0))
+        if(new[]{"TotalDebt","DebtAggregate","LongDebt","CurrentDebt","ShortDebt","CommercialPaper","ShortInvestments","LongInvestments"}.Any(k=>ValuationMath.Get(p,k)<0))
             return Fail("Negative debt or investment component.","InvalidData");
         if(data.History.Any(h=>h.End>asOf || h.Facts.Any(f=>f.Value.Filed>asOf || f.Value.End>asOf
             || f.Value.Unit!=(f.Key.EndsWith("Shares")?"shares":"USD"))))
@@ -159,7 +161,7 @@ public sealed class ValuationEngine(IOptions<ValuationOptions> settings, IFinanc
         var kd=interest>0 && debt>0?Math.Clamp(interest.Value/debt.Value,.005m,.25m):riskFreeValue+o.CreditSpread;
         A("CostOfDebt",kd,"ratio",interest>0?"SEC interest/debt":"Risk-free + configured spread",true,"Accounting approximation; not current bond yield.");
         A("Debt",debt.Value,"USD","SEC balance sheet",false,"Term aggregate OR current+noncurrent; short borrowing OR commercial paper, never both.");
-        if(ValuationMath.Get(p,"ShortDebt")==null && ValuationMath.Get(p,"CommercialPaper")==null)
+        if(ValuationMath.Get(p,"TotalDebt")==null && ValuationMath.Get(p,"ShortDebt")==null && ValuationMath.Get(p,"CommercialPaper")==null)
             r.Warnings.Add("Short-term borrowing disclosure missing; term debt used, completeness limited.");
         var cash=ValuationMath.Get(p,"Cash")!.Value; var excess=Math.Max(0,cash-revenue*o.OperatingCashRevenue);
         var investments=(ValuationMath.Get(p,"ShortInvestments")??0)+(ValuationMath.Get(p,"LongInvestments")??0);
@@ -226,7 +228,7 @@ public sealed class ValuationEngine(IOptions<ValuationOptions> settings, IFinanc
         quality-=10; // beta, financing estimates
         quality-=5; // diluted share proxy
         if(rf==null)quality-=5;if(taxHistory.Length==0)quality-=10;
-        if(!p.Facts.ContainsKey("ShortDebt")&&!p.Facts.ContainsKey("CommercialPaper")) quality-=5;
+        if(!p.Facts.ContainsKey("TotalDebt")&&!p.Facts.ContainsKey("ShortDebt")&&!p.Facts.ContainsKey("CommercialPaper")) quality-=5;
         if(!p.Facts.ContainsKey("ShortInvestments")&&!p.Facts.ContainsKey("LongInvestments")) quality-=5;
         r.DataQuality=Math.Clamp(quality,0,100);
         var range=(r.Scenarios[2].FairValue-r.Scenarios[0].FairValue)/b.FairValue;

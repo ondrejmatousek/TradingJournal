@@ -16,10 +16,11 @@ using Npgsql;
 
 if (args.Length == 0 || args.Contains("--help"))
 {
-    Console.WriteLine("ScreeningWorker --check | --run [--force]\nRequires ConnectionStrings__DefaultConnection and Screening__SecUserAgent. SQL schema must already be deployed by the web app. No web server or migrations are started.");
+    Console.WriteLine("ScreeningWorker --check | --audit | --run [--force] [--screening-only] [--local]\n--audit writes coverage-audit.json from stored data without external API refresh. --screening-only refreshes the stock screener without macro context or insiders. SQL schema must already exist.");
     return 0;
 }
-if (args.Any(a => a is not ("--check" or "--run" or "--force" or "--local")) || args.Contains("--check") == args.Contains("--run"))
+if (args.Any(a => a is not ("--check" or "--run" or "--audit" or "--force" or "--local" or "--screening-only")) || args.Count(a => a is "--check" or "--run" or "--audit") != 1
+    || args.Contains("--screening-only") && !args.Contains("--run"))
 {
     Console.Error.WriteLine("Use --check or --run [--force].");
     return 1;
@@ -60,6 +61,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ScreeningStore>();
 builder.Services.AddValuationV2(builder.Configuration);
 builder.Services.AddScoped<ScreeningDataProvider>();
+builder.Services.AddScoped<FmpFinancialProvider>();
 builder.Services.AddScoped<IUnderEma200HistoryProvider, UnderEma200HistoryProvider>();
 builder.Services.AddScoped<InvestmentScreeningService>();
 builder.Services.AddScoped<InsiderSecProvider>();
@@ -74,6 +76,19 @@ try
 {
     using var scope = host.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    if (args.Contains("--audit"))
+    {
+        var audits = await scope.ServiceProvider.GetRequiredService<InvestmentScreeningService>().AuditAsync(cancellation.Token);
+        var available = new[] { "price", "history", "financials", "valuation" }.ToDictionary(key => key,
+            key => audits.Count(r => r.Checks.Any(c => c.Key == key && c.Status == "available")));
+        var report = new { checkedAt = DateTimeOffset.UtcNow, total = audits.Count, ready = audits.Count(r => r.Ready), available,
+            providerConfiguration = new { secContactConfigured = !string.IsNullOrWhiteSpace(builder.Configuration["Screening:SecUserAgent"]),
+                fmpConfigured = !string.IsNullOrWhiteSpace(builder.Configuration["FinancialModelingPrep:ApiKey"]) }, rows = audits };
+        await File.WriteAllTextAsync("coverage-audit.json", System.Text.Json.JsonSerializer.Serialize(report,
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web) { WriteIndented = true }), cancellation.Token);
+        Console.WriteLine($"Audit: {audits.Count} akcií, {report.ready} splňuje všechny kontroly. " + string.Join(", ", available.Select(x => $"{x.Key}: {x.Value}")) + ". Výsledek: coverage-audit.json");
+        return 0;
+    }
     // Check actual table access, not just TCP connectivity. Do not migrate with the worker's limited identity.
     await db.ScreeningDocuments.AsNoTracking().OrderBy(x => x.Id).Select(x => x.Id).Take(1).ToListAsync(cancellation.Token);
     await db.InsiderFilings.AsNoTracking().OrderBy(x => x.Id).Select(x => x.Id).Take(1).ToListAsync(cancellation.Token);
@@ -91,7 +106,7 @@ try
         await using var acquire = new NpgsqlCommand("SELECT pg_try_advisory_lock(hashtextextended('EdgeDesk.ScreeningDaily', 0));", lease);
         if (!Convert.ToBoolean(await acquire.ExecuteScalarAsync(cancellation.Token)))
         { Console.WriteLine("Another screening worker is running; no duplicate work started."); return 0; }
-        await RunUpdateAsync(host, scope, cancellation.Token, args.Contains("--force"));
+        await RunUpdateAsync(host, scope, cancellation.Token, args.Contains("--force"), args.Contains("--screening-only"));
     }
     else
     {
@@ -101,7 +116,7 @@ try
         acquire.CommandText = "DECLARE @result int; EXEC @result = sys.sp_getapplock @Resource=N'EdgeDesk.ScreeningDaily', @LockMode='Exclusive', @LockOwner='Session', @LockTimeout=0; SELECT @result;";
         if (Convert.ToInt32(await acquire.ExecuteScalarAsync(cancellation.Token)) < 0)
         { Console.WriteLine("Another screening worker is running; no duplicate work started."); return 0; }
-        await RunUpdateAsync(host, scope, cancellation.Token, args.Contains("--force"));
+        await RunUpdateAsync(host, scope, cancellation.Token, args.Contains("--force"), args.Contains("--screening-only"));
     }
     return 0;
 }
@@ -117,8 +132,13 @@ catch (Exception ex)
     return 1;
 }
 
-static async Task RunUpdateAsync(IHost host, IServiceScope scope, CancellationToken cancellationToken, bool force)
+static async Task RunUpdateAsync(IHost host, IServiceScope scope, CancellationToken cancellationToken, bool force, bool screeningOnly)
 {
+    if (screeningOnly)
+    {
+        await StageAsync("Akciový screener", () => host.Services.GetRequiredService<ScreeningUpdateHostedService>().RunIfDueAsync(DateTimeOffset.UtcNow, cancellationToken, force, refreshContext: false));
+        return;
+    }
     await StageAsync("1/2 Makro, geopolitika a akcie", () => host.Services.GetRequiredService<ScreeningUpdateHostedService>().RunIfDueAsync(DateTimeOffset.UtcNow, cancellationToken, force));
     var dueDate = host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ScreeningSchedule>>().Value.DueDate(DateTimeOffset.UtcNow);
     TradingJournal.Models.InsiderImportRun insiderRun = null!;

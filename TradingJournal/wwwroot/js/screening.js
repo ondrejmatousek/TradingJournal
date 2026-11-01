@@ -24,8 +24,30 @@
         $('screen-page').textContent = `Strana ${page} / ${pages} · 25 akcií na stránku`;
         $('screen-prev').disabled = page <= 1;
         $('screen-next').disabled = page >= pages;
-        $('screen-rows').innerHTML = visible.length ? visible.map(r => `<tr><td><button type="button" data-symbol="${esc(r.symbol)}">${esc(r.symbol)} ↗</button><small title="${esc(r.name)}">${esc(r.name)}</small><small>${esc(r.sector)}</small></td><td>${number(r.price, 2)}<small>${esc(r.priceDate || 'chybí cena')}</small></td><td>${r.valuation ? `${number(r.valuation.low)}–${number(r.valuation.high)}` : '—'}<small>${r.valuation ? `základ ${number(r.valuation.base)}` : 'chybí ocenění'}</small></td><td class="${r.discount > 0 ? 'screen-positive' : r.discount != null ? 'screen-negative' : ''}">${pct(r.discount)}</td><td><strong>${esc(r.entry?.label || "Čeká na přepočet")}</strong><small>${r.entry?.zoneLow != null ? `${number(r.entry.zoneLow,2)}–${number(r.entry.zoneHigh,2)} USD` : "Zóna neurčena"}</small><small>${r.valuation?.buyBelow > 0 ? `Limit ${number(r.valuation.buyBelow,2)} USD` : ""}</small></td><td><strong>Kvalita dat ${number(r.valuation?.confidence)} / 100</strong><small>Nejistota ${esc(r.valuation?.uncertainty || "nevyhodnocena")}</small><small>${esc(r.valuation?.status || r.entry?.label || r.verdict)}</small></td></tr>`).join('') : '<tr><td colspan="6">Pro tento filtr nejsou žádné akcie.</td></tr>';
+        $('screen-rows').innerHTML = visible.length ? visible.map(r => `<tr><td><button type="button" data-symbol="${esc(r.symbol)}">${esc(r.symbol)} ↗</button><small title="${esc(r.name)}">${esc(r.name)}</small><small>${esc(r.sector)}</small></td><td>${number(r.price, 2)}<small>${esc(r.priceDate || 'chybí cena')}</small></td><td>${r.valuation ? `${number(r.valuation.low)}–${number(r.valuation.high)}` : '—'}<small>${r.valuation ? `základ ${number(r.valuation.base)}` : 'chybí ocenění'}</small></td><td class="${r.discount > 0 ? 'screen-positive' : r.discount != null ? 'screen-negative' : ''}">${pct(r.discount)}</td><td><strong>${esc(r.decision || r.entry?.label || "Chybí podklady")}</strong><small>${r.entry?.zoneLow != null ? `${number(r.entry.zoneLow,2)}–${number(r.entry.zoneHigh,2)} USD` : "Zóna neurčena"}</small><small>${r.valuation?.buyBelow > 0 ? `Limit ${number(r.valuation.buyBelow,2)} USD` : ""}</small></td><td><strong>${number(pillar(r, "quality"))} / 100</strong><small>Kvalita firmy</small></td><td><strong>Důvěryhodnost ${number(r.valuation?.confidence)} / 100</strong><small>Nejistota ${esc(r.valuation?.uncertainty || "nevyhodnocena")}</small><small>${esc(r.valuation?.status || r.entry?.label || r.verdict)}</small></td></tr>`).join('') : '<tr><td colspan="7">Pro tento filtr nejsou žádné akcie.</td></tr>';
     }
+    let coverageRows = [];
+    const statusLabel = value => ({ available: 'dostupné', missing: 'chybí podklady', stale: 'zastaralé', unsupported: 'nepodporované' }[value] || value);
+    $('screen-audit').onclick = async () => {
+        const button = $('screen-audit'); button.disabled = true;
+        $('screen-audit-status').textContent = 'Kontroluji uložená data všech sledovaných akcií…';
+        try {
+            const audit = await request('/Coverage'); coverageRows = audit.rows;
+            $('screen-audit-status').textContent = `Z ${audit.total} akcií: aktuální cena ${audit.available.price}, souvislá historie ${audit.available.history}, výkazy ${audit.available.financials}, použitelné ocenění ${audit.available.valuation}. Všechny kontroly splňuje ${audit.ready}. Kontrola ${new Date(audit.checkedAt).toLocaleString('cs-CZ')}.`;
+            $('screen-audit-rows').innerHTML = audit.rows.map(r => `<tr><td><button type="button" data-symbol="${esc(r.symbol)}">${esc(r.symbol)}</button></td>${r.checks.map(c => `<td><strong>${esc(statusLabel(c.status))}</strong><small>${esc(c.detail)}</small></td>`).join('')}<td>${r.issues.map(i => esc(i.message)).join('<br>') || 'Bez zaznamenané chyby'}</td></tr>`).join('');
+            $('screen-audit-result').hidden = false;
+        } catch (e) { $('screen-audit-status').textContent = e.message; }
+        finally { button.disabled = false; }
+    };
+    $('screen-audit-rows').addEventListener('click', async e => {
+        const button = e.target.closest('[data-symbol]');
+        if (!button) return;
+        $('screen-search').value = button.dataset.symbol;
+        $('screen-sector').value = ''; $('screen-filter').value = 'all';
+        $('screen-min-discount').value = ''; $('screen-min-score').value = ''; $('screen-min-confidence').value = '';
+        try { await load(1); if (rows.some(r => r.symbol === button.dataset.symbol)) await open(button.dataset.symbol); }
+        catch (error) { $('screen-audit-status').textContent = error.message; }
+    });
     let loadVersion = 0;
     async function load(targetPage = page) {
         const version = ++loadVersion;
@@ -51,6 +73,8 @@
         const r = selected;
         $('detail-title').textContent = `${r.symbol} · ${r.name}`;
         $('detail-body').innerHTML = `<p>${esc(r.entry?.label || r.verdict)} · pokrytí daty ${r.coverage} % · cena ${number(r.price,2)} USD (${esc(r.priceDate || 'chybí')}) · EMA200 ${pct(r.emaDistance)}</p>${r.refreshMessage ? `<p>${esc(r.refreshMessage)}</p>` : ''}<div class="screening-pillars">${r.pillars.map(p => `<article><strong>${esc(p.label)} · ${number(p.score)} / 100</strong><small> · váha ${p.weight} %</small><p>${esc(p.explanation)}</p></article>`).join('')}</div><h3>Zdůvodnění vstupu</h3><p>${r.entry?.zoneLow != null ? `Oblast pro sledování vstupu: ${number(r.entry.zoneLow,2)}–${number(r.entry.zoneHigh,2)} USD. Platí pouze při splnění podmínek stabilizace.` : "Nákupní zóna není potvrzena."}</p><ul>${(r.entry?.reasons || ["Nové hodnocení vznikne při denním přepočtu."]).map(reason => `<li>${esc(reason)}</li>`).join("")}</ul><h3>Ocenění a předpoklady</h3>${r.valuation ? `<p>Pesimistický ${number(r.valuation.low,2)} USD · základní ${number(r.valuation.base,2)} USD · optimistický ${number(r.valuation.high,2)} USD.</p><p>Model ${esc(r.valuation.model || "Legacy DCF")}: růst ${pct(r.valuation.growth)}, WACC ${pct(r.valuation.discountRate)}, terminální růst ${pct(r.valuation.terminalGrowth)}.</p><p>Sleva: ${pct(r.discount)}. Kvalita dat: ${number(r.valuation.confidence)}/100; nejistota ${esc(r.valuation.uncertainty || "nevyhodnocena")}.</p>` : '<p>Bez vhodných fundamentů se hodnota nevymýšlí. Pro banky a REIT tento model nepoužíváme.</p>'}${r.fundamentals ? `<p>Výkazy za období do ${esc(r.fundamentals.periodEnd)}, podáno ${esc(r.fundamentals.filed)} · ${safeLink(r.fundamentals.source,'zdroj výkazů')}.</p><p>Tržby ${number(r.fundamentals.revenue,0)} USD · FCF ${number(r.fundamentals.operatingCashFlow-r.fundamentals.capitalExpenditure,0)} USD · počet akcií ${number(r.fundamentals.shares,0)}.</p>` : ''}<h3>Co prověřit</h3><ul>${r.risks.map(risk => `<li>${esc(risk)}</li>`).join('') || '<li>Žádný automatický příznak není důkazem absence rizik.</li>'}</ul><h3>Vlastní zdroje a investiční teze</h3>${r.evidence.length ? r.evidence.map(e => `<article><strong>${esc(e.author)} · ${esc(e.pillar)} · ${esc(e.published)}</strong><p>${safeLink(e.sourceUrl,'Otevřít původní analýzu')} · horizont ${e.horizonDays} dní · hodnocení autora ${number(e.score)}/100</p><p>${esc(e.thesis)}</p><p>Riziko / vyvrácení teze: ${esc(e.risk)}</p></article>`).join('') : '<p>Zatím nejsou uložené zdrojované rozbory. Chybějící geopolitika a analýzy nemají skóre.</p>'}`;
+        const audit = r.dataAudit;
+        if (audit) $('detail-body').insertAdjacentHTML('afterbegin', `<h3>Dostupnost podkladů</h3><ul>${audit.checks.map(c => `<li><strong>${esc(c.label)}: ${esc(statusLabel(c.status))}</strong> — ${esc(c.detail)} ${esc(c.date || '')}${c.source ? `<small>Zdroj: ${esc(c.source)}</small>` : ''}</li>`).join('')}</ul><ul>${audit.issues.map(i => `<li>${esc(i.message)}</li>`).join('')}</ul>`);
         if (r.valuation && r.valuation.model !== "ValuationV2.0") {
             $('detail-body').insertAdjacentHTML('beforeend', `<h3>Kompozitní ocenění</h3><p>Fair Value ${number(r.valuation.compositeFairValue ?? r.valuation.base,2)} USD · ${esc(r.valuation.status || 'N/A')} · confidence ${number(r.valuation.confidence)}/100 · valuation score ${number(r.valuation.valuationScore)}/100.</p><p>DCF ${number(r.valuation.dcfFairValue,2)} · P/E ${number(r.valuation.relativeFairValue,2)} · forward P/E ${number(r.valuation.forwardPeFairValue,2)} · EV/EBITDA ${number(r.valuation.evEbitdaFairValue,2)} · FCF ${number(r.valuation.fcfFairValue,2)} USD. Váhy: ${esc(r.valuation.weights || '—')}</p><p>WACC ${pct(r.valuation.discountRate)} · bezriziková sazba ${pct(r.valuation.riskFreeRate)} · beta ${number(r.valuation.beta)} · ERP ${pct(r.valuation.equityRiskPremium)} · náklad dluhu ${pct(r.valuation.costOfDebt)} · daň ${pct(r.valuation.taxRate)}${r.valuation.waccFallbackUsed ? ' · použity konzervativní fallbacky' : ''}.</p><p>${esc(r.valuation.explanation || '')}</p><button type="button" id="valuation-history">Načíst historii ocenění</button><div id="valuation-history-result"></div>`);
         }
@@ -91,6 +115,17 @@
     $('screen-rows').addEventListener('click', e => { const b = e.target.closest('[data-symbol]'); if (b) open(b.dataset.symbol); });
     $('detail-close').onclick = () => $('screen-detail').close();
     const navigate = p => load(p).catch(e => { $('screen-status').textContent = e.message; });
+    async function loadAllRowsForRefresh() {
+        const pageSize = 50;
+        const first = await request(`/Data?page=1&pageSize=${pageSize}&sort=symbol`);
+        const all = [...first.rows];
+        const pages = Math.ceil(first.total / pageSize);
+        for (let current = 2; current <= pages; current++) {
+            const data = await request(`/Data?page=${current}&pageSize=${pageSize}&sort=symbol`);
+            all.push(...data.rows);
+        }
+        return all;
+    }
     let filterTimer;
     ['screen-search','screen-sector','screen-filter','screen-sort','screen-min-discount','screen-min-score','screen-min-confidence'].forEach(id => $(id).addEventListener('input', () => { clearTimeout(filterTimer); filterTimer = setTimeout(() => navigate(1), 250); }));
     $('screen-prev').onclick=()=>{if(page>1) navigate(page-1);}; $('screen-next').onclick=()=>{navigate(page+1);};
@@ -107,18 +142,23 @@
         $('screen-refresh').disabled = true; $('screen-stop').hidden = false;
         let done = 0, failed = 0, incomplete = 0;
         try {
-            if (!rows.length) {
-                $('screen-status').textContent = 'Znovu načítám uložený screening…';
-                await load();
-            }
-            // Sequential batches preserve predictable provider load and allow stopping without losing completed rows.
-            for (const row of [...rows]) {
+            $('screen-status').textContent = 'Načítám kompletní seznam akcií…';
+            const targets = await loadAllRowsForRefresh();
+            // Sequential requests preserve predictable provider load and allow stopping without losing completed rows.
+            for (const row of targets) {
                 if (stopping) break;
-                $('screen-status').textContent = `Aktualizuji ${row.symbol} · ${done}/${rows.length}. Obnova může trvat několik minut.`;
-                try { const result = await request(`/Refresh?symbol=${encodeURIComponent(row.symbol)}`, {}); rows[rows.findIndex(r => r.symbol === result.symbol)] = result; if (result.refreshMessage || !result.fundamentals) incomplete++; } catch { failed++; }
-                done++; render();
+                $('screen-status').textContent = `Aktualizuji ${row.symbol} · ${done}/${targets.length}. Obnova celé tabulky může trvat několik minut.`;
+                try {
+                    const result = await request(`/Refresh?symbol=${encodeURIComponent(row.symbol)}`, {});
+                    const visibleIndex = rows.findIndex(r => r.symbol === result.symbol);
+                    if (visibleIndex >= 0) rows[visibleIndex] = result;
+                    if (result.refreshMessage || !result.fundamentals) incomplete++;
+                } catch { failed++; }
+                done++;
+                render();
             }
-            $('screen-status').textContent = `${stopping ? 'Zastaveno' : 'Dokončeno'}: ${done}/${rows.length}, chyb požadavků ${failed}, neúplných dat ${incomplete}. Výkazy ${rows.filter(r => r.fundamentals).length}/${rows.length}, ocenění ${rows.filter(r => r.valuation).length}/${rows.length}. Podrobnosti poskytovatelů jsou v detailu akcie.`;
+            await load(page);
+            $('screen-status').textContent = `${stopping ? 'Zastaveno' : 'Dokončeno'}: ${done}/${targets.length}, chyb požadavků ${failed}, neúplných dat ${incomplete}. Výkazy a ocenění byly uloženy pro zpracované akcie.`;
         } catch (error) {
             $('screen-status').textContent = error.message;
         } finally { refreshing = false; $('screen-refresh').disabled = false; $('screen-stop').hidden = true; }
@@ -151,6 +191,5 @@
         const submit=e.submitter; submit.disabled=true;
         try {await request(`/Research?symbol=${encodeURIComponent(selected.symbol)}`,research);await load();detail();$('research-form').hidden=true;$('screen-status').textContent='Výzkum uložen a hodnocení přepočítáno.';} catch(error){$('research-error').textContent=error.message;} finally{submit.disabled=false;}
     };
-    load().then(() => { $('screen-status').textContent='Zobrazená jsou uložená data. Pro nové ceny a fundamenty spusť aktualizaci.'; }).catch(e => { $('screen-status').textContent=e.message; });
+    load().then(() => { if (!refreshing) $('screen-status').textContent='Zobrazená jsou uložená data. Pro nové ceny a fundamenty spusť aktualizaci.'; }).catch(e => { if (!refreshing) $('screen-status').textContent=e.message; });
 })();
-

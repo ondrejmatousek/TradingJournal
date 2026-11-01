@@ -145,7 +145,7 @@ public static class ScreeningCalculator
         if (!fresh) row.Risks.Add("Cena chybí nebo je starší než 7 dní; ocenění a technické skóre nejsou aktivní.");
         void Add(string key, string label, int weight, decimal? score, string why) => row.Pillars.Add(new(key, label, weight, score is null ? null : Math.Clamp(score.Value, 0, 100), why));
         var f = research.Fundamentals ?? fundamentals;
-        var fValid = f != null && f.PeriodEnd <= today && f.Filed <= today && f.Filed >= f.PeriodEnd && today.DayNumber - f.PeriodEnd.DayNumber <= 460 && f.Revenue > 0 && f.Assets > 0 && f.Liabilities >= 0;
+        var fValid = f != null && f.Currency == "USD" && f.PeriodEnd <= today && f.Filed <= today && f.Filed >= f.PeriodEnd && today.DayNumber - f.PeriodEnd.DayNumber <= 460 && f.Revenue > 0 && f.Assets > 0 && f.Liabilities >= 0;
         row.Fundamentals = f;
         if (f != null && !fValid) row.Risks.Add("Výkazy jsou zastaralé nebo neúplné; kvalita a ocenění se nezapočítávají.");
         decimal? quality = null;

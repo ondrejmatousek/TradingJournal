@@ -31,6 +31,8 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
             var row = ScreeningCalculator.Evaluate(stock, prices, cache?.Fundamentals, macro, research, DateOnly.FromDateTime(DateTime.UtcNow), persisted, allowLegacyCalculation: engine == null);
             row.RefreshMessage = string.Join(" ", new[] { cache?.Message, cache?.ValuationFailure });
             row.ValuationRunId = cache?.ValuationRunId;
+            row.DataAudit = ScreeningCoverage.Assess(stock.Symbol, prices, row.Fundamentals, cache?.Financials, row.Valuation,
+                today, cache?.RetrievedAt, cache?.Issues, cache?.ValuationFailure, cache?.PriceSource, cache?.ValuationStatus);
             if (engine != null && research.Fundamentals != null) row.Risks.Add("Vlastní starší formát výkazů není plným auditovaným V2 vstupem; ocenění je pozastavené.");
             rows.Add(row);
         }
@@ -45,8 +47,10 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
         {
             var old = await store.ReadAsync<ScreeningMarketCache>("market-" + symbol, ct);
             var messages = new List<string>();
+            var issues = new List<DataIssue>();
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             var prices = Recent(old?.Prices ?? [], today);
+            var priceSource = old?.PriceSource;
             FundamentalInput? fundamental = old?.Fundamentals;
             var financials = old?.Financials ?? fundamental?.ValuationFinancials;
             // Explicit user refresh bypasses the local result cache; provider rate limits still apply.
@@ -54,21 +58,40 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
             {
                 try
                 {
-                    var fetched = await history.GetDailyPricesAsync(symbol, ct);
-                    if (fetched.Count > 0) prices = Recent(fetched.Select(p => new MarketPrice(DateOnly.FromDateTime(p.Date), p.Close)), today);
+                    var snapshot = await history.GetSnapshotAsync(symbol, ct);
+                    issues.AddRange(snapshot.Issues);
+                    var fetched = snapshot.Prices;
+                    if (fetched.Count > 0)
+                    {
+                        var recent = Recent(fetched.Select(p => new MarketPrice(DateOnly.FromDateTime(p.Date), p.Close)), today);
+                        if (recent.Count > 0 && (prices.Count == 0 || recent[^1].Date >= prices[^1].Date))
+                        { prices = recent; priceSource = snapshot.Source; }
+                    }
                     else messages.Add("Cenový poskytovatel nevrátil historii; zachována dostupná data.");
                 }
-                catch (Exception) when (!ct.IsCancellationRequested) { messages.Add("Ceny se nepodařilo aktualizovat."); }
+                catch (Exception ex) when (!ct.IsCancellationRequested)
+                {
+                    messages.Add("Ceny se nepodařilo aktualizovat.");
+                    issues.Add(ex is HttpRequestException or OperationCanceledException
+                        ? DataIssue.FromException("Ceny", ex) : new("api", "Ceny", "Stažení cen selhalo; zachována dostupná historie."));
+                }
                 try
                 {
-                    var fetched = await provider.CompanyFinancialsAsync(symbol, ct);
-                    if (fetched.Financials?.Latest != null) financials = fetched.Financials;
-                    if (fetched.Fundamentals != null) fundamental = fetched.Fundamentals;
-                    else messages.Add("SEC neposkytla úplné srovnatelné roční výkazy v USD; předchozí výkazy zůstaly zachované.");
+                    var fetched = await provider.FetchFinancialsAsync(symbol, ct);
+                    issues.AddRange(fetched.Issues);
+                    if (fetched.Financials?.Latest != null && (financials?.Latest == null || fetched.Financials.Latest.End >= financials.Latest.End))
+                    {
+                        var combined = FinancialDataMerge.Combine(fetched, new(fundamental, financials, []));
+                        issues.AddRange(combined.Issues.Except(fetched.Issues));
+                        financials = combined.Financials;
+                        if (combined.Fundamentals != null) fundamental = combined.Fundamentals;
+                    }
+                    else if (fetched.Fundamentals != null && (fundamental == null || fetched.Fundamentals.PeriodEnd >= fundamental.PeriodEnd)) fundamental = fetched.Fundamentals;
+                    if (fetched.Fundamentals == null) messages.Add("Nové úplné fundamenty nejsou dostupné; použitelné předchozí údaje zůstaly zachované.");
                 }
                 catch (Exception) when (!ct.IsCancellationRequested) { messages.Add("Stažení výkazů SEC selhalo nebo platí dočasný limit poskytovatele; předchozí výkazy zůstaly zachované."); }
                 var updated = new ScreeningMarketCache(DateTimeOffset.UtcNow, prices, fundamental == null ? null : fundamental with { ValuationFinancials = null }, string.Join(" ", messages))
-                    { Financials = financials };
+                    { Financials = financials, Issues = issues, PriceSource = priceSource };
                 if (engine != null)
                 {
                     var macro = await store.ReadAsync<List<MacroObservation>>("macro-v1", ct) ?? [];
@@ -77,7 +100,7 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
                     var report=engine.Calculate(symbol, stock.Sector, financials, lastPrice?.Close, lastPrice?.Date, today,
                         rf==null?null:new Assumption("RiskFree",rf.Value/100,"ratio",rf.Source,rf.Date,false,"US Treasury 10Y"));
                     if(valuations != null) await valuations.SaveAsync(report,financials,ct);
-                    updated=updated with { Valuation=ValuationRegistration.Summary(report), ValuationRunId=report.Id,
+                    updated=updated with { Valuation=ValuationRegistration.Summary(report), ValuationRunId=report.Id, ValuationStatus=report.Status,
                         ValuationFailure=report.BaseFairValue==null?string.Join(" ",report.Warnings):null };
                     logger?.LogInformation("Valuation {Ticker} {Strategy} {Version} quality {Quality} uncertainty {Uncertainty}: base {Base}, status {Status}",symbol,report.Strategy,report.ModelVersion,report.DataQuality,report.Uncertainty,report.BaseFairValue,report.Status);
                 }
@@ -100,6 +123,28 @@ public sealed class InvestmentScreeningService(ApplicationDbContext db, Screenin
         var result = ScreeningCalculator.Evaluate(stock, Merge(seasonal, market.Prices), market.Fundamentals, macro, research, DateOnly.FromDateTime(DateTime.UtcNow), market.Valuation, allowLegacyCalculation: engine == null);
         result.RefreshMessage = string.Join(" ", new[]{market.Message, market.ValuationFailure});
         result.ValuationRunId = market.ValuationRunId;
+        result.DataAudit = ScreeningCoverage.Assess(symbol, Merge(seasonal, market.Prices), result.Fundamentals,
+            market.Financials, result.Valuation, DateOnly.FromDateTime(DateTime.UtcNow), market.RetrievedAt, market.Issues, market.ValuationFailure, market.PriceSource, market.ValuationStatus);
+        return result;
+    }
+
+    public async Task<List<CoverageAudit>> AuditAsync(CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var result = new List<CoverageAudit>();
+        foreach (var stock in await UniverseAsync(ct))
+        {
+            var cache = await store.ReadAsync<ScreeningMarketCache>("market-" + stock.Symbol, ct);
+            var prices = Merge(await LoadRecentAsync(stock.Symbol, today, ct), cache?.Prices ?? []);
+            var issues = cache?.Issues.ToList() ?? [];
+            if (!string.IsNullOrWhiteSpace(cache?.Message)) issues.Add(new("refresh", "Aktualizace", cache.Message));
+            var failure = stock.Sector is "Financial Services" or "Real Estate"
+                ? "Typ firmy vyžaduje jiný oceňovací model (banka / finanční společnost / REIT)."
+                : cache?.ValuationFailure;
+            result.Add(ScreeningCoverage.Assess(stock.Symbol, prices, cache?.Fundamentals, cache?.Financials,
+                cache?.Valuation, today, cache?.RetrievedAt, issues, failure, cache?.PriceSource,
+                stock.Sector is "Financial Services" or "Real Estate" ? "UnsupportedCompanyType" : cache?.ValuationStatus));
+        }
         return result;
     }
 

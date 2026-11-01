@@ -87,6 +87,8 @@ public sealed class ScreeningResearch
 }
 public sealed class ScreeningRow
 {
+    public CoverageAudit? DataAudit { get; set; }
+    public string Decision => ScreeningCoverage.Decision(this);
     public string? ValuationRunId { get; set; }
     public string Symbol { get; set; } = "";
     public string Name { get; set; } = "";

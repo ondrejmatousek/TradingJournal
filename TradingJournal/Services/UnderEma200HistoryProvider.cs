@@ -20,73 +20,42 @@ namespace TradingJournal.Services
         }
 
         public async Task<IReadOnlyList<UnderEma200PricePoint>> GetDailyPricesAsync(string symbol, CancellationToken cancellationToken)
+            => (await GetSnapshotAsync(symbol, cancellationToken)).Prices;
+
+        public async Task<PriceHistorySnapshot> GetSnapshotAsync(string symbol, CancellationToken cancellationToken)
         {
             using var client = _httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromSeconds(30);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("EdgeDesk/1.0");
-
-            var yahooPrices = await TryFetchDailyPricesAsync(
-                symbol,
-                "Yahoo chart",
-                () => FetchYahooDailyPricesAsync(client, symbol, cancellationToken));
-            if (yahooPrices.Count > 0)
+            var issues = new List<TradingJournal.Services.Screening.DataIssue>();
+            async Task<List<UnderEma200PricePoint>> Read(string source, Func<Task<List<UnderEma200PricePoint>>> fetch)
             {
-                return yahooPrices;
-            }
-
-            var prices = await TryFetchDailyPricesAsync(
-                symbol,
-                "Alpha Vantage",
-                () => FetchAlphaVantageDailyPricesAsync(client, symbol, cancellationToken));
-            if (prices.Count > 0)
-            {
-                return prices;
-            }
-
-            return await TryFetchDailyPricesAsync(
-                symbol,
-                "Stooq",
-                () => FetchStooqDailyPricesAsync(client, symbol, cancellationToken));
-        }
-
-        private async Task<List<UnderEma200PricePoint>> TryFetchDailyPricesAsync(
-            string symbol,
-            string providerName,
-            Func<Task<List<UnderEma200PricePoint>>> fetch)
-        {
-            try
-            {
-                var prices = await fetch();
-                if (prices.Count == 0)
+                cancellationToken.ThrowIfCancellationRequested();
+                try
                 {
-                    _logger.LogWarning(
-                        "{ProviderName} returned zero daily prices for EMA200 symbol {Symbol}.",
-                        providerName,
-                        symbol);
+                    var prices = await fetch();
+                    if (prices.Count == 0) issues.Add(new("missing", source, $"{source}: nebyla vrácena cenová historie (ověř konfiguraci a limit API)."));
+                    return prices;
                 }
-
-                return prices;
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested && ex is HttpRequestException or OperationCanceledException or JsonException or FormatException)
+                {
+                    issues.Add(TradingJournal.Services.Screening.DataIssue.FromException(source, ex));
+                    _logger.LogWarning("Price source {Source} failed for {Symbol}: {Type}", source, symbol, ex.GetType().Name);
+                    return [];
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(
-                    ex,
-                    "{ProviderName} failed while loading EMA200 daily prices for symbol {Symbol}.",
-                    providerName,
-                    symbol);
-                return [];
-            }
+            var yahoo = await Read("Yahoo chart", () => FetchYahooDailyPricesAsync(client, symbol, cancellationToken));
+            if (yahoo.Count > 0) return new(yahoo, "Yahoo chart", issues);
+            var alpha = await Read("Alpha Vantage", () => FetchAlphaVantageDailyPricesAsync(client, symbol, cancellationToken));
+            if (alpha.Count > 0) return new(alpha, "Alpha Vantage", issues);
+            var stooq = await Read("Stooq", () => FetchStooqDailyPricesAsync(client, symbol, cancellationToken));
+            return new(stooq, stooq.Count > 0 ? "Stooq" : null, issues);
         }
-
         private async Task<List<UnderEma200PricePoint>> FetchYahooDailyPricesAsync(HttpClient client, string symbol, CancellationToken cancellationToken)
         {
             var url = $"https://query1.finance.yahoo.com/v8/finance/chart/{Uri.EscapeDataString(symbol)}?range=10y&interval=1d&events=history";
             using var response = await client.GetAsync(url, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Yahoo chart returned {StatusCode} for EMA200 symbol {Symbol}.", response.StatusCode, symbol);
-                return [];
-            }
+            response.EnsureSuccessStatusCode();
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
@@ -152,11 +121,7 @@ namespace TradingJournal.Services
 
             var url = $"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={Uri.EscapeDataString(symbol)}&outputsize=full&apikey={Uri.EscapeDataString(apiKey)}";
             using var response = await client.GetAsync(url, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Alpha Vantage returned {StatusCode} for EMA200 symbol {Symbol}.", response.StatusCode, symbol);
-                return [];
-            }
+            response.EnsureSuccessStatusCode();
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);

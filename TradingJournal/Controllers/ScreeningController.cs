@@ -11,6 +11,14 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
 {
     private string UserKey => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new InvalidOperationException("Missing user identity.");
     [HttpGet]
+    public Task<IActionResult> Coverage(CancellationToken ct) => ReadScreeningAsync(async () =>
+    {
+        var rows = await service.AuditAsync(ct);
+        return Json(new { checkedAt = DateTimeOffset.UtcNow, total = rows.Count, ready = rows.Count(r => r.Ready),
+            available = new[] { "price", "history", "financials", "valuation" }.ToDictionary(key => key,
+                key => rows.Count(r => r.Checks.Any(c => c.Key == key && c.Status == "available"))), rows });
+    }, ct);
+    [HttpGet]
     public async Task<IActionResult> Index(CancellationToken ct) => View("~/Views/Investments/Screener.cshtml", (await service.UniverseAsync(ct)).Count);
     [HttpGet]
     public async Task<IActionResult> UpdateStatus([FromServices] Microsoft.Extensions.Options.IOptions<ScreeningSchedule> schedule, CancellationToken ct)

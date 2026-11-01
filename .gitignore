@@ -377,5 +377,14 @@ skills-lock.json
 # Disposable valuation verification artifacts and runtime logs
 tmp/valuation/
 
+# Isolated stock coverage verification builds
+tmp/coverage-*/
+
 # Local SDK and private billing verification artifacts
 tmp/invoice-*/
+
+# Temporary local builds, console logs and private coverage reports
+tmp/seasonality-build/
+tmp/serr
+tmp/sout
+coverage-audit.json

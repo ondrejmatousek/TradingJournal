@@ -8,14 +8,18 @@ public static class SecFinancialParser
     private static readonly Dictionary<string, string[]> Tags = new()
     {
         ["Revenue"] = ["RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet"],
-        ["Ebit"] = ["OperatingIncomeLoss"], ["Tax"] = ["IncomeTaxExpenseBenefit"],
+        ["Ebit"] = ["OperatingIncomeLoss", "OperatingIncomeLossIncludingNoncontrollingInterest", "OperatingIncomeLossFromContinuingOperations"], ["Tax"] = ["IncomeTaxExpenseBenefit"],
         ["Pretax"] = ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest", "IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments"],
         ["Da"] = ["DepreciationDepletionAndAmortization", "DepreciationDepletionAndAmortizationPropertyPlantAndEquipment"],
+        ["DepreciationComponent"] = ["Depreciation"],
+        ["AmortizationComponent"] = ["AmortizationOfIntangibleAssets"],
         ["CapEx"] = ["PaymentsToAcquirePropertyPlantAndEquipment"], ["Ocf"] = ["NetCashProvidedByUsedInOperatingActivities"],
         ["NetIncome"] = ["NetIncomeLoss"], ["Interest"] = ["InterestExpenseNonOperating", "InterestAndDebtExpense", "InterestExpense"],
         ["Sbc"] = ["ShareBasedCompensation"], ["BasicShares"] = ["WeightedAverageNumberOfSharesOutstandingBasic"],
         ["DilutedShares"] = ["WeightedAverageNumberOfDilutedSharesOutstanding"],
         ["Cash"] = ["CashAndCashEquivalentsAtCarryingValue"],
+        ["Assets"] = ["Assets"], ["Liabilities"] = ["Liabilities"],
+        ["LiabilitiesCurrentComponent"] = ["LiabilitiesCurrent"], ["LiabilitiesNoncurrentComponent"] = ["LiabilitiesNoncurrent"],
         ["ShortInvestments"] = ["ShortTermInvestments", "MarketableSecuritiesCurrent"],
         ["LongInvestments"] = ["MarketableSecuritiesNoncurrent", "LongTermInvestments"],
         ["Receivables"] = ["AccountsReceivableNetCurrent"], ["Inventory"] = ["InventoryNet"],
@@ -27,7 +31,7 @@ public static class SecFinancialParser
         ["ShortDebt"] = ["ShortTermBorrowings"], ["CommercialPaper"] = ["CommercialPaper"],
         ["Lease"] = ["OperatingLeaseLiabilityNoncurrent"], ["LeaseCurrent"] = ["OperatingLeaseLiabilityCurrent"]
     };
-    private static readonly HashSet<string> Durations = ["Revenue", "Ebit", "Tax", "Pretax", "Da", "CapEx", "Ocf", "NetIncome", "Interest", "Sbc", "BasicShares", "DilutedShares"];
+    private static readonly HashSet<string> Durations = ["Revenue", "Ebit", "Tax", "Pretax", "Da", "DepreciationComponent", "AmortizationComponent", "CapEx", "Ocf", "NetIncome", "Interest", "Sbc", "BasicShares", "DilutedShares"];
 
     public static FinancialDataset Parse(JsonElement root, string source, DateOnly today)
     {
@@ -55,6 +59,24 @@ public static class SecFinancialParser
         }
         var all = Tags.ToDictionary(k => k.Key, k => Read(gaap, k.Key.EndsWith("Shares") ? "shares" : "USD", k.Value));
         FinancialFact? Exact(string key, DateOnly start, DateOnly end) => all[key].FirstOrDefault(f => f.Start == start && f.End == end);
+        void DeriveComponents(Dictionary<string, FinancialFact> values)
+        {
+            if (!values.ContainsKey("Liabilities") && values.GetValueOrDefault("LiabilitiesCurrentComponent") is {} current
+                && values.GetValueOrDefault("LiabilitiesNoncurrentComponent") is {} noncurrent
+                && current.End == noncurrent.End && current.Start == current.End && noncurrent.Start == noncurrent.End)
+                values["Liabilities"] = current with { Value = current.Value + noncurrent.Value,
+                    Filed = current.Filed > noncurrent.Filed ? current.Filed : noncurrent.Filed,
+                    Tag = "DerivedLiabilities", Accession = $"{current.Accession};{noncurrent.Accession}", Kind = "Derived",
+                    Derivation = "Current + noncurrent liabilities at the same date; " + ValuationJson.Serialize(new[] { current, noncurrent }) };
+            if (values.ContainsKey("Da") || values.GetValueOrDefault("DepreciationComponent") is not {} depreciation
+                || values.GetValueOrDefault("AmortizationComponent") is not {} amortization
+                || depreciation.Start != amortization.Start || depreciation.End != amortization.End
+                || depreciation.Value < 0 || amortization.Value < 0) return;
+            values["Da"] = depreciation with { Value = depreciation.Value + amortization.Value,
+                Filed = depreciation.Filed > amortization.Filed ? depreciation.Filed : amortization.Filed,
+                Tag = "DerivedDepreciationAndAmortization", Accession = $"{depreciation.Accession};{amortization.Accession}",
+                Kind = "Derived", Derivation = "Depreciation + amortization of intangible assets for the same period; " + ValuationJson.Serialize(new[] { depreciation, amortization }) };
+        }
         FinancialPeriod Period(DateOnly start, DateOnly end)
         {
             var values = new Dictionary<string, FinancialFact>();
@@ -63,6 +85,22 @@ public static class SecFinancialParser
                 var f = Exact(key, Durations.Contains(key) ? start : end, end);
                 if (f != null) values[key] = f;
             }
+            // Some issuers do not tag an operating-income line even though they
+            // disclose pretax income and interest expense for the same period.
+            // EBIT = pretax income + interest expense. Keep the derivation
+            // explicit so the valuation audit can distinguish it from a filed fact.
+            if (!values.ContainsKey("Ebit")
+                && values.GetValueOrDefault("Pretax") is { } pretax
+                && values.GetValueOrDefault("Interest") is { Value: > 0 } interest)
+            {
+                values["Ebit"] = new FinancialFact(
+                    pretax.Value + interest.Value,
+                    "USD", start, end,
+                    pretax.Filed >= interest.Filed ? pretax.Filed : interest.Filed,
+                    pretax.Source, "DerivedEbit", $"{pretax.Accession};{interest.Accession}",
+                    "Derived", "Pretax income + positive interest expense for the same reporting period.");
+            }
+            DeriveComponents(values);
             return new(start, end, false, values);
         }
         var revenue = all["Revenue"].Where(f => f.End.DayNumber - f.Start.DayNumber is >= 330 and <= 380)
@@ -97,7 +135,8 @@ public static class SecFinancialParser
                     // partial TTM and report avoidable "missing" valuations.
                     // Keeping the complete FY is preferable to mixing periods;
                     // the engine records that the valuation is FY based.
-                    var lostCoverage = latest.Facts.Keys.Except(result.Keys).ToArray();
+                    DeriveComponents(result);
+                    var lostCoverage = latest.Facts.Keys.Where(k => !k.EndsWith("Component")).Except(result.Keys).ToArray();
                     if (lostCoverage.Length == 0)
                         latest = new(prior.End.AddDays(1), ytd.End, true, result);
                     else

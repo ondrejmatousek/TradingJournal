@@ -143,6 +143,9 @@ public sealed class ScreeningStore(IWebHostEnvironment environment, IServiceScop
 }
 public sealed record ScreeningMarketCache(DateTimeOffset RetrievedAt, List<TradingJournal.Models.MarketPrice> Prices, FundamentalInput? Fundamentals, string? Message)
 {
+    public List<DataIssue> Issues { get; init; } = [];
+    public string? PriceSource { get; init; }
+    public string? ValuationStatus { get; init; }
     public TradingJournal.Services.Valuation.FinancialDataset? Financials { get; init; }
     public string? ValuationRunId { get; init; }
     public string? ValuationInputKey { get; init; }

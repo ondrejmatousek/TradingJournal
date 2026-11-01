@@ -64,6 +64,7 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
 builder.Services.AddSingleton<TradingJournal.Services.Screening.ScreeningStore>();
 builder.Services.AddValuationV2(builder.Configuration);
 builder.Services.AddScoped<TradingJournal.Services.Screening.ScreeningDataProvider>();
+builder.Services.AddScoped<TradingJournal.Services.Screening.FmpFinancialProvider>();
 builder.Services.AddScoped<TradingJournal.Services.Screening.InvestmentScreeningService>();
 builder.Services.AddScoped<TradingJournal.Services.Insiders.InsiderSecProvider>();
 builder.Services.AddScoped<TradingJournal.Services.Insiders.IInsiderSecProvider>(sp => sp.GetRequiredService<TradingJournal.Services.Insiders.InsiderSecProvider>());
