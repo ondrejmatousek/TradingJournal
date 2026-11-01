@@ -11,6 +11,40 @@ public sealed class ScreeningController(InvestmentScreeningService service, Scre
 {
     private string UserKey => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new InvalidOperationException("Missing user identity.");
     [HttpGet]
+    public Task<IActionResult> PriceLab([FromServices] TradingJournal.Services.Valuation.PriceLabService lab,
+        string? symbol, CancellationToken ct) => ReadScreeningAsync(async () =>
+    {
+        var symbols = string.IsNullOrWhiteSpace(symbol) ? TradingJournal.Services.Valuation.PriceLabService.PilotSymbols : new[] { symbol.ToUpperInvariant() };
+        var universe = await service.UniverseAsync(ct);
+        if (symbols.Any(s => !universe.Any(u => u.Symbol == s))) return BadRequest("Neznámý ticker.");
+        try
+        {
+            var results = new List<TradingJournal.Services.Valuation.PriceLabResult>();
+            foreach (var ticker in symbols) results.Add(await lab.AnalyseAsync(UserKey, ticker, ct));
+            return Json(new { checkedAt = DateTimeOffset.UtcNow, rows = results });
+        }
+        catch (ArgumentException ex) { return BadRequest(ex.Message); }
+    }, ct);
+
+    [HttpPost, ActionName("PriceLab"), ValidateAntiForgeryToken, RequestSizeLimit(8192)]
+    public Task<IActionResult> SavePriceLab(string symbol, [FromBody] TradingJournal.Services.Valuation.PriceLabSettings settings,
+        [FromServices] TradingJournal.Services.Valuation.PriceLabService lab, CancellationToken ct) => ReadScreeningAsync(async () =>
+    {
+        if (!ModelState.IsValid || settings == null) return BadRequest("Neplatné předpoklady ocenění.");
+        var error = settings.Validate(DateOnly.FromDateTime(DateTime.UtcNow));
+        if (error != null) return BadRequest(error);
+        if (string.IsNullOrWhiteSpace(symbol)) return BadRequest("Chybí ticker.");
+        symbol = symbol.ToUpperInvariant();
+        try
+        {
+            var result = await lab.AnalyseAsync(UserKey, symbol, ct, settings);
+            await lab.SaveAsync(UserKey, symbol, settings, ct);
+            return Json(result);
+        }
+        catch (ArgumentException ex) { return BadRequest(ex.Message); }
+    }, ct);
+
+    [HttpGet]
     public Task<IActionResult> Coverage(CancellationToken ct) => ReadScreeningAsync(async () =>
     {
         var rows = await service.AuditAsync(ct);

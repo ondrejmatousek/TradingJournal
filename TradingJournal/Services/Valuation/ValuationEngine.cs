@@ -5,7 +5,7 @@ namespace TradingJournal.Services.Valuation;
 public interface IValuationEngine
 {
     ValuationReport Calculate(string symbol, string sector, FinancialDataset? data, decimal? price, DateOnly? priceDate,
-        DateOnly asOf, Assumption? riskFree = null);
+        DateOnly asOf, Assumption? riskFree = null, ValuationForecast? forecast = null);
 }
 public interface IFinancialNormalizationService { decimal Median(IEnumerable<decimal> values); }
 public sealed class FinancialNormalizationService : IFinancialNormalizationService
@@ -54,16 +54,18 @@ public sealed class ValuationEngine(IOptions<ValuationOptions> settings, IFinanc
     IWaccCalculator waccCalculator, IEnumerable<IValuationStrategy>? strategies = null) : IValuationEngine
 {
     public ValuationReport Calculate(string symbol, string sector, FinancialDataset? data, decimal? price, DateOnly? priceDate,
-        DateOnly asOf, Assumption? riskFree = null)
+        DateOnly asOf, Assumption? riskFree = null, ValuationForecast? forecast = null)
     {
         var o = settings.Value;
         var r = new ValuationReport { Symbol=symbol, AsOf=asOf, Price=price, PriceDate=priceDate, Policy=o,
             InputHash=ValuationJson.Hash(data == null ? null : data with { AsOf=default }), FinancialPeriodEnd=data?.Latest?.End, IsTtm=data?.Latest?.IsTtm ?? false };
-        r.Id=ValuationJson.Hash(new { r.ModelVersion, r.Symbol, r.InputHash, sector, asOf, price, priceDate, riskFree, o });
+        if (forecast != null) r.ModelVersion = "ValuationV2.1";
+        r.Id=ValuationJson.Hash(new { r.ModelVersion, r.Symbol, r.InputHash, sector, asOf, price, priceDate, riskFree, o, forecast });
         ValuationReport Fail(string message, string status="LimitedData") { r.Status=status; r.Warnings.Add(message); return r; }
         if(o.MaximumForecastRoic<=0 || o.TerminalRoic<=0 || o.GrowthFloor>o.GrowthCeiling || o.TaxFloor<0 || o.TaxCeiling>=1 || o.TaxFloor>o.TaxCeiling
             || o.TerminalGrowth<0 || new[]{o.LowMos,o.MediumMos,o.HighMos,o.VeryHighMos}.Any(x=>x<0||x>=1))
             return Fail("Invalid valuation policy configuration.","InvalidData");
+        if (forecast != null && (forecast.InitialGrowth is < -.10m or > .50m || forecast.TerminalMargin is < .01m or > .60m || forecast.Beta is < .3m or > 3m || forecast.Date > asOf)) return Fail("Invalid forward assumptions.", "InvalidData");
         if (!o.Enabled) return Fail("Valuation V2 is disabled; legacy values are not substituted.");
         var strategy = (strategies ?? new IValuationStrategy[] { new FinancialInstitutionStrategy(), new ReitStrategy(), new StandardNonFinancialStrategy() })
             .FirstOrDefault(x=>x.Matches(sector ?? ""));
@@ -128,14 +130,14 @@ public sealed class ValuationEngine(IOptions<ValuationOptions> settings, IFinanc
         var recent=yoy[^1];
         var growth=Median(new[]{Cagr(3),history.Length>=6?Cagr(5):Cagr(3),recent});
         var spread=Median(yoy.Select(x=>Math.Abs(x-Median(yoy))));
-        var initialGrowth=Math.Clamp(growth,o.GrowthFloor,o.GrowthCeiling);
+        var initialGrowth=forecast?.InitialGrowth ?? Math.Clamp(growth,o.GrowthFloor,o.GrowthCeiling);
         A("RevenueCagr3Y",Cagr(3),"ratio","SEC annual history",false,"Calendar-day CAGR; shorter available history used when full window is unavailable.");
         if(history.Length>=6) A("RevenueCagr5Y",Cagr(5),"ratio","SEC annual history",false,"Calendar-day CAGR; shorter available history used when full window is unavailable.");
         if(history.Length>=11) A("RevenueCagr10Y",Cagr(10),"ratio","SEC annual history",false,"Calendar-day CAGR; shorter available history used when full window is unavailable.");
-        r.Normalizations.Add(new("Growth",growth,initialGrowth,"Median 3Y/5Y/latest FY growth, explicit bounds. Forecast extrapolation, not consensus."));
+        r.Normalizations.Add(new("Growth",growth,initialGrowth,forecast?.InitialGrowth != null ? "Sourced user first-year growth, fading to terminal growth; not consensus." : "Median 3Y/5Y/latest FY growth, explicit bounds. Forecast extrapolation, not consensus."));
         var margins=history.TakeLast(5).Select(x=>ValuationMath.Get(x,"Ebit")!.Value/ValuationMath.Get(x,"Revenue")!.Value).ToArray();
-        var margin=Median(margins); var startMargin=ebit/revenue;
-        r.Normalizations.Add(new("EbitMargin",startMargin,margin,"Forecast fades from latest margin to five-year median."));
+        var margin=forecast?.TerminalMargin ?? Median(margins); var startMargin=ebit/revenue;
+        r.Normalizations.Add(new("EbitMargin",startMargin,margin,forecast?.TerminalMargin != null ? "Forecast fades from latest margin to sourced user target." : "Forecast fades from latest margin to five-year median."));
         var daRatio=Median(history.Where(x=>ValuationMath.Get(x,"Da")!=null).TakeLast(5).Select(x=>ValuationMath.Get(x,"Da")!.Value/ValuationMath.Get(x,"Revenue")!.Value));
         var capexRatio=Median(history.Where(x=>ValuationMath.Get(x,"CapEx")!=null).TakeLast(5).Select(x=>ValuationMath.Get(x,"CapEx")!.Value/ValuationMath.Get(x,"Revenue")!.Value));
         var nwcPeriods=history.Where(x=>ValuationMath.Nwc(x)!=null).TakeLast(5).ToArray();
@@ -143,8 +145,8 @@ public sealed class ValuationEngine(IOptions<ValuationOptions> settings, IFinanc
         var nwcRatio=Median(nwcPeriods.Select(x=>ValuationMath.Nwc(x)!.Value/ValuationMath.Get(x,"Revenue")!.Value));
         r.Warnings.Add("Operating NWC is estimated from receivables + inventory − payables. Other current items are excluded without verified operating classification.");
         A("OperatingNwcRevenue",nwcRatio,"ratio","SEC receivables/inventory/payables",true,"Partial operating NWC; no cash or financing items.");
-        A("InitialRevenueGrowth",initialGrowth,"ratio","Historical model",true,"No external forward estimates. Ten-year projection is a scenario, not a prediction.");
-        A("TerminalMargin",margin,"ratio","SEC five-year median",true,"Mean reversion.");
+        A("InitialRevenueGrowth",initialGrowth,"ratio",forecast?.InitialGrowth != null ? forecast.Source : "Historical model",true,"Ten-year projection is a scenario, not a prediction.",forecast?.InitialGrowth != null ? forecast.Date : null);
+        A("TerminalMargin",margin,"ratio",forecast?.TerminalMargin != null ? forecast.Source : "SEC five-year median",true,"Year-ten operating margin target.",forecast?.TerminalMargin != null ? forecast.Date : null);
         A("DaRevenue",daRatio,"ratio","SEC five-year median",true,"Explicit period asset intensity.");
         A("CapExRevenue",capexRatio,"ratio","SEC five-year median",true,"Reinvestment checked against implied ROIC.");
         A("TerminalRoic",o.TerminalRoic,"ratio","ValuationOptions",true,"Stable reinvestment=g/ROIC; growth is not free.");
@@ -155,7 +157,15 @@ public sealed class ValuationEngine(IOptions<ValuationOptions> settings, IFinanc
         var rf=riskFree is {Value:>=0 and <.20m} && riskFree.Date<=asOf && asOf.DayNumber-riskFree.Date.DayNumber<=10 ? riskFree : null;
         var riskFreeValue=rf?.Value??o.FallbackRiskFree;
         A("RiskFree",riskFreeValue,"ratio",rf?.Source??"ValuationOptions.FallbackRiskFree",rf==null,"USD nominal risk-free rate.",rf?.Date??asOf);
-        A("Beta",o.FallbackBeta,"ratio","ValuationOptions.FallbackBeta",true,"Estimated beta; a regression/bottom-up company beta is not available.");
+        var beta=forecast?.Beta ?? o.FallbackBeta;
+        if (forecast != null)
+        {
+            if (forecast.InitialGrowth != null) A("ForwardGrowth", initialGrowth, "ratio", forecast.Source, true, "User scenario: first-year revenue growth fades to terminal growth over ten years.", forecast.Date);
+            if (forecast.TerminalMargin != null) A("ForwardMargin", margin, "ratio", forecast.Source, true, "User scenario: EBIT margin reached in year ten.", forecast.Date);
+            if (forecast.Beta != null) A("ForwardBeta", beta, "ratio", forecast.Source, true, "User-supplied company risk assumption.", forecast.Date);
+            r.Warnings.Add("Custom forecast is an analyst scenario, not a verified consensus or a prediction.");
+        }
+        A("Beta",beta,"ratio",forecast?.Beta != null ? forecast.Source : "ValuationOptions.FallbackBeta",true,forecast?.Beta != null ? "Sourced user company beta; not independently verified." : "Estimated beta; a regression/bottom-up company beta is not available.",forecast?.Beta != null ? forecast.Date : null);
         A("ERP",o.Erp,"ratio","ValuationOptions.Erp",true,"Versioned equity risk premium policy.",asOf);
         var interest=ValuationMath.Get(p,"Interest");
         var kd=interest>0 && debt>0?Math.Clamp(interest.Value/debt.Value,.005m,.25m):riskFreeValue+o.CreditSpread;
@@ -171,7 +181,7 @@ public sealed class ValuationEngine(IOptions<ValuationOptions> settings, IFinanc
         A("NonOperatingInvestments",investments,"USD","SEC marketable securities",true,"Assumed liquid non-operating securities, no cash-equivalent duplication; strategic investments excluded.");
         A("ShareCount",shareCount,"shares",shares?.Source??p.Facts["DilutedShares"].Source,true,r.ShareType,r.SharesDate);
         A("EquityWeight",price.Value*shareCount/(price.Value*shareCount+debt.Value),"ratio","Market price × share basis",true,"Market capitalization proxy; debt book value approximates market value.",priceDate);
-        var wacc=waccCalculator.Calculate(riskFreeValue,o.FallbackBeta,o.Erp,kd,tax,price.Value*shareCount,debt.Value);
+        var wacc=waccCalculator.Calculate(riskFreeValue,beta,o.Erp,kd,tax,price.Value*shareCount,debt.Value);
         if(wacc<=o.TerminalGrowth+o.ScenarioTerminalShift+o.ScenarioWaccShift || o.TerminalRoic<=o.TerminalGrowth+o.ScenarioTerminalShift)
             return Fail("WACC/terminal growth/ROIC configuration has no valid stable-state spread.","InvalidData");
         A("WACC",wacc,"ratio","CAPM and market equity weights",true,"No hard 9% floor; estimated beta/debt cost.",asOf);
@@ -187,7 +197,7 @@ public sealed class ValuationEngine(IOptions<ValuationOptions> settings, IFinanc
         {
             var years=new List<ForecastYear>();var rev=revenue;var priorNwc=ValuationMath.Nwc(p)!.Value;
             var targetMargin=Math.Clamp(margin+shift*o.ScenarioMarginShift,.01m,.60m);
-            var firstGrowth=Math.Clamp(initialGrowth+shift*Math.Max(o.ScenarioGrowthShift,spread),o.GrowthFloor,o.GrowthCeiling);
+            var firstGrowth=Math.Clamp(initialGrowth+shift*Math.Max(o.ScenarioGrowthShift,spread),forecast?.InitialGrowth != null ? -.10m : o.GrowthFloor,forecast?.InitialGrowth != null ? .50m : o.GrowthCeiling);
             for(var y=1;y<=10;y++)
             {
                 var progress=(y-1)/9m;var g=firstGrowth+(tg-firstGrowth)*progress;

@@ -79,6 +79,7 @@ public static class ValuationRegistration
         services.AddSingleton<IValuationStrategy,StandardNonFinancialStrategy>();
         services.AddSingleton<IValuationEngine,ValuationEngine>();
         services.AddScoped<ValuationPersistence>();services.AddScoped<InvestmentCatalog>();
+        services.AddScoped<PriceLabService>();
         return services;
     }
     public static ValuationResult? Summary(ValuationReport report)

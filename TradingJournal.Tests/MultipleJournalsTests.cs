@@ -152,7 +152,7 @@ public class MultipleJournalsTests
         return WebUtility.HtmlDecode(match.Groups[1].Value);
     }
 
-    private sealed class JournalApp : WebApplicationFactory<Program>
+    internal sealed class JournalApp : WebApplicationFactory<Program>
     {
         private readonly SqliteConnection connection = new("Data Source=:memory:");
         protected override void ConfigureWebHost(IWebHostBuilder builder)
