@@ -20,17 +20,6 @@
         return value.ToString("0.##", czechCulture);
     }
 
-    decimal? TradeRMultiple(JournalEntry entry)
-    {
-        return entry.Outcome switch
-        {
-            TradeOutcome.Win => 1m,
-            TradeOutcome.Loss => -1m,
-            TradeOutcome.Breakeven => 0m,
-            _ => null
-        };
-    }
-
     var selectedDayTitle = Model.Calendar.SelectedDate.ToDateTime(TimeOnly.MinValue).ToString("d. MMMM yyyy", czechCulture);
     var monthTitle = Model.Calendar.Month.ToDateTime(TimeOnly.MinValue).ToString("MMMM yyyy", czechCulture);
 }
@@ -212,7 +201,7 @@
                             <span class="journal-calendar-date">@day.Date.Day.</span>
                             @if (day.TradeCount > 0)
                             {
-                                <span class="journal-calendar-result">@SignedMove(day.NetMove)R</span>
+                                <span class="journal-calendar-result">@(day.HasProfitLoss ? SignedMove(day.NetMove) : "—")</span>
                                 <span class="journal-calendar-count">⇄ @day.TradeCount @(day.TradeCount == 1 ? "trade" : "trades")</span>
                             }
                         </a>
@@ -222,6 +211,7 @@
 
             <section class="journal-day-trades">
                 <h2>Obchody (@selectedDayTitle)</h2>
+                <p class="text-muted">Zisk / ztráta v měně účtu. Nezadané částky se do součtů nezahrnují.</p>
 
                 @if (!Model.SelectedDayEntries.Any())
                 {
@@ -240,7 +230,6 @@
                                     <th>Otevírací cena</th>
                                     <th>Zavírací cena</th>
                                     <th>Čas otevření</th>
-                                    <th>Čas uzavření</th>
                                     <th>Risk</th>
                                     <th>Výsledek</th>
                                 </tr>
@@ -249,8 +238,7 @@
                                 @foreach (var trade in Model.SelectedDayEntries)
                                 {
                                     var entry = trade.EntryTime?.LocalDateTime;
-                                    var exit = trade.ExitTime?.LocalDateTime;
-                                    var rMultiple = TradeRMultiple(trade);
+                                    var profitLoss = trade.Status == EntryStatus.Executed ? trade.ProfitLoss : null;
 
                                     <tr class="clickable-card" data-href="@Url.Action("Details", "JournalEntries", new { id = trade.Id })" tabindex="0" role="link">
                                         <td>@trade.Id</td>
@@ -260,14 +248,13 @@
                                                 @(trade.Side == PositionSide.Long ? "Nákup" : "Prodej")
                                             </span>
                                         </td>
-                                        <td>@trade.Outcome</td>
+                                        <td>@(trade.Outcome == TradeOutcome.Manual ? "Zavřeno ručně" : trade.Outcome.ToString())</td>
                                         <td>@trade.EntryPrice.ToString("0.########", czechCulture)</td>
                                         <td>@(trade.ExitPrice?.ToString("0.########", czechCulture) ?? "-")</td>
                                         <td>@(entry?.ToString("d. M. yyyy H:mm:ss", czechCulture) ?? "-")</td>
-                                        <td>@(exit?.ToString("d. M. yyyy H:mm:ss", czechCulture) ?? "-")</td>
                                         <td>@trade.RiskPercentage.ToString("0.##", czechCulture)%</td>
-                                        <td class="journal-table-result @(rMultiple > 0 ? "positive" : rMultiple < 0 ? "negative" : "")">
-                                            @(rMultiple.HasValue ? $"{SignedMove(rMultiple.Value)}R" : "-")
+                                        <td class="journal-table-result @(profitLoss > 0 ? "positive" : profitLoss < 0 ? "negative" : "")">
+                                            @(profitLoss.HasValue ? $"{SignedMove(profitLoss.Value)}" : "-")
                                         </td>
                                     </tr>
                                 }

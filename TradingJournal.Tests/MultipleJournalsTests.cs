@@ -135,6 +135,76 @@ public class MultipleJournalsTests
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/TradingJournals")).StatusCode);
     }
 
+    [Fact]
+    public async Task TradeResultsRoundTripMoneyEarlyExitsAndSeasonalityWithRealForms()
+    {
+        await using var app = new JournalApp();
+        using var client = await app.ClientAsync("owner");
+        var html = await client.GetStringAsync("/journals/1/Create");
+        Assert.DoesNotContain("name=\"ExitTime\"", html);
+        foreach (var pair in new[] { "USDJPY", "AUDUSD", "NZDCAD", "CHFJPY", "EURCZK", "USDMXN" })
+            Assert.Contains(">" + pair + "</option>", html);
+        var fields = new Dictionary<string, string>
+        {
+            ["Asset"] = "EURCZK", ["Side"] = "Short", ["EntryTime"] = "2026-11-05T10:00:00+00:00",
+            ["Status"] = "Executed", ["Outcome"] = "Manual", ["ProfitLoss"] = "-1 250,50",
+            ["PlannedOutcome"] = "Win", ["SeasonalityAligned"] = "true", ["Note"] = "MONEY-TEST"
+        };
+        var response = await PostAsync(client, "/journals/1/Create", fields);
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        int id;
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var saved = await db.JournalEntries.SingleAsync(e => e.Note == "MONEY-TEST");
+            id = saved.Id;
+            Assert.Equal(-1250.50m, saved.ProfitLoss);
+            Assert.Equal(TradeOutcome.Manual, saved.Outcome);
+            Assert.Equal(PlannedTradeOutcome.Win, saved.PlannedOutcome);
+            Assert.True(saved.SeasonalityAligned);
+            Assert.Null(saved.ExitTime);
+        }
+        var details = WebUtility.HtmlDecode(await client.GetStringAsync($"/journals/1/Details/{id}"));
+        Assert.Contains("Zavřeno ručně", details);
+        Assert.Contains("Zisk (TP)", details);
+        var analysis = WebUtility.HtmlDecode(await client.GetStringAsync("/journals/1/Analysis"));
+        Assert.Contains("BE a ruční uzavření", analysis);
+        Assert.Contains("Sezónnost a výsledky", analysis);
+        Assert.Matches(@"-1[\s,.]?250[,.]50", analysis);
+        var index = await client.GetStringAsync("/journals/1?month=2026-11-01&selectedDate=2026-11-05");
+        Assert.DoesNotContain("Čas uzavření", WebUtility.HtmlDecode(index));
+        Assert.DoesNotContain("-1R", index);
+        Assert.Contains("-1250,5", WebUtility.HtmlDecode(index));
+
+        fields["ProfitLoss"] = "123.45";
+        fields["Outcome"] = "Breakeven";
+        fields["PlannedOutcome"] = "Loss";
+        fields["SeasonalityAligned"] = "false";
+        response = await PostAsync(client, $"/journals/1/Edit/{id}", fields);
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        using (var scope = app.Services.CreateScope())
+        {
+            var saved = await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().JournalEntries.FindAsync(id);
+            Assert.Equal(123.45m, saved!.ProfitLoss);
+            Assert.Equal(PlannedTradeOutcome.Loss, saved.PlannedOutcome);
+            Assert.False(saved.SeasonalityAligned);
+        }
+        fields["ProfitLoss"] = "nonsense";
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(client, $"/journals/1/Edit/{id}", fields)).StatusCode);
+        fields["ProfitLoss"] = "1.234";
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(client, $"/journals/1/Edit/{id}", fields)).StatusCode);
+        fields["ProfitLoss"] = "10";
+        fields["Status"] = "Open";
+        Assert.Equal(HttpStatusCode.Redirect, (await PostAsync(client, $"/journals/1/Edit/{id}", fields)).StatusCode);
+        using (var scope = app.Services.CreateScope())
+        {
+            var saved = await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().JournalEntries.FindAsync(id);
+            Assert.Null(saved!.ProfitLoss);
+            Assert.Null(saved.PlannedOutcome);
+            Assert.Equal(TradeOutcome.Unknown, saved.Outcome);
+        }
+    }
+
     private static async Task<HttpResponseMessage> PostAsync(HttpClient client, string url, Dictionary<string, string> fields) =>
         await SendPostAsync(client, url, await TokenAsync(client, url), fields);
     private static Task<HttpResponseMessage> SendPostAsync(HttpClient client, string url, string token, Dictionary<string, string> fields)

@@ -88,6 +88,8 @@ namespace TradingJournal.Data
                 .Property(e => e.ExitPrice)
                 .HasPrecision(18, 8);
 
+            builder.Entity<JournalEntry>().Property(e => e.ProfitLoss).HasPrecision(18, 2);
+
             // Risk v procentech – stačí třeba 5 desetinných míst
             builder.Entity<JournalEntry>()
                 .Property(e => e.RiskPercentage)

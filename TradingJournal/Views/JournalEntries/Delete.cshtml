@@ -32,7 +32,7 @@
             <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
                 <span class="badge badge-side">@Model.Asset</span>
                 <span class="badge badge-side">@Model.Side</span>
-                <span class="badge @outcomeClass">@Model.Outcome</span>
+                <span class="badge @outcomeClass">@(Model.Outcome == TradeOutcome.Manual ? "Zavřeno ručně" : Model.Outcome.ToString())</span>
                 @if (Model.Status == EntryStatus.Open)
                 {
                     <span class="badge badge-open">Open</span>

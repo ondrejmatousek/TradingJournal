@@ -6,11 +6,6 @@
     ViewData["BodyClass"] = "journal-shell";
 
     var entryLocal = Model.EntryTime?.LocalDateTime;
-    var exitLocal = Model.ExitTime?.LocalDateTime;
-    var durationText = entryLocal.HasValue && exitLocal.HasValue
-        ? (exitLocal.Value - entryLocal.Value).ToString(@"hh\:mm")
-        : "-";
-
     string outcomeClass = Model.Outcome switch
     {
         TradeOutcome.Win => "badge-win",
@@ -43,7 +38,7 @@
                 <div class="trade-card-header">
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                         <span class="badge badge-side">@Model.Side</span>
-                        <span class="badge @outcomeClass">@Model.Outcome</span>
+                        <span class="badge @outcomeClass">@(Model.Outcome == TradeOutcome.Manual ? "Zavřeno ručně" : Model.Outcome.ToString())</span>
                         @if (Model.Status == EntryStatus.Open)
                         {
                             <span class="badge badge-open">Open trade</span>
@@ -65,13 +60,20 @@
                         <strong>@(entryLocal?.ToString("dd.MM.yyyy HH:mm") ?? "-")</strong>
                     </div>
                     <div class="metric-cell">
-                        <span>Exit</span>
-                        <strong>@(exitLocal?.ToString("dd.MM.yyyy HH:mm") ?? "-")</strong>
+                        <span>Zisk / ztráta</span>
+                        <strong>@(Model.ProfitLoss?.ToString("N2") ?? "Nezadáno")</strong>
                     </div>
                     <div class="metric-cell">
-                        <span>Duration</span>
-                        <strong>@durationText</strong>
+                        <span>Sezónnost seděla</span>
+                        <strong>@(Model.SeasonalityAligned.HasValue ? (Model.SeasonalityAligned.Value ? "Ano" : "Ne") : "Nezjištěno")</strong>
                     </div>
+                    @if (Model.Outcome is TradeOutcome.Breakeven or TradeOutcome.Manual)
+                    {
+                        <div class="metric-cell">
+                            <span>Původní plán by skončil</span>
+                            <strong>@(Model.PlannedOutcome switch { PlannedTradeOutcome.Win => "Zisk (TP)", PlannedTradeOutcome.Loss => "Ztráta (SL)", PlannedTradeOutcome.Breakeven => "BE", _ => "Nezjištěno" })</strong>
+                        </div>
+                    }
                     <div class="metric-cell">
                         <span>Risk</span>
                         <strong>@Model.RiskPercentage.ToString("0.##")%</strong>

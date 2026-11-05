@@ -708,50 +708,50 @@ namespace TradingJournal.Controllers
                 .ToListAsync();
 
             var closedForWinRate = entries
-                .Where(e => e.Outcome is TradeOutcome.Win or TradeOutcome.Loss)
+                .Where(e => TradeReviewStatistics.IsWin(e) || TradeReviewStatistics.IsLoss(e))
                 .ToList();
 
             var completedTrades = entries
-                .Where(e => e.Outcome is TradeOutcome.Win or TradeOutcome.Loss or TradeOutcome.Breakeven)
+                .Where(e => e.Status == EntryStatus.Executed && e.Outcome is TradeOutcome.Win or TradeOutcome.Loss or TradeOutcome.Breakeven or TradeOutcome.Manual)
                 .ToList();
 
-            var priceMoveTrades = entries
+            var profitLossTrades = entries
                 .Select(e => new
                 {
                     Entry = e,
-                    PriceMove = CalculatePriceMove(e)
+                    ProfitLoss = CalculateProfitLoss(e)
                 })
-                .Where(e => e.PriceMove.HasValue)
+                .Where(e => e.ProfitLoss.HasValue)
                 .ToList();
 
-            var runningMove = 0m;
-            var equityCurve = priceMoveTrades
+            var runningProfitLoss = 0m;
+            var equityCurve = profitLossTrades
                 .Select(e =>
                 {
-                    runningMove += e.PriceMove!.Value;
+                    runningProfitLoss += e.ProfitLoss!.Value;
                     return new AnalysisPoint
                     {
                         Label = (e.Entry.EntryTime ?? e.Entry.CreatedAt).LocalDateTime.ToString("dd.MM."),
-                        Value = runningMove
+                        Value = runningProfitLoss
                     };
                 })
                 .ToList();
 
-            var monthlyPerformance = priceMoveTrades
+            var monthlyPerformance = profitLossTrades
                 .GroupBy(e => (e.Entry.EntryTime ?? e.Entry.CreatedAt).LocalDateTime.ToString("MMM yy"))
                 .Select(g => new AnalysisBar
                 {
                     Label = g.Key,
-                    Value = g.Sum(e => e.PriceMove!.Value)
+                    Value = g.Sum(e => e.ProfitLoss!.Value)
                 })
                 .ToList();
 
-            var dailyPerformance = priceMoveTrades
+            var dailyPerformance = profitLossTrades
                 .GroupBy(e => (e.Entry.EntryTime ?? e.Entry.CreatedAt).LocalDateTime.ToString("ddd dd.MM."))
                 .Select(g => new AnalysisBar
                 {
                     Label = g.Key,
-                    Value = g.Sum(e => e.PriceMove!.Value)
+                    Value = g.Sum(e => e.ProfitLoss!.Value)
                 })
                 .TakeLast(10)
                 .ToList();
@@ -760,13 +760,13 @@ namespace TradingJournal.Controllers
                 .GroupBy(e => e.Asset)
                 .Select(g =>
                 {
-                    var decisive = g.Where(e => e.Outcome is TradeOutcome.Win or TradeOutcome.Loss).ToList();
+                    var decisive = g.Where(e => TradeReviewStatistics.IsWin(e) || TradeReviewStatistics.IsLoss(e)).ToList();
                     return new AssetBreakdown
                     {
                         Asset = g.Key,
                         Trades = g.Count(),
-                        WinRate = decisive.Count == 0 ? 0 : decisive.Count(e => e.Outcome == TradeOutcome.Win) * 100m / decisive.Count,
-                        NetPriceMove = g.Sum(e => CalculatePriceMove(e) ?? 0)
+                        WinRate = decisive.Count == 0 ? 0 : decisive.Count(TradeReviewStatistics.IsWin) * 100m / decisive.Count,
+                        NetProfitLoss = g.Sum(e => CalculateProfitLoss(e) ?? 0)
                     };
                 })
                 .OrderByDescending(x => x.Trades)
@@ -777,25 +777,27 @@ namespace TradingJournal.Controllers
                 .GroupBy(e => e.Side)
                 .Select(g =>
                 {
-                    var decisive = g.Where(e => e.Outcome is TradeOutcome.Win or TradeOutcome.Loss).ToList();
+                    var decisive = g.Where(e => TradeReviewStatistics.IsWin(e) || TradeReviewStatistics.IsLoss(e)).ToList();
                     return new SideBreakdown
                     {
                         Side = g.Key,
                         Trades = g.Count(),
-                        WinRate = decisive.Count == 0 ? 0 : decisive.Count(e => e.Outcome == TradeOutcome.Win) * 100m / decisive.Count,
-                        NetPriceMove = g.Sum(e => CalculatePriceMove(e) ?? 0)
+                        WinRate = decisive.Count == 0 ? 0 : decisive.Count(TradeReviewStatistics.IsWin) * 100m / decisive.Count,
+                        NetProfitLoss = g.Sum(e => CalculateProfitLoss(e) ?? 0)
                     };
                 })
                 .OrderBy(x => x.Side)
                 .ToList();
 
-            var wins = entries.Count(e => e.Outcome == TradeOutcome.Win);
-            var losses = entries.Count(e => e.Outcome == TradeOutcome.Loss);
+            var wins = entries.Count(TradeReviewStatistics.IsWin);
+            var losses = entries.Count(TradeReviewStatistics.IsLoss);
             var breakeven = entries.Count(e => e.Outcome == TradeOutcome.Breakeven);
-            var netPriceMove = priceMoveTrades.Sum(e => e.PriceMove!.Value);
+            var netProfitLoss = profitLossTrades.Sum(e => e.ProfitLoss!.Value);
 
             var model = new JournalAnalysisViewModel
             {
+                EarlyExitStats = TradeReviewStatistics.EarlyExits(entries),
+                SeasonalityStats = TradeReviewStatistics.Seasonality(entries),
                 Stats = new AnalysisStats
                 {
                     TotalTrades = entries.Count,
@@ -804,11 +806,13 @@ namespace TradingJournal.Controllers
                     Wins = wins,
                     Losses = losses,
                     Breakeven = breakeven,
+                    Manual = entries.Count(e => e.Outcome == TradeOutcome.Manual),
+                    MissingProfitLoss = completedTrades.Count(e => !e.ProfitLoss.HasValue),
                     WinRate = closedForWinRate.Count == 0 ? 0 : wins * 100m / closedForWinRate.Count,
                     PlanAdherence = entries.Count == 0 ? 0 : entries.Count(e => e.FollowedTradingPlan) * 100m / entries.Count,
                     AverageRisk = entries.Count == 0 ? 0 : entries.Average(e => e.RiskPercentage),
-                    NetPriceMove = netPriceMove,
-                    AveragePriceMove = priceMoveTrades.Count == 0 ? 0 : netPriceMove / priceMoveTrades.Count
+                    NetProfitLoss = netProfitLoss,
+                    AverageProfitLoss = profitLossTrades.Count == 0 ? 0 : netProfitLoss / profitLossTrades.Count
                 },
                 EquityCurve = equityCurve,
                 MonthlyPerformance = monthlyPerformance,
@@ -826,7 +830,7 @@ namespace TradingJournal.Controllers
                         Side = e.Side,
                         Outcome = e.Outcome,
                         Status = e.Status,
-                        PriceMove = CalculatePriceMove(e)
+                        ProfitLoss = CalculateProfitLoss(e)
                     })
                     .ToList()
             };
@@ -834,31 +838,9 @@ namespace TradingJournal.Controllers
             return View(model);
         }
 
-        private static decimal? CalculatePriceMove(JournalEntry entry)
+        private static decimal? CalculateProfitLoss(JournalEntry entry)
         {
-            if (!entry.ExitPrice.HasValue || entry.EntryPrice == 0)
-                return null;
-
-            var entryPrice = NormalizePriceForAnalysis(entry.Asset, entry.EntryPrice);
-            var exitPrice = NormalizePriceForAnalysis(entry.Asset, entry.ExitPrice.Value);
-            var rawMove = exitPrice - entryPrice;
-            return entry.Side == PositionSide.Long ? rawMove : -rawMove;
-        }
-
-        private static decimal NormalizePriceForAnalysis(AssetSymbol asset, decimal price)
-        {
-            if (!IsForexAsset(asset) || price <= 10m)
-                return price;
-
-            while (price > 10m)
-                price /= 10m;
-
-            return price;
-        }
-
-        private static bool IsForexAsset(AssetSymbol asset)
-        {
-            return asset is AssetSymbol.EURUSD or AssetSymbol.GBPUSD;
+            return entry.Status == EntryStatus.Executed ? entry.ProfitLoss : null;
         }
 
         // GET: JournalEntries
@@ -911,22 +893,18 @@ namespace TradingJournal.Controllers
                 .OrderBy(e => e.EntryTime ?? e.CreatedAt)
                 .ToList();
 
-            var completedTrades = entries
-                .Where(e => e.Outcome is TradeOutcome.Win or TradeOutcome.Loss or TradeOutcome.Breakeven)
-                .ToList();
-
-            var wins = entries.Count(e => e.Outcome == TradeOutcome.Win);
-            var losses = entries.Count(e => e.Outcome == TradeOutcome.Loss);
+            var wins = entries.Count(TradeReviewStatistics.IsWin);
+            var losses = entries.Count(TradeReviewStatistics.IsLoss);
             var breakeven = entries.Count(e => e.Outcome == TradeOutcome.Breakeven);
             var unknown = entries.Count(e => e.Outcome == TradeOutcome.Unknown);
 
             var bestAsset = entries
-                .Where(e => e.Outcome is TradeOutcome.Win or TradeOutcome.Loss)
+                .Where(e => TradeReviewStatistics.IsWin(e) || TradeReviewStatistics.IsLoss(e))
                 .GroupBy(e => e.Asset)
                 .Select(g => new
                 {
                     Asset = g.Key,
-                    WinRate = g.Count(e => e.Outcome == TradeOutcome.Win) * 100m / g.Count()
+                    WinRate = g.Count(TradeReviewStatistics.IsWin) * 100m / g.Count()
                 })
                 .OrderByDescending(g => g.WinRate)
                 .ThenBy(g => g.Asset)
@@ -952,7 +930,7 @@ namespace TradingJournal.Controllers
                     Losses = losses,
                     Breakeven = breakeven,
                     Unknown = unknown,
-                    WinRate = completedTrades.Count == 0 ? 0 : wins * 100m / completedTrades.Count,
+                    WinRate = wins + losses == 0 ? 0 : wins * 100m / (wins + losses),
                     PlanAdherence = entries.Count == 0 ? 0 : entries.Count(e => e.FollowedTradingPlan) * 100m / entries.Count,
                     AverageRisk = entries.Count == 0 ? 0 : entries.Average(e => e.RiskPercentage),
                     BestAsset = bestAsset?.Asset,
@@ -963,7 +941,7 @@ namespace TradingJournal.Controllers
                     .Select(value => new SelectListItem(value.ToString(), value.ToString(), value == asset))
                     .ToList(),
                 OutcomeOptions = Enum.GetValues<TradeOutcome>()
-                    .Select(value => new SelectListItem(value.ToString(), value.ToString(), value == outcome))
+                    .Select(value => new SelectListItem(value == TradeOutcome.Manual ? "Zavřeno ručně" : value.ToString(), value.ToString(), value == outcome))
                     .ToList(),
                 SideOptions = Enum.GetValues<PositionSide>()
                     .Select(value => new SelectListItem(value.ToString(), value.ToString(), value == side))
@@ -987,7 +965,8 @@ namespace TradingJournal.Controllers
                     g => new
                     {
                         TradeCount = g.Count(),
-                        NetMove = g.Sum(entry => CalculateTradeRMultiple(entry) ?? 0)
+                        HasProfitLoss = g.Any(entry => CalculateProfitLoss(entry).HasValue),
+                        NetMove = g.Sum(entry => CalculateProfitLoss(entry) ?? 0)
                     });
 
             for (var i = 0; i < 42; i++)
@@ -1001,6 +980,7 @@ namespace TradingJournal.Controllers
                     IsCurrentMonth = date.Month == month.Month && date.Year == month.Year,
                     IsSelected = date == selectedDate,
                     TradeCount = summary?.TradeCount ?? 0,
+                    HasProfitLoss = summary?.HasProfitLoss ?? false,
                     NetMove = summary?.NetMove ?? 0
                 });
             }
@@ -1012,17 +992,6 @@ namespace TradingJournal.Controllers
                 NextMonth = firstOfMonth.AddMonths(1),
                 SelectedDate = selectedDate,
                 Days = days
-            };
-        }
-
-        private static decimal? CalculateTradeRMultiple(JournalEntry entry)
-        {
-            return entry.Outcome switch
-            {
-                TradeOutcome.Win => 1m,
-                TradeOutcome.Loss => -1m,
-                TradeOutcome.Breakeven => 0m,
-                _ => null
             };
         }
 
@@ -1152,7 +1121,7 @@ namespace TradingJournal.Controllers
             entry.UserId = CurrentUserId;
             entry.JournalId = CurrentJournalId;
             entry.CreatedAt = DateTimeOffset.UtcNow;
-            NormalizeOpenTrade(entry);
+            NormalizeTradeResult(entry);
 
             // Upload obrázku do DB
             await ApplyImageUploadsAsync(entry, imageFiles, imageFile);
@@ -1206,16 +1175,18 @@ namespace TradingJournal.Controllers
             entry.Asset = form.Asset;
             entry.Side = form.Side;
             entry.EntryTime = form.EntryTime;
-            entry.ExitTime = form.ExitTime;
             entry.Note = form.Note;
             entry.FeelingsBeforeEntry = form.FeelingsBeforeEntry;
             entry.Outcome = form.Outcome;
+            entry.ProfitLoss = form.ProfitLoss;
+            entry.PlannedOutcome = form.PlannedOutcome;
+            entry.SeasonalityAligned = form.SeasonalityAligned;
             entry.RiskPercentage = form.RiskPercentage;
             entry.EntryPrice = form.EntryPrice;
             entry.ExitPrice = form.ExitPrice;
             entry.FollowedTradingPlan = form.FollowedTradingPlan;
             entry.Status = form.Status;
-            NormalizeOpenTrade(entry);
+            NormalizeTradeResult(entry);
 
             // Nové uploady se přidají do galerie.
             await ApplyImageUploadsAsync(entry, imageFiles, imageFile);
@@ -1274,10 +1245,14 @@ namespace TradingJournal.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        private static void NormalizeOpenTrade(JournalEntry entry)
+        private static void NormalizeTradeResult(JournalEntry entry)
         {
-            if (entry.Status != EntryStatus.Open)
+            if (entry.Outcome is not (TradeOutcome.Breakeven or TradeOutcome.Manual))
+                entry.PlannedOutcome = null;
+            if (entry.Status == EntryStatus.Executed)
                 return;
+            entry.ProfitLoss = null;
+            entry.PlannedOutcome = null;
 
             entry.ExitTime = null;
             entry.ExitPrice = null;
@@ -1291,6 +1266,16 @@ namespace TradingJournal.Controllers
 
             if (TryReadDecimalFromForm(nameof(JournalEntry.EntryPrice), out var entryPrice) && entryPrice.HasValue)
                 entry.EntryPrice = entryPrice.Value;
+
+            if (TryReadDecimalFromForm(nameof(JournalEntry.ProfitLoss), out var profitLoss))
+            {
+                entry.ProfitLoss = profitLoss;
+                ModelState.Remove(nameof(JournalEntry.ProfitLoss));
+                if (profitLoss is < -9999999999999999.99m or > 9999999999999999.99m)
+                    ModelState.AddModelError(nameof(JournalEntry.ProfitLoss), "Částka je příliš vysoká.");
+                else if (profitLoss.HasValue && decimal.Round(profitLoss.Value, 2) != profitLoss.Value)
+                    ModelState.AddModelError(nameof(JournalEntry.ProfitLoss), "Použij nejvýše dvě desetinná místa.");
+            }
 
             if (TryReadDecimalFromForm(nameof(JournalEntry.ExitPrice), out var exitPrice))
                 entry.ExitPrice = exitPrice;

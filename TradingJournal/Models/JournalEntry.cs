@@ -18,6 +18,7 @@ namespace TradingJournal.Models
         public string UserId { get; set; } = null!;
 
         [Required]
+        [EnumDataType(typeof(AssetSymbol))]
         public AssetSymbol Asset { get; set; }
 
         [Required]
@@ -36,7 +37,16 @@ namespace TradingJournal.Models
         [MaxLength(2000)]
         public string? FeelingsBeforeEntry { get; set; }
 
+        [EnumDataType(typeof(TradeOutcome))]
         public TradeOutcome Outcome { get; set; } = TradeOutcome.Unknown;
+
+        [Range(typeof(decimal), "-9999999999999999.99", "9999999999999999.99", ParseLimitsInInvariantCulture = true)]
+        public decimal? ProfitLoss { get; set; }
+
+        [EnumDataType(typeof(PlannedTradeOutcome))]
+        public PlannedTradeOutcome? PlannedOutcome { get; set; }
+
+        public bool? SeasonalityAligned { get; set; }
 
         public decimal RiskPercentage { get; set; }
         public decimal EntryPrice { get; set; }

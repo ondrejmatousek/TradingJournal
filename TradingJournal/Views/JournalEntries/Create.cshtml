@@ -58,18 +58,6 @@
                                 <span asp-validation-for="EntryTime" class="text-danger"></span>
                             </div>
 
-                            <div class="col-md-6 trade-closed-field">
-                                <label asp-for="ExitTime" class="form-label">Exit time</label>
-                                <input asp-for="ExitTime"
-                                       type="datetime-local"
-                                       class="form-control"
-                                       value="@(Model.ExitTime.HasValue
-                                                      ? Model.ExitTime.Value.LocalDateTime.ToString("yyyy-MM-ddTHH:mm")
-                                                      : "")" />
-                                <div class="form-text">Leave empty if trade is not closed yet.</div>
-                                <span asp-validation-for="ExitTime" class="text-danger"></span>
-                            </div>
-
                             <div class="col-md-4">
                                 <label asp-for="RiskPercentage" class="form-label">Risk (%)</label>
                                 <input asp-for="RiskPercentage" class="form-control" inputmode="decimal" placeholder="e.g. 1.0" />
@@ -93,6 +81,8 @@
                                 <select asp-for="Outcome" asp-items="Html.GetEnumSelectList<TradeOutcome>()" class="form-select"></select>
                                 <span asp-validation-for="Outcome" class="text-danger"></span>
                             </div>
+
+                            <partial name="_TradeResultsFields" model="Model" />
 
                             <div class="col-md-6 d-flex align-items-end">
                                 <div class="form-check">
@@ -157,7 +147,18 @@
             }
 
             status?.addEventListener('change', syncTradeStatus);
+            const outcome = document.getElementById('Outcome');
+            function syncPlannedOutcome() {
+                const eligible = status?.value !== '2' && ['3', '4'].includes(outcome?.value);
+                document.querySelectorAll('[data-planned-outcome]').forEach(field => {
+                    field.classList.toggle('d-none', !eligible);
+                    field.querySelectorAll('select').forEach(input => input.disabled = !eligible);
+                });
+            }
+            status?.addEventListener('change', syncPlannedOutcome);
+            outcome?.addEventListener('change', syncPlannedOutcome);
             syncTradeStatus();
+            syncPlannedOutcome();
         })();
     </script>
 }

@@ -85,6 +85,8 @@ namespace TradingJournal.ViewModels
 
         public decimal NetMove { get; init; }
 
+        public bool HasProfitLoss { get; init; }
+
         public string Tone =>
             TradeCount == 0 ? "empty" :
             NetMove > 0 ? "win" :

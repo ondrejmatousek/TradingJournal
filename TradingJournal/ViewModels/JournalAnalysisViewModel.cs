@@ -4,6 +4,9 @@ namespace TradingJournal.ViewModels
 {
     public class JournalAnalysisViewModel
     {
+        public IReadOnlyList<EarlyExitSummary> EarlyExitStats { get; init; } = [];
+        public IReadOnlyList<SeasonalitySummary> SeasonalityStats { get; init; } = [];
+
         public AnalysisStats Stats { get; init; } = new();
 
         public IReadOnlyList<AnalysisPoint> EquityCurve { get; init; } = [];
@@ -32,6 +35,8 @@ namespace TradingJournal.ViewModels
         public int Losses { get; init; }
 
         public int Breakeven { get; init; }
+        public int Manual { get; init; }
+        public int MissingProfitLoss { get; init; }
 
         public decimal WinRate { get; init; }
 
@@ -39,9 +44,9 @@ namespace TradingJournal.ViewModels
 
         public decimal AverageRisk { get; init; }
 
-        public decimal NetPriceMove { get; init; }
+        public decimal NetProfitLoss { get; init; }
 
-        public decimal AveragePriceMove { get; init; }
+        public decimal AverageProfitLoss { get; init; }
     }
 
     public class AnalysisPoint
@@ -66,7 +71,7 @@ namespace TradingJournal.ViewModels
 
         public decimal WinRate { get; init; }
 
-        public decimal NetPriceMove { get; init; }
+        public decimal NetProfitLoss { get; init; }
     }
 
     public class SideBreakdown
@@ -77,7 +82,7 @@ namespace TradingJournal.ViewModels
 
         public decimal WinRate { get; init; }
 
-        public decimal NetPriceMove { get; init; }
+        public decimal NetProfitLoss { get; init; }
     }
 
     public class RecentTradeRow
@@ -94,6 +99,6 @@ namespace TradingJournal.ViewModels
 
         public EntryStatus Status { get; init; }
 
-        public decimal? PriceMove { get; init; }
+        public decimal? ProfitLoss { get; init; }
     }
 }

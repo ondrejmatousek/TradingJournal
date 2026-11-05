@@ -1,0 +1,44 @@
+@model TradingJournal.ViewModels.JournalAnalysisViewModel
+@using TradingJournal.Models
+
+<div class="analysis-grid mt-4">
+    <section class="app-card analysis-card">
+        <h2 class="h5">BE a ruční uzavření: původní plán</h2>
+        <p class="text-muted">Zpětné ruční hodnocení. Nezjištěné výsledky se do úspěšnosti nezapočítávají.</p>
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Uzavření</th><th>Celkem</th><th>TP</th><th>SL</th><th>BE</th><th>Nezjištěno</th><th>Vyšlo by</th></tr></thead>
+                <tbody>
+                @foreach (var row in Model.EarlyExitStats)
+                {
+                    <tr>
+                        <td>@(row.Outcome == TradeOutcome.Manual ? "Ručně" : "BE")</td>
+                        <td>@row.Total</td><td>@row.WouldWin</td><td>@row.WouldLose</td><td>@row.WouldBreakeven</td><td>@row.Unknown</td>
+                        <td>@(row.WouldWinRate.HasValue ? row.WouldWinRate.Value.ToString("0.#") + "%" : "—")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section class="app-card analysis-card">
+        <h2 class="h5">Sezónnost a výsledky</h2>
+        <p class="text-muted">Podle ručně zadaného souladu se směrem. Úspěšnost počítá zisky a ztráty, částky jsou v měně účtu.</p>
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Sezónnost seděla</th><th>Obchody</th><th>W / L</th><th>Úspěšnost</th><th>Zisk / ztráta</th></tr></thead>
+                <tbody>
+                @foreach (var row in Model.SeasonalityStats)
+                {
+                    <tr>
+                        <td>@(row.Aligned.HasValue ? (row.Aligned.Value ? "Ano" : "Ne") : "Nezjištěno")</td>
+                        <td>@row.Total</td><td>@row.Wins / @row.Losses</td>
+                        <td>@(row.WinRate.HasValue ? row.WinRate.Value.ToString("0.#") + "%" : "—")</td>
+                        <td>@(row.ProfitLoss?.ToString("N2") ?? "—")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>

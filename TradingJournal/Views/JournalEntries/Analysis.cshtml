@@ -18,7 +18,7 @@
             <div>
                 <div class="eyebrow">Performance lab</div>
                 <h1>Analysis</h1>
-                <p>Win rate, process quality, price-move curve, and trading breakdowns.</p>
+                <p>Zisk a ztráta v měně účtu, výsledky původního plánu a sezónnost.</p>
             </div>
 
             <div class="page-actions">
@@ -36,7 +36,7 @@
             <div>
                 <span class="text-muted small">Win rate</span>
                 <strong>@Model.Stats.WinRate.ToString("0.#")%</strong>
-                <small>@Model.Stats.Wins W / @Model.Stats.Losses L / @Model.Stats.Breakeven BE</small>
+                <small>@Model.Stats.Wins W / @Model.Stats.Losses L / @Model.Stats.Breakeven BE / @Model.Stats.Manual ručně</small>
             </div>
             <div>
                 <span class="text-muted small">Plan adherence</span>
@@ -44,17 +44,19 @@
                 <small>Execution discipline</small>
             </div>
             <div>
-                <span class="text-muted small">Net price move</span>
-                <strong class="@(Model.Stats.NetPriceMove >= 0 ? "text-teal" : "text-danger")">@Model.Stats.NetPriceMove.ToString("0.#####")</strong>
-                <small>Proxy until position sizing exists</small>
+                <span class="text-muted small">Zisk / ztráta</span>
+                <strong class="@(Model.Stats.NetProfitLoss >= 0 ? "text-teal" : "text-danger")">@Model.Stats.NetProfitLoss.ToString("N2")</strong>
+                <small>@Model.Stats.MissingProfitLoss uzavřených obchodů bez částky</small>
             </div>
         </div>
+
+        <partial name="_TradeReviewStatistics" model="Model" />
 
         <div class="analysis-grid mt-4">
             <section class="app-card analysis-card wide">
                 <div class="panel-title">
                     <span>Equity curve</span>
-                    <strong>Price-move proxy</strong>
+                    <strong>Zadané částky v měně účtu</strong>
                 </div>
 
                 @if (Model.EquityCurve.Any())
@@ -76,7 +78,7 @@
                 }
                 else
                 {
-                    <div class="empty-chart">Close trades with entry and exit prices to build the curve.</div>
+                    <div class="empty-chart">Doplň částku zisku nebo ztráty pro zobrazení křivky.</div>
                 }
             </section>
 
@@ -94,7 +96,7 @@
                             <div class="bar-track">
                                 <i class="@(bar.Value >= 0 ? "positive" : "negative")" style="width:@width.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)%"></i>
                             </div>
-                            <strong>@bar.Value.ToString("0.####")</strong>
+                            <strong>@bar.Value.ToString("N2")</strong>
                         </div>
                     }
                 </div>
@@ -149,7 +151,7 @@
                         <a asp-action="Index" asp-route-side="@side.Side" class="analysis-row">
                             <span>@side.Side</span>
                             <strong>@side.WinRate.ToString("0.#")%</strong>
-                            <em>@side.NetPriceMove.ToString("0.####") move</em>
+                            <em>@side.NetProfitLoss.ToString("N2")</em>
                         </a>
                     }
                 </div>
@@ -165,7 +167,7 @@
                     {
                         <a asp-action="Details" asp-route-id="@trade.Id" class="analysis-row">
                             <span>@trade.Asset</span>
-                            <strong>@trade.Outcome</strong>
+                            <strong>@(trade.Outcome == TradeOutcome.Manual ? "Zavřeno ručně" : trade.Outcome.ToString())</strong>
                             <em>@trade.Date</em>
                         </a>
                     }
