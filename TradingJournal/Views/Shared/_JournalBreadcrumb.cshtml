@@ -1,7 +1,7 @@
 @if (ViewData["CurrentJournal"] is TradingJournal.Models.TradingJournalBook currentJournal)
 {
-    <nav aria-label="Umístění v deníku" class="d-flex flex-wrap gap-2 align-items-center mb-3">
-        <a asp-controller="TradingJournals" asp-action="Index">Moje deníky</a><span aria-hidden="true">/</span>
+    <nav aria-label="Umístění v journalu" class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <a asp-controller="TradingJournals" asp-action="Index">Moje journaly</a><span aria-hidden="true">/</span>
         <a asp-route="journal" asp-route-journalId="@currentJournal.Id" asp-route-action="Index" class="fw-semibold">@currentJournal.Name</a>
     </nav>
 }

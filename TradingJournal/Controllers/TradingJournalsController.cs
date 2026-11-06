@@ -66,7 +66,7 @@ public class TradingJournalsController(ApplicationDbContext db) : Controller
         if (journal is null) return NotFound();
         if (await db.JournalEntries.AnyAsync(e => e.JournalId == id))
         {
-            ModelState.AddModelError("", "Deník obsahuje obchody. Před smazáním deníku je nutné odstranit jeho obchody.");
+            ModelState.AddModelError("", "Journal obsahuje obchody. Před smazáním journalu je nutné odstranit jeho obchody.");
             ViewData["EntryCount"] = await db.JournalEntries.CountAsync(e => e.JournalId == id);
             return View("Delete", journal);
         }
@@ -77,7 +77,7 @@ public class TradingJournalsController(ApplicationDbContext db) : Controller
             if (!await db.JournalEntries.AsNoTracking().AnyAsync(e => e.JournalId == id)) throw;
             // A trade may have been added between the check and DELETE. The FK prevents loss.
             db.Entry(journal).State = EntityState.Unchanged;
-            ModelState.AddModelError("", "Do deníku byl přidán obchod. Deník nebyl smazán.");
+            ModelState.AddModelError("", "Do journalu byl přidán obchod. Journal nebyl smazán.");
             ViewData["EntryCount"] = await db.JournalEntries.CountAsync(e => e.JournalId == id);
             return View("Delete", journal);
         }
@@ -88,7 +88,7 @@ public class TradingJournalsController(ApplicationDbContext db) : Controller
     {
         form.Name = (form.Name ?? "").Trim();
         form.Description = form.Description?.Trim();
-        if (form.Name.Length == 0) ModelState.AddModelError(nameof(form.Name), "Zadejte název deníku.");
+        if (form.Name.Length == 0) ModelState.AddModelError(nameof(form.Name), "Zadejte název journalu.");
     }
 }
 

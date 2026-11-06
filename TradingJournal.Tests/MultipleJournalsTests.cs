@@ -72,7 +72,7 @@ public class MultipleJournalsTests
         Assert.Equal(HttpStatusCode.Redirect, delete.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/journals/{id}")).StatusCode);
         using var newUser = await app.ClientAsync("empty");
-        Assert.Contains("první deník", WebUtility.HtmlDecode(await newUser.GetStringAsync("/TradingJournals")));
+        Assert.Contains("první journal", WebUtility.HtmlDecode(await newUser.GetStringAsync("/TradingJournals")));
     }
 
     [Fact]

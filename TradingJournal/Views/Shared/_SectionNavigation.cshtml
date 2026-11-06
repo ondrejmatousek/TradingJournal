@@ -8,12 +8,12 @@
                 @if (isTradingSection)
                 {
                     <div class="sidebar-title">Trading</div>
-                    <a class="sidebar-link @(controller == "TradingJournals" ? "active" : "")" asp-controller="TradingJournals" asp-action="Index">Moje deníky</a>
+                    <a class="sidebar-link @(controller == "TradingJournals" ? "active" : "")" asp-controller="TradingJournals" asp-action="Index">Moje journaly</a>
                     @if (currentJournal is not null)
                     {
                         <div class="sidebar-title text-break">@currentJournal.Name</div>
                         <a class="sidebar-link @(action == "Index" ? "active" : "")" asp-route="journal" asp-route-journalId="@currentJournal.Id" asp-route-action="Index">Obchody a kalendář</a>
-                        <a class="sidebar-link @(action == "Analysis" ? "active" : "")" asp-route="journal" asp-route-journalId="@currentJournal.Id" asp-route-action="Analysis">Analýza deníku</a>
+                        <a class="sidebar-link @(action == "Analysis" ? "active" : "")" asp-route="journal" asp-route-journalId="@currentJournal.Id" asp-route-action="Analysis">Analýza journalu</a>
                     }
                     <div class="sidebar-title">Společné nástroje</div>
                     <a class="sidebar-link @(controller == "JournalEntries" && action == "Strategy" ? "active" : "")" asp-controller="JournalEntries" asp-action="Strategy">Strategie</a>

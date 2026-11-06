@@ -1,19 +1,19 @@
 @model TradingJournal.Models.TradingJournalBook
-@{ ViewData["Title"] = "Smazat deník"; ViewData["BodyClass"] = "journal-shell"; var count = (int)(ViewData["EntryCount"] ?? 0); }
+@{ ViewData["Title"] = "Smazat journal"; ViewData["BodyClass"] = "journal-shell"; var count = (int)(ViewData["EntryCount"] ?? 0); }
 <div class="journal-page"><div class="journal-wrap">
-    <div class="journal-header"><div><div class="eyebrow">Trading Journal</div><h1>Smazat deník</h1></div></div>
+    <div class="journal-header"><div><div class="eyebrow">Trading Journal</div><h1>Smazat journal</h1></div></div>
     <div class="app-card"><div class="card-body">
         <h2 class="h4">@Model.Name</h2><div asp-validation-summary="ModelOnly" class="text-danger"></div>
         @if (count > 0)
         {
-            <p>Deník obsahuje @count obchodů. Pro ochranu historie ho nelze smazat, dokud není prázdný.</p>
-            <a asp-route="journal" asp-route-journalId="@Model.Id" asp-route-action="Index" class="btn btn-primary">Otevřít deník</a>
+            <p>Journal obsahuje @count obchodů. Pro ochranu historie ho nelze smazat, dokud není prázdný.</p>
+            <a asp-route="journal" asp-route-journalId="@Model.Id" asp-route-action="Index" class="btn btn-primary">Otevřít journal</a>
         }
         else
         {
-            <p>Opravdu chcete tento prázdný deník smazat? Tuto akci nelze vrátit zpět.</p>
-            <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline"><button type="submit" class="btn btn-danger">Smazat deník</button></form>
+            <p>Opravdu chcete tento prázdný journal smazat? Tuto akci nelze vrátit zpět.</p>
+            <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline"><button type="submit" class="btn btn-danger">Smazat journal</button></form>
         }
-        <a asp-action="Index" class="btn btn-outline-secondary">Zpět na deníky</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">Zpět na journaly</a>
     </div></div>
 </div></div>

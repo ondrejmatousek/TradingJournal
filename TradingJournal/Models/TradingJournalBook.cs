@@ -9,7 +9,7 @@ public class TradingJournalBook
     public int Id { get; set; }
     [BindNever, ValidateNever]
     public string UserId { get; set; } = null!;
-    [Required(ErrorMessage = "Zadejte název deníku."), StringLength(120)]
+    [Required(ErrorMessage = "Zadejte název journalu."), StringLength(120)]
     public string Name { get; set; } = "";
     [StringLength(1000)]
     public string? Description { get; set; }
