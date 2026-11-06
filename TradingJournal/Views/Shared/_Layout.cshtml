@@ -16,8 +16,9 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - EdgeDesk</title>
+    <title>@ViewData["Title"] - Trading Journal</title>
     <link rel="icon" type="image/svg+xml" href="~/favicon.svg" asp-append-version="true" />
+    <link rel="alternate icon" href="~/favicon.ico" asp-append-version="true" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/TradingJournal.styles.css" asp-append-version="true" />
@@ -27,8 +28,8 @@
         <nav class="navbar navbar-expand-lg app-navbar">
             <div class="container-fluid">
                 <a class="navbar-brand app-brand" asp-area="" asp-controller="Home" asp-action="Index">
-                    <span class="brand-mark">ED</span>
-                    <span>EdgeDesk</span>
+                    <partial name="_AppMark" />
+                    <span>Trading Journal</span>
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#app-navigation" aria-controls="app-navigation"
                         aria-expanded="false" aria-label="Otevřít nebo zavřít menu">
@@ -69,10 +70,11 @@
 
     <footer class="footer text-muted @((isFullBleed || showSidebar) ? "d-none" : "border-top")">
         <div class="container">
-            &copy; 2026 - EdgeDesk - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            &copy; 2026 - Trading Journal - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
     <link rel="stylesheet" href="~/css/responsive.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/workspace.css" asp-append-version="true" />
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

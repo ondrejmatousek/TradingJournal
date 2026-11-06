@@ -57,7 +57,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar {
   align-items: center;
   color: var(--tj-text);
   display: inline-flex;
-  font-weight: 700;
+  font-weight: 500;
   gap: 0.65rem;
 }
 
@@ -78,7 +78,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   color: #ffffff;
   display: inline-flex;
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 600;
   height: 30px;
   justify-content: center;
   letter-spacing: 0;
@@ -91,7 +91,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
 .app-navbar .nav-link.active {
   color: var(--tj-teal) !important;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .app-nav-actions {
@@ -103,7 +103,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   background: var(--tj-violet);
   border-radius: 999px;
   color: #ffffff;
-  font-weight: 700;
+  font-weight: 500;
   padding: 0.55rem 1rem;
 }
 
@@ -146,7 +146,7 @@ body.app-section-shell {
 .sidebar-title {
   color: var(--tj-teal);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.14em;
   margin: 0.5rem 0 1rem;
   padding: 0 0.75rem;
@@ -158,7 +158,7 @@ body.app-section-shell {
   border-radius: 12px;
   color: var(--tj-muted);
   display: flex;
-  font-weight: 800;
+  font-weight: 600;
   margin-bottom: 0.35rem;
   min-height: 44px;
   padding: 0.7rem 0.75rem;
@@ -334,7 +334,7 @@ body.app-section-shell {
   border-radius: 16px;
   color: var(--tj-text);
   display: flex;
-  font-weight: 850;
+  font-weight: 600;
   justify-content: center;
   min-height: 56px;
   text-decoration: none;
@@ -383,7 +383,7 @@ body.app-section-shell {
 .eyebrow {
   color: var(--tj-teal);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.12em;
   margin-bottom: 1rem;
   text-transform: uppercase;
@@ -391,7 +391,7 @@ body.app-section-shell {
 
 .hero-copy h1 {
   font-size: clamp(2.7rem, 5.8vw, 6.2rem);
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 0.97;
   margin: 0;
@@ -418,7 +418,7 @@ body.app-section-shell {
 .auth-submit {
   border: 0;
   border-radius: 999px;
-  font-weight: 800;
+  font-weight: 600;
   min-height: 50px;
   padding: 0.8rem 1.4rem;
 }
@@ -553,7 +553,7 @@ body.app-section-shell {
   border-radius: 999px;
   color: #ffdc73;
   font-style: normal;
-  font-weight: 850;
+  font-weight: 600;
   padding: 0.25rem 0.5rem;
 }
 
@@ -665,7 +665,7 @@ body.app-section-shell {
   border-radius: 999px;
   color: var(--tj-text);
   font-style: normal;
-  font-weight: 850;
+  font-weight: 600;
   padding: 0.28rem 0.6rem;
 }
 
@@ -772,7 +772,7 @@ body.app-section-shell {
 
 .macro-event time {
   color: var(--tj-text);
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .macro-event strong,
@@ -786,7 +786,7 @@ body.app-section-shell {
   color: rgba(126, 242, 231, 0.78);
   display: block;
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 600;
   margin: 0.1rem 0 0.25rem;
 }
 
@@ -821,7 +821,7 @@ body.app-section-shell {
   border-radius: 999px;
   font-size: 0.68rem;
   font-style: normal;
-  font-weight: 850;
+  font-weight: 600;
   padding: 0.24rem 0.45rem;
 }
 
@@ -893,7 +893,7 @@ body.app-section-shell {
   border-radius: 999px;
   color: var(--tj-text);
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 600;
   min-height: 34px;
   padding: 0.35rem 0.75rem;
   transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
@@ -985,7 +985,7 @@ body.app-section-shell {
   border-radius: 999px;
   font-size: 0.76rem;
   font-style: normal;
-  font-weight: 800;
+  font-weight: 600;
   padding: 0.28rem 0.58rem;
 }
 
@@ -1169,7 +1169,7 @@ body.app-section-shell {
   border-radius: 999px;
   color: #ffd166;
   font-style: normal;
-  font-weight: 850;
+  font-weight: 600;
   padding: 0.25rem 0.5rem;
 }
 
@@ -1452,14 +1452,14 @@ body.app-section-shell {
 .auth-brand {
   align-items: center;
   display: flex;
-  font-weight: 800;
+  font-weight: 600;
   gap: 0.7rem;
   margin-bottom: 1.45rem;
 }
 
 .auth-card h1 {
   font-size: clamp(1.8rem, 4vw, 2.35rem);
-  font-weight: 850;
+  font-weight: 600;
   letter-spacing: 0;
   margin: 0;
 }
@@ -1477,7 +1477,7 @@ body.app-section-shell {
   color: #202124;
   display: flex;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 500;
   gap: 0.75rem;
   justify-content: center;
   min-height: 52px;
@@ -1522,7 +1522,7 @@ body.app-section-shell {
 .auth-link,
 .auth-footnote a {
   color: var(--tj-violet);
-  font-weight: 700;
+  font-weight: 500;
   text-decoration: none;
 }
 
@@ -1617,7 +1617,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
 .journal-header h1 {
   font-size: clamp(2rem, 4vw, 3.5rem);
-  font-weight: 850;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1;
   margin: 0;
@@ -1654,7 +1654,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
 .stat-card .fs-3 {
   color: var(--tj-text);
-  font-weight: 850 !important;
+  font-weight: 600 !important;
 }
 
 .filter-panel {
@@ -1682,7 +1682,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .journal-day-trades h2 {
   color: var(--tj-text);
   font-size: clamp(1.35rem, 2vw, 1.8rem);
-  font-weight: 850;
+  font-weight: 600;
   letter-spacing: 0;
   margin: 0;
   text-transform: lowercase;
@@ -1701,7 +1701,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   color: var(--tj-text);
   display: inline-flex;
   font-size: 1.5rem;
-  font-weight: 850;
+  font-weight: 600;
   height: 42px;
   justify-content: center;
   text-decoration: none;
@@ -1729,7 +1729,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   border-right: 1px solid rgba(255, 255, 255, 0.07);
   color: rgba(255, 255, 255, 0.78);
   font-size: 0.9rem;
-  font-weight: 850;
+  font-weight: 600;
   padding: 0.8rem 0.9rem;
   text-align: center;
 }
@@ -1793,13 +1793,13 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
 .journal-calendar-date {
   color: rgba(255, 255, 255, 0.78);
-  font-weight: 850;
+  font-weight: 600;
   line-height: 1;
 }
 
 .journal-calendar-result {
   font-size: clamp(1rem, 1.6vw, 1.35rem);
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1.1;
   margin-top: auto;
 }
@@ -1807,7 +1807,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .journal-calendar-count {
   color: rgba(255, 255, 255, 0.84);
   font-size: 0.85rem;
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .journal-day-trades {
@@ -1851,7 +1851,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .journal-trade-table th {
   color: rgba(255, 255, 255, 0.72);
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
@@ -1867,7 +1867,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   border-radius: 999px;
   display: inline-flex;
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 600;
   padding: 0.28rem 0.6rem;
 }
 
@@ -1885,7 +1885,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
 .journal-table-result {
   color: var(--tj-muted);
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .journal-table-result.positive {
@@ -2098,7 +2098,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .form-label,
 .form-check-label {
   color: rgba(255, 255, 255, 0.84);
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .form-control,
@@ -2171,7 +2171,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
 .btn {
   border-radius: 999px;
-  font-weight: 800;
+  font-weight: 600;
   padding: 0.58rem 1rem;
 }
 
@@ -2218,7 +2218,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
 .badge {
   border-radius: 999px;
-  font-weight: 800;
+  font-weight: 600;
   padding: 0.45rem 0.72rem;
 }
 
@@ -2350,7 +2350,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   display: inline-flex;
   flex: 0 0 auto;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 600;
   gap: 0.3rem;
   justify-content: center;
   padding: 0.32rem 0.58rem;
@@ -2401,7 +2401,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
 .journal-upload-drop span {
   color: var(--tj-text);
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .journal-upload-drop small {
@@ -2464,7 +2464,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   color: #ffffff;
   content: "Open";
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 600;
   opacity: 0;
   padding: 0.3rem 0.55rem;
   position: absolute;
@@ -2779,7 +2779,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   color: rgba(255, 255, 255, 0.82);
   display: flex;
   font-size: 0.86rem;
-  font-weight: 800;
+  font-weight: 600;
   justify-content: flex-start;
   line-height: 1.2;
   min-height: 40px;
@@ -2799,7 +2799,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   color: rgba(255, 255, 255, 0.3);
   content: "+";
   flex: 0 0 1rem;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .quality-factor.selected.positive {
@@ -2848,7 +2848,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .quality-score-ring span {
   color: var(--tj-text);
   font-size: 1.55rem;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .quality-grade {
@@ -2982,7 +2982,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
 .invoice-number {
   font-size: 1.05rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .invoice-meta {
@@ -3181,7 +3181,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   border-radius: 999px;
   display: inline-flex;
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 600;
   justify-content: center;
   min-height: 42px;
   padding: 0.45rem 0.8rem;
@@ -3431,7 +3431,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .trade-quality-title h1 {
   color: var(--tj-text);
   font-size: clamp(1.75rem, 3vw, 2.45rem);
-  font-weight: 900;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1;
   margin: 0;
@@ -3483,7 +3483,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .quality-box h2 {
   color: var(--tj-text);
   font-size: 0.98rem;
-  font-weight: 900;
+  font-weight: 600;
   margin: 0 0 0.75rem;
   text-align: center;
 }
@@ -3529,7 +3529,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .quality-summary-box div {
   color: var(--tj-text);
   font-size: 0.98rem;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .quality-summary-box span {
@@ -3582,7 +3582,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   color: var(--tj-muted);
   display: inline-flex;
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 600;
   gap: 0.5rem;
   min-height: 42px;
   padding: 0.32rem 0.45rem 0.32rem 0.8rem;
@@ -3594,7 +3594,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   color: var(--tj-text);
-  font-weight: 900;
+  font-weight: 600;
   max-width: 78px;
   min-height: 32px;
   padding: 0.25rem 0.6rem;
@@ -3612,7 +3612,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 
 .quality-now-button {
   border-radius: 999px;
-  font-weight: 900;
+  font-weight: 600;
   min-height: 42px;
   padding-left: 0.95rem;
   padding-right: 0.95rem;
@@ -3637,7 +3637,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .quality-session-card strong {
   display: block;
   font-size: 0.98rem;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .quality-session-card p {
@@ -3651,7 +3651,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   color: var(--tj-teal);
   display: block;
   font-size: 0.68rem;
-  font-weight: 900;
+  font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -3689,7 +3689,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   color: var(--tj-text);
   display: block;
   font-size: clamp(1.15rem, 1.6vw, 1.65rem);
-  font-weight: 950;
+  font-weight: 600;
   line-height: 1.05;
 }
 
@@ -3727,7 +3727,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .quality-position-stats span {
   color: var(--tj-muted);
   font-size: 0.68rem;
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .quality-position-stats strong {
@@ -3798,7 +3798,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   color: var(--tj-text);
   display: flex;
   font-size: 0.9rem;
-  font-weight: 900;
+  font-weight: 600;
   gap: 0.4rem;
   line-height: 1.2;
 }
@@ -3810,7 +3810,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   color: #ff9caf;
   font-size: 0.66rem;
   font-style: normal;
-  font-weight: 900;
+  font-weight: 600;
   padding: 0.12rem 0.38rem;
   text-transform: uppercase;
   white-space: nowrap;
@@ -3820,7 +3820,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   color: #7ef2e7;
   display: none;
   font-size: 0.95rem;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -3851,7 +3851,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   border-radius: 999px;
   color: rgba(255, 255, 255, 0.6);
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: 600;
   min-height: 28px;
   padding: 0.15rem 0.45rem;
 }
@@ -3901,7 +3901,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .quality-result-panel .quality-score-ring span {
   color: var(--tj-text);
   font-size: 1.55rem;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .quality-result-main {
@@ -3914,13 +3914,13 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .quality-result-stats span {
   color: var(--tj-muted);
   font-size: 0.8rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .quality-result-main strong {
   color: var(--tj-text);
   font-size: clamp(1.8rem, 3vw, 3rem);
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -3954,7 +3954,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .quality-result-stats strong {
   color: var(--tj-text);
   font-size: 1rem;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .quality-result-lists {
@@ -4131,7 +4131,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   display: inline-flex;
   flex: 0 0 18px;
   font-size: 0.95rem;
-  font-weight: 900;
+  font-weight: 600;
   height: 18px;
   justify-content: center;
   line-height: 1;
@@ -4192,7 +4192,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .quality-summary-compact .quality-score-ring span {
   color: var(--tj-text);
   font-size: 1rem;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .quality-summary-metrics {
@@ -4215,13 +4215,13 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
 .quality-summary-metrics span {
   color: var(--tj-muted);
   font-size: 0.74rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .quality-summary-metrics strong {
   color: var(--tj-text);
   font-size: 0.9rem;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .quality-summary-compact #qualityGrade[data-grade="NO TRADE"],
@@ -4360,7 +4360,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   content: "Povinne vyhodnotit";
   flex: 0 0 auto;
   font-size: 0.62rem;
-  font-weight: 900;
+  font-weight: 600;
   margin-left: auto;
   text-transform: uppercase;
 }
@@ -4370,7 +4370,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   content: "Hard blocker";
   flex: 0 0 auto;
   font-size: 0.62rem;
-  font-weight: 900;
+  font-weight: 600;
   margin-left: auto;
   text-transform: uppercase;
 }
@@ -4382,7 +4382,7 @@ body:not(.marketing-shell):not(.auth-shell) .app-navbar .nav-link {
   color: #ffd659;
   display: none;
   font-size: 0.6rem;
-  font-weight: 900;
+  font-weight: 600;
   margin-left: auto;
   padding: 0.08rem 0.32rem;
   text-transform: uppercase;
@@ -4498,7 +4498,7 @@ body.quality-corex-mode .quality-position-stats div {
   border-radius: 0;
   color: #fff;
   font-size: clamp(0.78rem, 0.92vw, 0.96rem);
-  font-weight: 950;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1;
   margin: 0 0 0.42rem;
@@ -4550,7 +4550,7 @@ body.quality-corex-mode .quality-position-stats div {
   color: #fff;
   display: inline-flex;
   font-size: clamp(0.84rem, 0.9vw, 1rem);
-  font-weight: 950;
+  font-weight: 600;
   height: 30px;
   justify-content: center;
   width: 30px;
@@ -4583,7 +4583,7 @@ body.quality-corex-mode .quality-position-stats div {
 .quality-corex-copy strong {
   color: #fff;
   font-size: clamp(0.78rem, 0.9vw, 0.94rem);
-  font-weight: 950;
+  font-weight: 600;
   line-height: 1.04;
 }
 
@@ -4605,7 +4605,7 @@ body.quality-corex-mode .quality-position-stats div {
   color: rgba(255, 255, 255, 0.64);
   display: inline-flex;
   font-size: 0.95rem;
-  font-weight: 950;
+  font-weight: 600;
   height: 26px;
   justify-content: center;
   justify-self: end;
@@ -4662,7 +4662,7 @@ body.quality-corex-mode .quality-position-stats div {
   border-radius: 999px;
   color: var(--tj-muted);
   font-size: 0.86rem;
-  font-weight: 900;
+  font-weight: 600;
   padding: 0.62rem 0.95rem;
 }
 
@@ -4816,7 +4816,7 @@ body.quality-corex-mode .quality-position-stats div {
 .strategy-kicker {
   color: var(--tj-teal);
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 600;
   letter-spacing: 0.16em;
   margin: 0 0 0.65rem;
   text-transform: uppercase;
@@ -4824,7 +4824,7 @@ body.quality-corex-mode .quality-position-stats div {
 
 .strategy-hero h1 {
   font-size: clamp(2.6rem, 5.5vw, 5.8rem);
-  font-weight: 950;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 0.92;
   margin: 0;
@@ -4872,7 +4872,7 @@ body.quality-corex-mode .quality-position-stats div {
 
 .strategy-notes-head h2 {
   font-size: clamp(1.12rem, 1.45vw, 1.45rem);
-  font-weight: 950;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1.1;
   margin: 0;
@@ -4881,7 +4881,7 @@ body.quality-corex-mode .quality-position-stats div {
 
 .strategy-notes-head p {
   color: rgba(244, 245, 246, 0.66);
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.2;
   margin: 0.35rem 0 0;
   overflow-wrap: anywhere;
@@ -4894,7 +4894,7 @@ body.quality-corex-mode .quality-position-stats div {
   border-radius: 999px;
   color: #7ef2e7;
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1;
   max-width: 7rem;
   padding: 0.38rem 0.62rem;
@@ -4919,7 +4919,7 @@ body.quality-corex-mode .quality-position-stats div {
   border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 12px;
   color: rgba(244, 245, 246, 0.86);
-  font-weight: 950;
+  font-weight: 600;
   min-height: 38px;
   padding: 0.42rem 0.55rem;
 }
@@ -4992,7 +4992,7 @@ body.quality-corex-mode .quality-position-stats div {
   border: 1px solid rgba(32, 199, 185, 0.28);
   border-radius: 999px;
   color: #7ef2e7;
-  font-weight: 900;
+  font-weight: 600;
   padding: 0.5rem 0.85rem;
 }
 
@@ -5007,7 +5007,7 @@ body.quality-corex-mode .quality-position-stats div {
 .strategy-card h2,
 .strategy-no-trade h2 {
   font-size: clamp(1.25rem, 1.6vw, 1.8rem);
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1.12;
   margin: 0;
 }
@@ -5028,7 +5028,7 @@ body.quality-corex-mode .quality-position-stats div {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   color: rgba(244, 245, 246, 0.86);
-  font-weight: 800;
+  font-weight: 600;
   padding: 0.68rem 0.8rem;
 }
 
@@ -5062,7 +5062,7 @@ body.quality-corex-mode .quality-position-stats div {
   color: #7ef2e7;
   display: inline-flex;
   flex: 0 0 42px;
-  font-weight: 950;
+  font-weight: 600;
   height: 42px;
   justify-content: center;
 }
@@ -5095,7 +5095,7 @@ body.quality-corex-mode .quality-position-stats div {
   border: 1px solid rgba(242, 201, 76, 0.22);
   border-radius: 16px;
   color: #ffe7a0;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.45;
   padding: 0.8rem 0.9rem;
 }
@@ -5142,7 +5142,7 @@ body.quality-corex-mode .quality-position-stats div {
 
 .strategy-state-card span {
   font-size: 0.78rem;
-  font-weight: 950;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -5262,7 +5262,7 @@ body.quality-corex-mode .quality-position-stats div {
 .setup-review-kicker {
   color: var(--tj-teal);
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 600;
   letter-spacing: 0.16em;
   margin: 0 0 0.65rem;
   text-transform: uppercase;
@@ -5270,7 +5270,7 @@ body.quality-corex-mode .quality-position-stats div {
 
 .setup-review-hero h1 {
   font-size: clamp(2.6rem, 5.2vw, 5.5rem);
-  font-weight: 950;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 0.92;
   margin: 0;
@@ -5309,7 +5309,7 @@ body.quality-corex-mode .quality-position-stats div {
 .setup-review-gate strong {
   display: block;
   font-size: clamp(1.9rem, 3.4vw, 3.6rem);
-  font-weight: 950;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1;
 }
@@ -5336,7 +5336,7 @@ body.quality-corex-mode .quality-position-stats div {
 .setup-review-score span {
   color: var(--tj-text);
   font-size: 1.45rem;
-  font-weight: 950;
+  font-weight: 600;
 }
 
 .setup-review-metrics,
@@ -5360,7 +5360,7 @@ body.quality-corex-mode .quality-position-stats div {
   color: var(--tj-muted);
   display: block;
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
@@ -5393,7 +5393,7 @@ body.quality-corex-mode .quality-position-stats div {
 .setup-review-section-head h2,
 .setup-review-checklist h2 {
   font-size: clamp(1.25rem, 1.6vw, 1.75rem);
-  font-weight: 950;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1.12;
   margin: 0;
@@ -5416,7 +5416,7 @@ body.quality-corex-mode .quality-position-stats div {
 .setup-review-notes label span,
 .setup-review-db-form label span {
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .setup-review-form input,
@@ -5504,7 +5504,7 @@ body.quality-corex-mode .quality-position-stats div {
   border-radius: 999px;
   color: var(--tj-text);
   display: inline-flex;
-  font-weight: 950;
+  font-weight: 600;
   height: 30px;
   justify-content: center;
   width: 30px;
@@ -5512,7 +5512,7 @@ body.quality-corex-mode .quality-position-stats div {
 
 .setup-review-check strong {
   font-size: 0.9rem;
-  font-weight: 850;
+  font-weight: 600;
   line-height: 1.25;
 }
 
@@ -5523,7 +5523,7 @@ body.quality-corex-mode .quality-position-stats div {
   color: #ffd659;
   font-size: 0.62rem;
   font-style: normal;
-  font-weight: 950;
+  font-weight: 600;
   padding: 0.18rem 0.42rem;
   text-transform: uppercase;
 }
@@ -5561,7 +5561,7 @@ body.quality-corex-mode .quality-position-stats div {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   color: rgba(244, 245, 246, 0.82);
-  font-weight: 850;
+  font-weight: 600;
   min-height: 42px;
   padding: 0.56rem 0.85rem;
 }
@@ -5711,7 +5711,7 @@ body.quality-corex-mode .quality-position-stats div {
 .setup-review-edit-fields label > span {
   color: rgba(244, 245, 246, 0.76);
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .setup-review-edit-fields input,
@@ -5823,7 +5823,7 @@ body.setup-review-modal-open {
 
 .setup-review-dashboard-head h1 {
   font-size: clamp(2rem, 3.5vw, 3.4rem);
-  font-weight: 950;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1;
   margin: 0;
@@ -5850,7 +5850,7 @@ body.setup-review-modal-open {
   color: var(--tj-muted);
   cursor: pointer;
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 600;
   padding: 0.7rem 1rem;
   white-space: nowrap;
 }
@@ -5885,7 +5885,7 @@ body.setup-review-modal-open {
   color: var(--tj-muted);
   display: block;
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
@@ -5893,7 +5893,7 @@ body.setup-review-modal-open {
   color: var(--tj-text);
   display: block;
   font-size: clamp(1.55rem, 2.2vw, 2.2rem);
-  font-weight: 950;
+  font-weight: 600;
   line-height: 1;
   margin-top: 0.45rem;
 }
@@ -5948,7 +5948,7 @@ body.setup-review-modal-open {
   color: var(--tj-muted);
   display: block;
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
@@ -6067,7 +6067,7 @@ body.setup-review-modal-open {
   border-bottom: 1px solid rgba(255, 255, 255, 0.16);
   color: var(--tj-muted);
   font-size: 0.7rem;
-  font-weight: 950;
+  font-weight: 600;
   letter-spacing: 0.08em;
   padding: 0.7rem 0.6rem;
   text-align: left;
@@ -6108,7 +6108,7 @@ body.setup-review-modal-open {
   border-radius: 999px;
   display: inline-flex;
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: 600;
   line-height: 1;
   padding: 0.35rem 0.58rem;
   white-space: nowrap;
@@ -6158,7 +6158,7 @@ body.setup-review-modal-open {
 
 .setup-review-image-strip span {
   color: var(--tj-text);
-  font-weight: 950;
+  font-weight: 600;
 }
 
 .setup-review-copy {
@@ -6167,7 +6167,7 @@ body.setup-review-modal-open {
   border-radius: 8px;
   color: var(--tj-text);
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 600;
   min-height: 36px;
   padding: 0.42rem 0.62rem;
   white-space: normal;
@@ -6197,7 +6197,7 @@ body.setup-review-modal-open {
   color: var(--tj-teal);
   cursor: pointer;
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .setup-review-row-details strong {
@@ -6224,7 +6224,7 @@ body.setup-review-modal-open {
   color: var(--tj-teal);
   display: block;
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: 600;
   margin-top: 0.3rem;
 }
 
@@ -6250,7 +6250,7 @@ body.setup-review-modal-open {
 .setup-review-db-form label > span {
   color: rgba(244, 245, 246, 0.76);
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .setup-review-db-form select,
@@ -6321,7 +6321,7 @@ body.setup-review-modal-open {
   border-radius: 6px;
   color: var(--tj-text);
   cursor: pointer;
-  font-weight: 850;
+  font-weight: 600;
   margin-right: 0.65rem;
   padding: 0.48rem 0.7rem;
 }
@@ -6343,7 +6343,7 @@ body.setup-review-modal-open {
 .setup-review-textareas span {
   color: rgba(244, 245, 246, 0.74);
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .setup-review-scorecard select,

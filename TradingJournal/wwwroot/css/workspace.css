@@ -1,0 +1,248 @@
+/* Shared skin, loaded after page and responsive styles. */
+:root {
+  color-scheme: dark;
+  --tj-bg: #202428;
+  --tj-panel: #262c32;
+  --tj-panel-2: #2c333b;
+  --tj-border: #343c45;
+  --tj-text: #dce2e9;
+  --tj-muted: #98a6b7;
+  --tj-teal: #53c6b4;
+  --tj-red: #ee858d;
+  --tj-violet: #4285ed;
+  --tj-blue: #3273ce;
+  --bs-body-color: var(--tj-text);
+  --bs-body-bg: var(--tj-bg);
+  --bs-border-color: var(--tj-border);
+  --bs-primary: #4285ed;
+  --bs-primary-rgb: 66, 133, 237;
+  --bs-link-color: #8bb7fa;
+  --bs-link-hover-color: #b0d0ff;
+}
+body, body:not(.marketing-shell):not(.auth-shell), body.marketing-shell, body.auth-shell {
+  background: var(--tj-bg);
+  color: var(--tj-text);
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: .875rem;
+  font-weight: 400;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+body h1, body h2, body h3, body h4, body h5, body h6,
+body .h1, body .h2, body .h3, body .h4, body .h5, body .h6 { font-weight: 500; }
+body strong, body b { font-weight: 600; }
+body .fw-bold, body .fw-semibold, .stat-card .fs-3 { font-weight: 600 !important; }
+body .text-muted { color: var(--tj-muted) !important; }
+a { color: #8bb7fa; }
+a:hover { color: #b0d0ff; }
+::selection { background: #4285ed55; color: #fff; }
+
+body .app-navbar, body:not(.marketing-shell):not(.auth-shell) .app-navbar {
+  background: #24292f;
+  border-bottom: 1px solid var(--tj-border);
+  backdrop-filter: none;
+  min-height: 56px;
+  padding: 0 20px;
+}
+.app-navbar > .container-fluid { min-height: 55px; padding: 0; }
+body .app-brand { gap: 10px; font-size: 1rem; font-weight: 500; white-space: nowrap; word-break: normal; }
+.brand-symbol { width: 30px; height: 30px; flex: 0 0 30px; vertical-align: middle; }
+body .app-navbar .nav-link { color: var(--tj-muted); font-size: .8rem; font-weight: 400; }
+body .app-navbar .nav-link.active { color: #a4c8ff !important; font-weight: 500; }
+.app-navbar .nav-link:hover { color: var(--tj-text) !important; }
+body .nav-cta { background: var(--tj-blue); border-radius: 5px; padding: 7px 13px; font-weight: 500; }
+.app-workspace { grid-template-columns: 196px minmax(0, 1fr); height: calc(100dvh - 56px); }
+.app-workspace-main { height: calc(100dvh - 56px); scrollbar-width: thin; scrollbar-color: #4d5762 transparent; }
+.app-sidebar { height: calc(100dvh - 56px); background: #24292f; border-right: 1px solid var(--tj-border); padding: 30px 12px; }
+.sidebar-title { color: #8d9aab; font-size: .62rem; font-weight: 500; letter-spacing: .14em; margin: 22px 0 10px; padding: 0 12px; }
+.sidebar-title:first-child { margin-top: 0; }
+.sidebar-link { gap: 10px; min-height: 39px; padding: 8px 12px; margin-bottom: 4px; border-radius: 5px; font-size: .79rem; font-weight: 400; }
+.sidebar-link::before { content: ""; display: block; flex: 0 0 15px; height: 15px; background: currentColor; mask: url("../icons/navigation.svg") center / contain no-repeat; }
+.sidebar-link[href*="Analysis"]::before, .sidebar-link[href*="Planner"]::before { mask-image: url("../icons/chart.svg"); }
+.sidebar-link[href*="Strategy"]::before { mask-image: url("../icons/book.svg"); }
+.sidebar-link[href*="SetupReview"]::before, .sidebar-link[href*="TradeQuality"]::before { mask-image: url("../icons/checklist.svg"); }
+.sidebar-link.active, .sidebar-link:hover { background: #4285ed14; color: #a4c8ff; box-shadow: none; }
+.sidebar-link.active { background: #4285ed20; }
+
+.journal-page { padding: 44px clamp(24px, 4vw, 64px) 56px; }
+.journal-header { align-items: center; gap: 24px; margin-bottom: 30px; }
+body .journal-header h1, body .trade-quality-title h1, body .planner h1,
+body .screening-page h1, body .insiders-page h1 { font-size: clamp(1.65rem, 2.2vw, 2rem); font-weight: 500; letter-spacing: -.035em; line-height: 1.25; }
+.journal-header p { font-size: .82rem; max-width: 640px; margin-top: 9px; }
+body .eyebrow, body .screening-eyebrow { color: #8fb8f4; font-size: .61rem; letter-spacing: .16em; font-weight: 500; margin-bottom: 9px; }
+.journal-page > nav[aria-label] { font-size: .73rem; color: var(--tj-muted); }
+.journal-page > nav[aria-label] a { color: var(--tj-muted); text-decoration: none; }
+.page-actions { gap: 8px; }
+body .app-card, body .stat-card, body .trade-card,
+body .quality-box, body .quality-summary-box, body .quality-factor-card,
+body .strategy-card, body .setup-review-card, body .setup-review-panel {
+  background: var(--tj-panel); border: 1px solid var(--tj-border); border-radius: 9px; box-shadow: none; backdrop-filter: none;
+}
+.app-card .card-body, .stat-card .card-body, .trade-card .card-body { padding: 22px; }
+.trade-card:hover { transform: none; border-color: #4a5664; box-shadow: none; }
+.panel-title { font-size: .8rem; }
+.panel-title strong { font-weight: 500; }
+.metric-cell, .review-verdict { background: transparent; border-color: var(--tj-border); border-radius: 6px; }
+.metric-cell strong { font-size: 1rem; font-weight: 500; }
+body .badge { border-radius: 4px; padding: 4px 7px; font-size: .65rem; font-weight: 500; }
+
+body .btn { border-radius: 5px; font-size: .79rem; font-weight: 500; line-height: 1.5; padding: 9px 15px; box-shadow: none; }
+body .btn-sm { padding: 6px 10px; font-size: .73rem; }
+body .btn-primary { --bs-btn-active-bg: #3275db; --bs-btn-active-border-color: #3275db; background: var(--tj-blue); border-color: var(--tj-blue); color: #fff; }
+body .btn-primary:hover, body .btn-primary:focus-visible { background: #2866bd; border-color: #2866bd; color: #fff; }
+body .btn-outline-secondary { background: var(--tj-panel-2); border-color: #3a434e; color: #c3cddb; }
+body .btn-outline-secondary:hover { background: #353e49; border-color: #526171; color: #fff; }
+body .btn-outline-danger { background: transparent; border-color: #ee858d45; color: #eea0a6; }
+body .btn-danger, body .btn-outline-danger:hover { background: #a4434f; border-color: #a4434f; color: #fff; }
+body .form-control, body .form-select { background-color: #22282e; border: 1px solid #3a434e; border-radius: 5px; color: var(--tj-text); font-size: .84rem; font-weight: 400; min-height: 39px; padding: 8px 11px; box-shadow: none; }
+body .form-select { padding-right: 34px; }
+body .form-control:focus, body .form-select:focus { background-color: #242b33; border-color: #6b9eea; color: var(--tj-text); box-shadow: 0 0 0 3px #4285ed20; }
+body .form-control::placeholder { color: #8d9aab; opacity: 1; }
+.form-label, .form-check-label { font-size: .78rem; font-weight: 400; color: #b9c5d3; }
+.form-text { font-size: .72rem; color: var(--tj-muted); }
+.form-floating > .form-control { min-height: 58px; padding: 1rem .75rem; }
+.form-floating > label { color: var(--tj-muted); }
+body .form-check-input:checked { background-color: var(--tj-blue); border-color: var(--tj-blue); }
+body .form-select option { background: #22282e; }
+:focus-visible { outline: 2px solid #8bb7fa; outline-offset: 3px; }
+body .app-navbar :focus-visible { outline-color: #8bb7fa; }
+
+.analysis-hero { background: var(--tj-border); }
+.analysis-hero > div { background: var(--tj-panel); padding: 22px; min-height: 128px; }
+.analysis-hero strong { font-size: clamp(1.5rem, 2.1vw, 2rem); font-weight: 500; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.analysis-hero small { font-size: .69rem; }
+.analysis-card { padding: 20px; }
+.analysis-card h2 { font-size: 1rem; }
+.analysis-card p { font-size: .76rem; }
+.analysis-row { border-color: var(--tj-border); font-size: .79rem; }
+.line-chart, .empty-chart { background: transparent; border: 0; border-radius: 0; }
+.chart-line { stroke: #73bcf0; stroke-width: 2; }
+.chart-zero { stroke: #46515f; stroke-width: .6; }
+.bar-chart .positive, .bar-track i.positive { background: #53c6b4; }
+.bar-chart .negative, .bar-track i.negative { background: #ee858d; }
+.bar-track { height: 18px; border-radius: 3px; background: #ffffff05; }
+.bar-track i, .day-column i { border-radius: 3px; }
+.day-column { border: 0; border-radius: 3px; background: transparent; }
+.analysis-row { border-radius: 5px; background: transparent; }
+.journal-calendar-header h2, .journal-day-trades h2 { font-size: 1.15rem; font-weight: 500; text-transform: none; }
+.journal-calendar-grid { background: var(--tj-panel); border-color: var(--tj-border); border-radius: 8px; }
+.journal-calendar-weekday { background: #292f36; color: var(--tj-muted); border-color: var(--tj-border); font-size: .72rem; font-weight: 500; padding: 10px; }
+.journal-calendar-day { background: transparent; border-color: var(--tj-border); padding: 10px 12px; }
+.journal-calendar-day.win { background: #53c6b41c; }
+.journal-calendar-day.loss { background: #ee858d1c; }
+.journal-calendar-day.flat { background: #a4c8ff0a; }
+.journal-calendar-day.selected { box-shadow: inset 0 0 0 1px #8bb7fa; }
+.journal-calendar-day.selected::after { background: #8bb7fa; width: 5px; height: 5px; }
+.journal-calendar-date { font-size: .8rem; font-weight: 400; }
+.journal-calendar-result { font-size: 1rem; font-weight: 500; }
+.journal-calendar-count { color: var(--tj-muted); font-size: .65rem; }
+.journal-calendar-nav a { width: 32px; height: 32px; border-radius: 5px; font-size: 1.15rem; background: var(--tj-panel); border-color: var(--tj-border); }
+.journal-trade-table-wrap { background: var(--tj-panel); border-radius: 8px; border-color: var(--tj-border); box-shadow: none; }
+.journal-trade-table th { background: #292f36; color: var(--tj-muted); font-size: .68rem; font-weight: 500; }
+.journal-trade-table td { border-color: var(--tj-border); font-size: .78rem; }
+.journal-table-result { font-weight: 500; }
+.table { --bs-table-bg: transparent; --bs-table-color: var(--tj-text); --bs-table-border-color: var(--tj-border); font-size: .78rem; }
+.table th { font-weight: 500; color: #afbdce; }
+body .table { color: var(--tj-text); }
+body .table th, body .table td { border-color: var(--tj-border); }
+.analysis-review-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.analysis-card { min-width: 0; }
+.analysis-hero > div + div { border-left: 1px solid var(--tj-border); }
+.form-control[type="date"]::-webkit-calendar-picker-indicator,
+.form-control[type="datetime-local"]::-webkit-calendar-picker-indicator { filter: none; background: transparent; }
+
+/* Playbook, setup review and sign-in follow the same typography and surfaces. */
+body .strategy-page, body .setup-review-page, body .home-welcome { background: var(--tj-bg); }
+.strategy-wrap, .setup-review-wrap { padding: 0; }
+body .strategy-hero, body .strategy-principle-card, body .strategy-decision-panel,
+body .strategy-no-trade, body .strategy-notes-card, body .strategy-corex-workflow,
+body .setup-review-hero, body .setup-review-stat, body .setup-review-modal,
+body .home-welcome-card {
+  background: var(--tj-panel); border-color: var(--tj-border); border-radius: 9px; box-shadow: none;
+}
+body .strategy-hero h1, body .setup-review-dashboard-head h1,
+body .setup-review-hero h1, body .home-welcome-card h1 { font-size: clamp(1.65rem, 2.2vw, 2rem); font-weight: 500; letter-spacing: -.035em; line-height: 1.25; }
+.setup-review-dashboard-head { align-items: center; flex-wrap: wrap; }
+.setup-review-dashboard-head > div:first-child { flex: 1 1 350px; }
+.setup-review-dashboard-head h1 { max-width: none; }
+.setup-review-dashboard-head p:last-child, .strategy-lead { font-size: .82rem; margin-top: 9px; color: var(--tj-muted); }
+body .setup-review-eyebrow, body .strategy-eyebrow, body .strategy-kicker { font-size: .61rem; font-weight: 500; color: #8fb8f4; }
+.setup-review-stat strong { font-size: 1.7rem; font-weight: 500; }
+.setup-review-stat span { font-size: .65rem; font-weight: 400; }
+.setup-review-panel h2 { font-size: 1.1rem; font-weight: 500; }
+.setup-review-tab, .strategy-switcher, .strategy-switcher button { border-radius: 5px; font-weight: 400; }
+.setup-review-tab.is-active, .setup-review-tab:hover,
+.strategy-switcher button.active { background: #4285ed20; border-color: #4285ed55; color: #a4c8ff; box-shadow: none; }
+body .setup-review-db-form input, .setup-review-db-form select, .setup-review-db-form textarea,
+.setup-review-edit-fields input, .setup-review-edit-fields select, .setup-review-edit-fields textarea {
+  background: #22282e; border: 1px solid #3a434e; border-radius: 5px; font-size: .82rem; color: var(--tj-text);
+}
+.setup-review-db-form label > span, .setup-review-edit-fields label > span { font-weight: 400; }
+.setup-review-db-form label:has(select)::after { border-color: #98a6b7; }
+.setup-review-db-form input[type="file"]::file-selector-button { background: #2c333b; border-color: #3a434e; color: var(--tj-text); font-weight: 400; }
+.setup-review-db-form button.btn-primary { color: #fff; }
+.setup-review-table th { background: #292f36; font-weight: 500; }
+.home-action { border-radius: 5px; font-size: .85rem; font-weight: 500; box-shadow: none; }
+.home-action.primary { background: var(--tj-blue); border-color: var(--tj-blue); color: #fff; }
+.home-welcome-card::before, .home-welcome-card::after { display: none; }
+
+/* Investment pages use the same charcoal surfaces. */
+body .screening-page, body .insiders-page, body .planner { background: var(--tj-bg); color: var(--tj-text); font-size: .875rem; }
+.planner { --p-bg: #202428; --p-card: #262c32; --p-border: #343c45; --p-muted: #98a6b7; background-image: none; }
+.screening-summary > div, .insiders-summary > div, .planner-stats, .planner-chart-card, .planner-inputs,
+.screening-filters, .insiders-filters, .screening-table, .insiders-table,
+.screening-page dialog, .insiders-page dialog, #price-lab { background: var(--tj-panel); border-color: var(--tj-border); border-radius: 8px; box-shadow: none; }
+.screening-table th, .insiders-table th { background: #292f36; color: #afbdce; font-weight: 500; }
+.screening-table td, .insiders-table td { border-color: var(--tj-border); }
+.screening-page button, .screening-page input, .screening-page select, .screening-page textarea,
+.insiders-page button, .insiders-page input, .insiders-page select, .planner-field input[type=number] { background-color: #2c333b; color: var(--tj-text); border-color: #3a434e; border-radius: 5px; font-weight: 400; }
+.screening-page button.is-active, .screening-page .is-active,
+.insiders-page button.is-active, .planner-link { background: var(--tj-blue); border-color: var(--tj-blue); color: #fff; border-radius: 5px; }
+.screening-page a, .insiders-page a { color: #8bb7fa; }
+.screening-page button:hover, .insiders-page button:hover { border-color: #8bb7fa; }
+.screening-macro, .planner-insight { background: #4285ed10; border-color: #4285ed40; border-radius: 6px; }
+
+.auth-stage { background: none; }
+.auth-card { background: var(--tj-panel); border: 1px solid var(--tj-border); border-radius: 10px; box-shadow: none; }
+.auth-card h1 { font-size: 2rem; font-weight: 500; letter-spacing: -.03em; }
+.auth-brand { font-weight: 500; font-size: 1rem; }
+.auth-side { background: #242a31; }
+.auth-side-card { background: #2b323a; border-radius: 9px; box-shadow: none; }
+.google-signin-button { min-height: 46px; border-radius: 5px; font-size: .85rem; font-weight: 500; box-shadow: none; }
+
+.journal-book-card .book-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.book-icon { width: 34px; height: 34px; border-radius: 7px; background: #4285ed18; color: #91bcff; display: grid; place-items: center; }
+.book-icon svg { width: 17px; height: 17px; }
+.book-count { color: var(--tj-muted); font-size: .72rem; }
+.journal-book-card h2 { font-size: 1rem; font-weight: 500; margin-bottom: 10px; }
+.journal-book-card p { font-size: .8rem; }
+.book-footer { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding-top: 18px; border-top: 1px solid var(--tj-border); margin-top: auto; }
+.book-footer a { font-size: .75rem; text-decoration: none; }
+.book-footer .book-open { color: #9fc5ff; margin-right: auto; }
+.book-footer .book-edit { color: var(--tj-muted); }
+.book-footer .book-delete { color: #dba0a6; }
+.book-footer a:hover { color: #fff; }
+
+@media (min-width: 992px) {
+  .app-navbar .app-brand { width: 176px; margin-right: 24px; flex-shrink: 0; }
+  .app-navbar .app-brand .brand-symbol { width: 27px; height: 27px; flex-basis: 27px; }
+}
+@media (max-width: 991.98px) {
+  .app-workspace, .app-workspace-main { height: auto; }
+  body .app-navbar { padding: 7px 16px; }
+  .app-navbar > .container-fluid { min-height: 42px; }
+  .journal-page { padding: 24px 20px 40px; }
+  .journal-header { flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+  .analysis-review-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .journal-page { padding: 20px 14px 36px; }
+  .journal-header h1 { font-size: 1.7rem; }
+  .analysis-hero > div { min-height: 110px; padding: 16px; }
+  .journal-calendar-day { min-height: 80px; padding: 7px 3px; }
+  .journal-calendar-result { font-size: .75rem; }
+  .journal-calendar-weekday { font-size: .65rem; padding: 9px 2px; }
+  .journal-calendar-count { font-size: .6rem; }
+  .app-card .card-body { padding: 18px; }
+  .book-footer a { min-height: 44px; display: inline-flex; align-items: center; }
+}

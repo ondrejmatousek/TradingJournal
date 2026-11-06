@@ -1,11 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs>
-    <linearGradient id="edgeDeskMark" x1="8" y1="6" x2="58" y2="60" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#20c7b9"/>
-      <stop offset="1" stop-color="#6f63ff"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="16" fill="#050607"/>
-  <rect x="8" y="8" width="48" height="48" rx="12" fill="url(#edgeDeskMark)"/>
-  <path d="M21 19h24v7H29v6h14v7H29v6h17v7H21V19Z" fill="#fff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="7" fill="#4285ed"/>
+  <path d="M8 8v16h16M11 19l4-5 4 3 5-8" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

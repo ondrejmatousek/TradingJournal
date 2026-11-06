@@ -14,14 +14,18 @@
         <div class="row g-3">
         @foreach (var journal in Model)
         {
-            <div class="col-12 col-md-6 col-xl-4"><article class="app-card h-100"><div class="card-body h-100 d-flex flex-column gap-3">
+            <div class="col-12 col-md-6 col-xl-4"><article class="app-card journal-book-card h-100"><div class="card-body h-100 d-flex flex-column gap-3">
+                <div class="book-heading">
+                    <span class="book-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 3h10a2 2 0 0 1 2 2v12H6a2 2 0 0 1-2-2V3Z"/><path d="M4 13h12M8 6h5M8 9h4"/></svg></span>
+                    <span class="book-count">@journal.EntryCount obchodů</span>
+                </div>
                 <div><h2 class="h4 text-break"><a asp-route="journal" asp-route-journalId="@journal.Id" asp-route-action="Index" class="text-decoration-none text-reset">@journal.Name</a></h2>
                     @if (!string.IsNullOrWhiteSpace(journal.Description)) { <p class="text-muted" style="white-space:pre-wrap;overflow-wrap:anywhere">@journal.Description</p> }
-                    <span class="text-muted">Počet obchodů: @journal.EntryCount</span></div>
-                <div class="d-flex flex-wrap gap-2 mt-auto">
-                    <a asp-route="journal" asp-route-journalId="@journal.Id" asp-route-action="Index" class="btn btn-primary">Otevřít</a>
-                    <a asp-action="Edit" asp-route-id="@journal.Id" class="btn btn-outline-secondary">Upravit</a>
-                    <a asp-action="Delete" asp-route-id="@journal.Id" class="btn btn-outline-danger">Smazat</a>
+                    </div>
+                <div class="book-footer">
+                    <a asp-route="journal" asp-route-journalId="@journal.Id" asp-route-action="Index" class="book-open">Otevřít deník <span aria-hidden="true">→</span></a>
+                    <a asp-action="Edit" asp-route-id="@journal.Id" class="book-edit" aria-label="Upravit deník @journal.Name">Upravit</a>
+                    <a asp-action="Delete" asp-route-id="@journal.Id" class="book-delete" aria-label="Smazat deník @journal.Name">Smazat</a>
                 </div>
             </div></article></div>
         }

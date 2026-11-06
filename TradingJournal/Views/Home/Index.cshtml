@@ -2,15 +2,15 @@
 @inject SignInManager<IdentityUser> SignInManager
 
 @{
-    ViewData["Title"] = "EdgeDesk";
+    ViewData["Title"] = "Trading Journal";
     ViewData["BodyClass"] = "marketing-shell";
 }
 
 <section class="home-welcome" aria-labelledby="home-title">
     <div class="home-welcome-card">
         <div class="home-command-brand">
-            <span class="brand-mark">ED</span>
-            <strong>EdgeDesk</strong>
+            <partial name="_AppMark" />
+            <strong>Trading Journal</strong>
         </div>
         <h1 id="home-title">Trading Journal a investiční výzkum</h1>
         <p>
