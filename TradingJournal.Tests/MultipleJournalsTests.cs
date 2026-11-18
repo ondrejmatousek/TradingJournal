@@ -1,7 +1,10 @@
+using System.Globalization;
+using System.IO.Compression;
 using System.Net;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -114,6 +117,104 @@ public class MultipleJournalsTests
         Assert.Equal(4, await db.JournalEntries.CountAsync());
         Assert.Equal(2, await db.JournalEntryImages.CountAsync());
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/journals/2/Details/{saved.Id}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task SessionExportDownloadsOnlyMatchingExecutedTradesWithTheirOriginalImages()
+    {
+        await using var app = new JournalApp();
+        using var client = await app.ClientAsync("owner");
+        var date = new DateOnly(2025, 5, 12);
+        var start = new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue)).ToUniversalTime();
+        var isoDate = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            foreach (var entry in await db.JournalEntries.ToListAsync())
+            {
+                entry.EntryTime = start;
+                entry.Side = PositionSide.Long;
+                entry.FollowedTradingPlan = true;
+            }
+            var trade = await db.JournalEntries.Include(e => e.Images).SingleAsync(e => e.Id == 1);
+            trade.ProfitLoss = 125.5m;
+            trade.Note = "Vstup podle plánu";
+            trade.Images.Add(new JournalEntryImage
+            {
+                ImageData = [4, 5, 6], ImageContentType = "image/png", ImageFileName = "test.png"
+            });
+            db.JournalEntries.AddRange(
+                Entry(start, EntryStatus.Open),
+                Entry(start, EntryStatus.Skipped),
+                Entry(start.AddSeconds(-1)),
+                Entry(start.AddDays(1)),
+                Entry(start, followedPlan: false),
+                Entry(start.AddHours(12)));
+            await db.SaveChangesAsync();
+        }
+
+        var page = await client.GetStringAsync($"/journals/1?selectedDate={isoDate}&planOnly=true&asset=XAUUSD&side=Long&outcome=Win");
+        var link = Regex.Match(page, "href=\"([^\"]*ExportSession[^\"]*)\"").Groups[1].Value;
+        Assert.NotEmpty(link);
+        var url = WebUtility.HtmlDecode(link);
+        Assert.StartsWith("/journals/1/ExportSession?", url);
+        Assert.Contains($"selectedDate={isoDate}", url);
+        Assert.Contains("planOnly=True", url, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("asset=XAUUSD", url);
+        Assert.Contains("side=Long", url);
+        Assert.Contains("outcome=Win", url);
+
+        using var response = await client.GetAsync(url);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/zip", response.Content.Headers.ContentType!.MediaType);
+        Assert.Equal($"denik-1-seance-{isoDate}.zip", response.Content.Headers.ContentDisposition!.FileNameStar);
+        Assert.True(response.Headers.CacheControl!.NoStore);
+
+        using var zip = new ZipArchive(await response.Content.ReadAsStreamAsync(), ZipArchiveMode.Read);
+        Assert.NotNull(zip.GetEntry("README.txt"));
+        using var manifestStream = zip.GetEntry("obchody.json")!.Open();
+        using var manifest = await JsonDocument.ParseAsync(manifestStream);
+        Assert.Equal(isoDate, manifest.RootElement.GetProperty("sessionDate").GetString());
+        var trades = manifest.RootElement.GetProperty("trades");
+        Assert.Equal(2, trades.GetArrayLength());
+        var exported = trades[0];
+        Assert.Equal(1, exported.GetProperty("tradeId").GetInt32());
+        Assert.Equal("Win", exported.GetProperty("outcome").GetString());
+        Assert.Equal(125.5m, exported.GetProperty("profitLoss").GetDecimal());
+        Assert.Equal("Vstup podle plánu", exported.GetProperty("note").GetString());
+        var images = exported.GetProperty("images");
+        Assert.Equal(3, images.GetArrayLength());
+        Assert.Equal(5, zip.Entries.Count);
+        Assert.Empty(trades[1].GetProperty("images").EnumerateArray());
+        Assert.Equal(JsonValueKind.Null, trades[1].GetProperty("profitLoss").ValueKind);
+        Assert.Equal(3, images.EnumerateArray().Select(i => i.GetProperty("path").GetString()).Distinct().Count());
+        foreach (var (image, index) in images.EnumerateArray().Select((image, index) => (image, index)))
+        {
+            var path = image.GetProperty("path").GetString()!;
+            Assert.StartsWith("screenshots/trade-1/trade-1-", path);
+            Assert.EndsWith(".png", path);
+            Assert.Equal("image/png", image.GetProperty("contentType").GetString());
+            if (index > 0)
+                Assert.Equal("test.png", image.GetProperty("originalFileName").GetString());
+            using var bytes = new MemoryStream();
+            using var screenshot = zip.GetEntry(path)!.Open();
+            await screenshot.CopyToAsync(bytes);
+            Assert.Equal<byte>(index == 2 ? [4, 5, 6] : [1, 2, 3], bytes.ToArray());
+        }
+
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/journals/3/ExportSession?selectedDate={isoDate}")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/journals/1/ExportSession?selectedDate=invalid")).StatusCode);
+        using var anonymous = app.CreateClient(new() { AllowAutoRedirect = false });
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync(url)).StatusCode);
+
+        static JournalEntry Entry(DateTimeOffset time, EntryStatus status = EntryStatus.Executed, bool followedPlan = true) =>
+            new()
+            {
+                UserId = "owner", JournalId = 1, Asset = AssetSymbol.XAUUSD, Side = PositionSide.Long,
+                EntryTime = time,
+                Status = status, Outcome = TradeOutcome.Win, FollowedTradingPlan = followedPlan
+            };
     }
 
     [Fact]

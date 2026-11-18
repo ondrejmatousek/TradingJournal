@@ -843,6 +843,36 @@ namespace TradingJournal.Controllers
             return entry.Status == EntryStatus.Executed ? entry.ProfitLoss : null;
         }
 
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> ExportSession(
+            DateOnly selectedDate,
+            AssetSymbol? asset,
+            TradeOutcome? outcome,
+            PositionSide? side,
+            bool planOnly,
+            CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid || selectedDate == DateOnly.MinValue || selectedDate == DateOnly.MaxValue)
+                return BadRequest();
+
+            var journal = (TradingJournalBook)ViewData["CurrentJournal"]!;
+            // Use the same local day boundaries as the journal calendar.
+            var start = new DateTimeOffset(selectedDate.ToDateTime(TimeOnly.MinValue)).ToUniversalTime();
+            var end = new DateTimeOffset(selectedDate.AddDays(1).ToDateTime(TimeOnly.MinValue)).ToUniversalTime();
+            var entries = await FilterEntries(asset, outcome, side, planOnly)
+                .Where(e => e.Status == EntryStatus.Executed
+                    && (e.EntryTime ?? e.CreatedAt) >= start && (e.EntryTime ?? e.CreatedAt) < end)
+                .OrderBy(e => e.EntryTime ?? e.CreatedAt)
+                .ThenBy(e => e.Id)
+                .Include(e => e.Images)
+                .AsSplitQuery()
+                .ToListAsync(cancellationToken);
+
+            var archive = await JournalSessionExport.CreateAsync(journal, selectedDate, entries, cancellationToken);
+            return File(archive, "application/zip", $"denik-{journal.Id}-seance-{selectedDate:yyyy-MM-dd}.zip");
+        }
+
         // GET: JournalEntries
         public async Task<IActionResult> Index(
             AssetSymbol? asset,
@@ -852,29 +882,7 @@ namespace TradingJournal.Controllers
             DateOnly? month = null,
             DateOnly? selectedDate = null)
         {
-            var userId = CurrentUserId;
-
-            var allUserEntries = await _context.JournalEntries
-                .AsNoTracking()
-                .Include(e => e.Images)
-                .Where(e => e.UserId == userId && e.JournalId == CurrentJournalId)
-                .ToListAsync();
-
-            var filteredEntries = allUserEntries.AsEnumerable();
-
-            if (asset.HasValue)
-                filteredEntries = filteredEntries.Where(e => e.Asset == asset.Value);
-
-            if (outcome.HasValue)
-                filteredEntries = filteredEntries.Where(e => e.Outcome == outcome.Value);
-
-            if (side.HasValue)
-                filteredEntries = filteredEntries.Where(e => e.Side == side.Value);
-
-            if (planOnly)
-                filteredEntries = filteredEntries.Where(e => e.FollowedTradingPlan);
-
-            var entries = filteredEntries
+            var entries = (await FilterEntries(asset, outcome, side, planOnly).ToListAsync())
                 .OrderByDescending(e => e.EntryTime ?? e.CreatedAt)
                 .ToList();
 
@@ -949,6 +957,25 @@ namespace TradingJournal.Controllers
             };
 
             return View(model);
+        }
+
+        private IQueryable<JournalEntry> FilterEntries(AssetSymbol? asset, TradeOutcome? outcome, PositionSide? side, bool planOnly)
+        {
+            var userId = CurrentUserId;
+            var journalId = CurrentJournalId;
+            var entries = _context.JournalEntries.AsNoTracking()
+                .Where(e => e.UserId == userId && e.JournalId == journalId);
+
+            if (asset.HasValue)
+                entries = entries.Where(e => e.Asset == asset.Value);
+            if (outcome.HasValue)
+                entries = entries.Where(e => e.Outcome == outcome.Value);
+            if (side.HasValue)
+                entries = entries.Where(e => e.Side == side.Value);
+            if (planOnly)
+                entries = entries.Where(e => e.FollowedTradingPlan);
+
+            return entries;
         }
 
         private static JournalCalendar BuildJournalCalendar(IReadOnlyList<JournalEntry> entries, DateOnly month, DateOnly selectedDate)

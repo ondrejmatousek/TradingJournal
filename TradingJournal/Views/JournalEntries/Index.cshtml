@@ -210,7 +210,19 @@
             </section>
 
             <section class="journal-day-trades">
-                <h2>Obchody (@selectedDayTitle)</h2>
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <h2 class="mb-0">Obchody (@selectedDayTitle)</h2>
+                    @if (Model.SelectedDayEntries.Any(entry => entry.Status == EntryStatus.Executed))
+                    {
+                        <a class="btn btn-outline-secondary"
+                           asp-action="ExportSession"
+                           asp-route-selectedDate="@Model.Calendar.SelectedDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                           asp-route-asset="@Model.Filters.Asset"
+                           asp-route-outcome="@Model.Filters.Outcome"
+                           asp-route-side="@Model.Filters.Side"
+                           asp-route-planOnly="@Model.Filters.PlanOnly">Export seance pro AI (ZIP)</a>
+                    }
+                </div>
                 <p class="text-muted">Zisk / ztráta v měně účtu. Nezadané částky se do součtů nezahrnují.</p>
 
                 @if (!Model.SelectedDayEntries.Any())
