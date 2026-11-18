@@ -5,7 +5,7 @@ using TradingJournal.Models;
 
 namespace TradingJournal.Services;
 
-internal static class JournalSessionExport
+internal static class JournalZipExport
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -15,8 +15,8 @@ internal static class JournalSessionExport
 
     public static async Task<Stream> CreateAsync(
         TradingJournalBook journal,
-        DateOnly date,
-        IReadOnlyList<JournalEntry> trades,
+        DateOnly? sessionDate,
+        IAsyncEnumerable<JournalEntry> trades,
         CancellationToken cancellationToken)
     {
         var file = new FileStream(Path.Combine(Path.GetTempPath(), Path.GetRandomFileName()),
@@ -28,17 +28,23 @@ internal static class JournalSessionExport
             await using (var zip = await ZipArchive.CreateAsync(file, ZipArchiveMode.Create, leaveOpen: true,
                 entryNameEncoding: null, cancellationToken))
             {
-                var manifest = new
+                var tradeDescriptions = new List<object>();
+                await foreach (var trade in trades.WithCancellation(cancellationToken))
                 {
-                    schemaVersion = 1,
-                    journal = new { journal.Id, journal.Name },
-                    sessionDate = date,
-                    calendarTimeZone = TimeZoneInfo.Local.Id,
-                    trades = trades.Select(trade => new
+                    var images = GetImages(trade).ToArray();
+                    foreach (var image in images)
+                    {
+                        var entry = zip.CreateEntry(image.Path, CompressionLevel.NoCompression);
+                        await using var destination = await entry.OpenAsync(cancellationToken);
+                        await destination.WriteAsync(image.Data, cancellationToken);
+                    }
+
+                    tradeDescriptions.Add(new
                     {
                         tradeId = trade.Id,
                         trade.Asset,
                         trade.Side,
+                        trade.Status,
                         trade.EntryTime,
                         trade.ExitTime,
                         trade.CreatedAt,
@@ -52,13 +58,23 @@ internal static class JournalSessionExport
                         trade.FollowedTradingPlan,
                         trade.Note,
                         trade.FeelingsBeforeEntry,
-                        images = GetImages(trade).Select(image => new
+                        images = images.Select(image => new
                         {
                             image.Path,
                             image.OriginalFileName,
                             image.ContentType
-                        })
-                    })
+                        }).ToArray()
+                    });
+                }
+
+                var manifest = new
+                {
+                    schemaVersion = 1,
+                    journal = new { journal.Id, journal.Name },
+                    scope = sessionDate.HasValue ? "session" : "journal",
+                    sessionDate,
+                    calendarTimeZone = TimeZoneInfo.Local.Id,
+                    trades = tradeDescriptions
                 };
 
                 await using (var entry = await zip.CreateEntry("obchody.json").OpenAsync(cancellationToken))
@@ -69,10 +85,13 @@ internal static class JournalSessionExport
                 await using (var entry = await zip.CreateEntry("README.txt").OpenAsync(cancellationToken))
                 await using (var writer = new StreamWriter(entry))
                 {
-                    await writer.WriteAsync("""
-                        Export obchodní seance z TradingJournal
+                    var scopeDescription = sessionDate.HasValue
+                        ? "Soubor obchody.json obsahuje provedené obchody vybraného dne podle aktivních filtrů."
+                        : "Soubor obchody.json obsahuje všechny záznamy deníku včetně otevřených a vynechaných obchodů.";
+                    await writer.WriteAsync($"""
+                        Export obchodů z TradingJournal
 
-                        Soubor obchody.json obsahuje provedené obchody vybraného dne.
+                        {scopeDescription}
                         Každý obchod má tradeId a seznam images. Položka path ukazuje na
                         obrázek uvnitř ZIPu, ve složce screenshots/trade-<tradeId>/.
                         Prázdný seznam obrázků znamená, že k obchodu nejsou přiloženy.
@@ -80,17 +99,10 @@ internal static class JournalSessionExport
 
                         Pokud vaše AI neumí otevřít ZIP, rozbalte jej a přiložte
                         obchody.json spolu s obrázky. Názvy obrázků obsahují ID obchodu.
-                        Příklad zadání: Projdi provedené obchody a jejich screenshoty.
-                        U každého uveď tradeId, zhodnoť dodržení plánu a popiš, jaké
+                        Příklad zadání: Projdi obchody a jejich screenshoty.
+                        U každého uveď tradeId a stav, zhodnoť dodržení plánu a popiš, jaké
                         údaje chybí pro závěr.
                         """.AsMemory(), cancellationToken);
-                }
-
-                foreach (var image in trades.SelectMany(GetImages))
-                {
-                    var entry = zip.CreateEntry(image.Path, CompressionLevel.NoCompression);
-                    await using var destination = await entry.OpenAsync(cancellationToken);
-                    await destination.WriteAsync(image.Data, cancellationToken);
                 }
             }
 

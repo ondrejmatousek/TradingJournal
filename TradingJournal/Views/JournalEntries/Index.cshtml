@@ -34,7 +34,10 @@
                 <h1>@(((TradingJournal.Models.TradingJournalBook)ViewData["CurrentJournal"]!).Name)</h1>
                 <p>Your trades, filtered insights, and process quality.</p>
             </div>
-            <a asp-action="Create" class="btn btn-primary">New entry</a>
+            <div class="d-flex flex-wrap gap-2">
+                <a asp-action="ExportJournal" class="btn btn-outline-secondary">Export celého deníku (ZIP)</a>
+                <a asp-action="Create" class="btn btn-primary">New entry</a>
+            </div>
         </div>
 
         <div class="row g-3 mb-4">
@@ -220,7 +223,7 @@
                            asp-route-asset="@Model.Filters.Asset"
                            asp-route-outcome="@Model.Filters.Outcome"
                            asp-route-side="@Model.Filters.Side"
-                           asp-route-planOnly="@Model.Filters.PlanOnly">Export seance pro AI (ZIP)</a>
+                           asp-route-planOnly="@Model.Filters.PlanOnly">Export vybraného dne (ZIP)</a>
                     }
                 </div>
                 <p class="text-muted">Zisk / ztráta v měně účtu. Nezadané částky se do součtů nezahrnují.</p>

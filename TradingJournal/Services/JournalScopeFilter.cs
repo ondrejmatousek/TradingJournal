@@ -9,7 +9,10 @@ namespace TradingJournal.Services;
 public sealed class JournalScopeFilter(ApplicationDbContext db) : IAsyncActionFilter
 {
     private static readonly HashSet<string> ScopedActions = new(StringComparer.OrdinalIgnoreCase)
-    { "Index", "Analysis", nameof(Controllers.JournalEntriesController.ExportSession), "Details", "Create", "Edit", "Delete", "DeleteConfirmed", "Image", "GalleryImage", "DeleteGalleryImage", "DeleteLegacyImage" };
+    {
+        "Index", "Analysis", "Details", "Create", "Edit", "Delete", "DeleteConfirmed", "Image", "GalleryImage", "DeleteGalleryImage", "DeleteLegacyImage",
+        nameof(Controllers.JournalEntriesController.ExportSession), nameof(Controllers.JournalEntriesController.ExportJournal)
+    };
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {

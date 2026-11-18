@@ -218,6 +218,68 @@ public class MultipleJournalsTests
     }
 
     [Fact]
+    public async Task WholeJournalExportIncludesEveryStatusAndDateAcrossBatches()
+    {
+        await using var app = new JournalApp();
+        using var client = await app.ClientAsync("owner");
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.TradingJournals.Add(new TradingJournalBook { Id = 4, UserId = "owner", Name = "Empty journal" });
+            var statuses = new[] { EntryStatus.Executed, EntryStatus.Open, EntryStatus.Skipped };
+            db.JournalEntries.AddRange(Enumerable.Range(10, 6).Select(id => new JournalEntry
+            {
+                Id = id, UserId = "owner", JournalId = 1, Asset = AssetSymbol.EURCZK,
+                EntryTime = new DateTimeOffset(2025, 1, id, 12, 0, 0, TimeSpan.Zero),
+                Status = statuses[(id - 10) % statuses.Length],
+                Side = PositionSide.Short,
+                Images = id == 15 ? [new JournalEntryImage { ImageData = [7, 8, 9], ImageContentType = "image/webp" }] : []
+            }));
+            await db.SaveChangesAsync();
+        }
+
+        const string filters = "?selectedDate=2025-01-10&asset=XAUUSD&side=Long&outcome=Win&planOnly=true";
+        var page = await client.GetStringAsync("/journals/1" + filters);
+        Assert.Contains("href=\"/journals/1/ExportJournal\"", page);
+        Assert.Contains("Export celého deníku (ZIP)", WebUtility.HtmlDecode(page));
+        Assert.DoesNotContain("ExportSession", page);
+
+        using var response = await client.GetAsync("/journals/1/ExportJournal" + filters);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/zip", response.Content.Headers.ContentType!.MediaType);
+        Assert.Equal("denik-1-vsechny-obchody.zip", response.Content.Headers.ContentDisposition!.FileNameStar);
+        Assert.True(response.Headers.CacheControl!.NoStore);
+
+        using var zip = new ZipArchive(await response.Content.ReadAsStreamAsync(), ZipArchiveMode.Read);
+        using var manifestStream = zip.GetEntry("obchody.json")!.Open();
+        using var manifest = await JsonDocument.ParseAsync(manifestStream);
+        Assert.Equal("journal", manifest.RootElement.GetProperty("scope").GetString());
+        Assert.Equal(JsonValueKind.Null, manifest.RootElement.GetProperty("sessionDate").ValueKind);
+        var trades = manifest.RootElement.GetProperty("trades").EnumerateArray().ToArray();
+        Assert.Equal([1, 10, 11, 12, 13, 14, 15], trades.Select(trade => trade.GetProperty("tradeId").GetInt32()));
+        Assert.Equal("Open", trades[2].GetProperty("status").GetString());
+        Assert.Equal("Skipped", trades[^1].GetProperty("status").GetString());
+        Assert.Equal(2, trades[0].GetProperty("images").GetArrayLength());
+        var image = Assert.Single(trades[^1].GetProperty("images").EnumerateArray());
+        var path = image.GetProperty("path").GetString()!;
+        Assert.StartsWith("screenshots/trade-15/trade-15-", path);
+        using var screenshot = zip.GetEntry(path)!.Open();
+        using var bytes = new MemoryStream();
+        await screenshot.CopyToAsync(bytes);
+        Assert.Equal<byte>([7, 8, 9], bytes.ToArray());
+        Assert.Equal(5, zip.Entries.Count);
+
+        using var emptyZip = new ZipArchive(await client.GetStreamAsync("/journals/4/ExportJournal"), ZipArchiveMode.Read);
+        using var emptyManifestStream = emptyZip.GetEntry("obchody.json")!.Open();
+        using var emptyManifest = await JsonDocument.ParseAsync(emptyManifestStream);
+        Assert.Empty(emptyManifest.RootElement.GetProperty("trades").EnumerateArray());
+
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/journals/3/ExportJournal")).StatusCode);
+        using var anonymous = app.CreateClient(new() { AllowAutoRedirect = false });
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/journals/1/ExportJournal")).StatusCode);
+    }
+
+    [Fact]
     public async Task NonemptyJournalsCannotBeDeletedAndOldLinksRemainUsable()
     {
         await using var app = new JournalApp();

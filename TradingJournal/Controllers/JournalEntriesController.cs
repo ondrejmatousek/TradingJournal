@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using TradingJournal.Data;
 using TradingJournal.Models;
@@ -869,8 +870,48 @@ namespace TradingJournal.Controllers
                 .AsSplitQuery()
                 .ToListAsync(cancellationToken);
 
-            var archive = await JournalSessionExport.CreateAsync(journal, selectedDate, entries, cancellationToken);
+            var archive = await JournalZipExport.CreateAsync(journal, selectedDate, entries.ToAsyncEnumerable(), cancellationToken);
             return File(archive, "application/zip", $"denik-{journal.Id}-seance-{selectedDate:yyyy-MM-dd}.zip");
+        }
+
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> ExportJournal(CancellationToken cancellationToken)
+        {
+            var journal = (TradingJournalBook)ViewData["CurrentJournal"]!;
+            var archive = await JournalZipExport.CreateAsync(journal, null, ReadJournalTradesAsync(cancellationToken), cancellationToken);
+            return File(archive, "application/zip", $"denik-{journal.Id}-vsechny-obchody.zip");
+        }
+
+        private async IAsyncEnumerable<JournalEntry> ReadJournalTradesAsync(
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            var entries = ScopedEntries();
+            var lastId = await entries.MaxAsync(entry => (int?)entry.Id, cancellationToken);
+            if (!lastId.HasValue)
+                yield break;
+
+            // Bound the number of image payloads held in memory across the entire export.
+            const int batchSize = 4;
+            var position = 0;
+            while (position < lastId.Value)
+            {
+                var batch = await entries
+                    .Where(entry => entry.Id > position && entry.Id <= lastId.Value)
+                    .OrderBy(entry => entry.Id)
+                    .Take(batchSize)
+                    .Include(entry => entry.Images)
+                    .AsSplitQuery()
+                    .ToListAsync(cancellationToken);
+
+                if (batch.Count == 0)
+                    yield break;
+
+                foreach (var trade in batch)
+                    yield return trade;
+
+                position = batch[^1].Id;
+            }
         }
 
         // GET: JournalEntries
@@ -961,10 +1002,7 @@ namespace TradingJournal.Controllers
 
         private IQueryable<JournalEntry> FilterEntries(AssetSymbol? asset, TradeOutcome? outcome, PositionSide? side, bool planOnly)
         {
-            var userId = CurrentUserId;
-            var journalId = CurrentJournalId;
-            var entries = _context.JournalEntries.AsNoTracking()
-                .Where(e => e.UserId == userId && e.JournalId == journalId);
+            var entries = ScopedEntries();
 
             if (asset.HasValue)
                 entries = entries.Where(e => e.Asset == asset.Value);
@@ -976,6 +1014,14 @@ namespace TradingJournal.Controllers
                 entries = entries.Where(e => e.FollowedTradingPlan);
 
             return entries;
+        }
+
+        private IQueryable<JournalEntry> ScopedEntries()
+        {
+            var userId = CurrentUserId;
+            var journalId = CurrentJournalId;
+            return _context.JournalEntries.AsNoTracking()
+                .Where(e => e.UserId == userId && e.JournalId == journalId);
         }
 
         private static JournalCalendar BuildJournalCalendar(IReadOnlyList<JournalEntry> entries, DateOnly month, DateOnly selectedDate)
