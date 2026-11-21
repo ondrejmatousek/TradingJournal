@@ -191,14 +191,12 @@ body.app-section-shell {
 }
 
 .marketing-shell {
-  height: 100dvh;
-  overflow: hidden;
+  min-height: 100dvh;
 }
 
 .marketing-shell .app-fullbleed,
 .marketing-shell main {
-  height: calc(100dvh - 70px);
-  overflow: hidden;
+  min-height: calc(100dvh - 70px);
 }
 
 .home-welcome {
@@ -207,9 +205,8 @@ body.app-section-shell {
     radial-gradient(circle at 70% 25%, rgba(32, 199, 185, 0.2), transparent 24rem),
     radial-gradient(circle at 30% 80%, rgba(111, 99, 255, 0.18), transparent 24rem);
   display: flex;
-  height: 100%;
+  min-height: calc(100dvh - 70px);
   justify-content: center;
-  min-height: 0;
   padding: clamp(1rem, 4vw, 3rem);
   position: relative;
 }
@@ -232,16 +229,53 @@ body.app-section-shell {
   border-radius: 26px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
   display: grid;
-  gap: 1rem;
-  max-width: 620px;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.35fr);
+  align-items: center;
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  max-width: 1280px;
   padding: clamp(1.5rem, 5vw, 3rem);
   position: relative;
-  text-align: center;
+  text-align: left;
   width: 100%;
 }
 
 .home-welcome-card .home-command-brand {
-  justify-content: center;
+  justify-content: flex-start;
+}
+
+.home-welcome-copy {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.home-promo {
+  margin: 0;
+  min-width: 0;
+}
+
+.home-promo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--tj-border);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.home-promo figcaption {
+  color: var(--tj-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .home-welcome-card {
+    grid-template-columns: 1fr;
+    max-width: 680px;
+  }
 }
 
 .home-welcome-card h1 {

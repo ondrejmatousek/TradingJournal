@@ -29,7 +29,10 @@ namespace TradingJournal.Controllers
 
         public IActionResult Index()
         {
-            return RedirectToAction("Index", "TradingJournals");
+            if (User.Identity?.IsAuthenticated == true)
+                return RedirectToAction("Index", "TradingJournals");
+
+            return View();
         }
 
         [HttpGet]

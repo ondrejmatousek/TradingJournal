@@ -5,7 +5,13 @@
     ViewData["BodyClass"] = "auth-shell";
 }
 
-<section class="auth-stage">
+<section class="auth-stage auth-stage--promo">
+    <figure class="auth-promo home-promo">
+        <img src="~/images/trading-journal-promo.png" asp-append-version="true"
+             alt="Illustrative Trading Journal dashboard with trade history, performance chart and statistics."
+             width="1672" height="941" fetchpriority="high" />
+        <figcaption>Trading Journal · Illustrative preview</figcaption>
+    </figure>
     <div class="auth-card">
         <div class="auth-brand">
             <partial name="_AppMark" />
